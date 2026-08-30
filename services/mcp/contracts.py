@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from services.mcp.types import ExtractionContract, ExtractionFactRule
+from services.mcp.types import ExtractionContract, ExtractionFactRule, ExtractionNarrativeRule
 
 BASE_GENERIC_FACTS: list[ExtractionFactRule] = [
     # Balance Sheet
@@ -311,6 +311,34 @@ SECTOR_EXTENSIONS: dict[str, list[ExtractionFactRule]] = {
 }
 
 
+BASE_REQUIRED_NARRATIVES: list[ExtractionNarrativeRule] = [
+    ExtractionNarrativeRule(
+        topic="General Corporate Overview",
+        target_note_description="Catatan 1 (Informasi Umum Perusahaan / General Information)",
+        expected_section="MDA",
+        guideline="Extract clean prose describing the company's core operations, concession/plantation permits, subsidiaries, and primary business activities. (Do NOT include auditor boilerplate).",
+    ),
+    ExtractionNarrativeRule(
+        topic="Segment Operations & Revenue Drivers",
+        target_note_description="Catatan Informasi Segmen Operasi / Segment Reporting",
+        expected_section="FOOTNOTE",
+        guideline="Extract text explaining product contributions, geographic distribution, and market drivers for sales changes.",
+    ),
+    ExtractionNarrativeRule(
+        topic="Financial Risk & Market Factors",
+        target_note_description="Catatan Manajemen Risiko Keuangan / Financial Risk Management",
+        expected_section="RISK",
+        guideline="Extract descriptions of commodity price risks, foreign exchange exposure, and interest rate policies.",
+    ),
+    ExtractionNarrativeRule(
+        topic="Subsequent Events & Material Commitments",
+        target_note_description="Catatan Peristiwa Setelah Tanggal Pelaporan / Subsequent Events",
+        expected_section="MGMT_STMT",
+        guideline="Extract any material events, dividend announcements, or capital commitments occurring after reporting date.",
+    ),
+]
+
+
 def build_extraction_contract(
     doc_id: str,
     ticker: str,
@@ -333,6 +361,8 @@ def build_extraction_contract(
         f"Target Issuer: {company_name} ({ticker}) — Sector: {sector_upper}.",
         "Scaling: Inspect the top of each financial statement table for the phrase: 'Disajikan dalam jutaan rupiah' (multiply by 1,000,000) or 'Disajikan dalam ribuan rupiah' (multiply by 1,000). Always output full unscaled IDR amount in output JSON.",
         "Precision: Capture exact monetary numbers. Do not round numbers.",
+        "Targeted Page Navigation: Use the 'Index of Notes' (Daftar Catatan) to jump directly to Note 1, Segment note, and Risk note. Do NOT read the entire 100+ page PDF sequentially.",
+        "Causality Extraction: When management explains *why* a metric changed (e.g. revenue grew due to weather, rainfall, higher CPO ASP, or coal volume), capture this in 'causal_links'.",
         "Sign conventions: Cost of Sales, Expenses, and negative Cash Flows should be positive numbers in the payload; the system applies statement logic.",
         "Provenances: Include exact source_page (1-indexed) and source_label_original for every extracted item.",
     ]
@@ -340,7 +370,7 @@ def build_extraction_contract(
     do_not_extract = [
         "Do NOT extract financial ratios (ROE, ROA, DER, PE, PBV, Margins, NIM). EMIMIND calculates them deterministically.",
         "Do NOT extract prior year comparative columns unless specifically asked.",
-        "Do NOT extract decorative or non-financial pages (cover, directors signature page).",
+        "Do NOT extract decorative or boilerplate auditor opinion letters.",
     ]
 
     scaling_rules = {
@@ -357,6 +387,7 @@ def build_extraction_contract(
         period_type=period_type,
         scaling_rules=scaling_rules,
         required_facts=required_facts,
+        required_narratives=list(BASE_REQUIRED_NARRATIVES),
         sector_specific_guidelines=sector_guidelines,
         do_not_extract=do_not_extract,
     )

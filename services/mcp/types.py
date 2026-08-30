@@ -37,6 +37,13 @@ class ExtractionFactRule(BaseModel):
     description: str | None = None
 
 
+class ExtractionNarrativeRule(BaseModel):
+    topic: str
+    target_note_description: str
+    expected_section: str  # 'MDA', 'RISK', 'FOOTNOTE', 'MGMT_STMT'
+    guideline: str
+
+
 class ExtractionContract(BaseModel):
     doc_id: str
     ticker: str
@@ -46,6 +53,7 @@ class ExtractionContract(BaseModel):
     period_type: str
     scaling_rules: dict[str, Any]
     required_facts: list[ExtractionFactRule]
+    required_narratives: list[ExtractionNarrativeRule] = Field(default_factory=list)
     sector_specific_guidelines: list[str] = Field(default_factory=list)
     do_not_extract: list[str] = Field(default_factory=list)
 
@@ -69,6 +77,17 @@ class ExtractedNarrativeItem(BaseModel):
     topic: str | None = None
 
 
+class ExtractedCausalLink(BaseModel):
+    """Represents a cause-and-effect relationship extracted from management discussion."""
+
+    metric_affected: str  # e.g. 'ifrs:Revenue', 'ifrs:GrossProfit', 'idx:CpoProduction'
+    direction: str = "INCREASED"  # 'INCREASED', 'DECREASED', 'STABLE'
+    cause_category: str = "EXTERNAL_FACTOR"  # 'WEATHER_CLIMATE', 'PRICE_CHANGE', 'VOLUME_GROWTH', 'COST_PRESSURE', 'MACRO_CURRENCY', 'OPERATIONAL_EFFICIENCY'
+    driver_description: str
+    source_page: int
+    confidence: float = 0.90
+
+
 class ExtractedGuidanceItem(BaseModel):
     metric: str
     target_period: str
@@ -86,6 +105,7 @@ class DraftSubmissionPayload(BaseModel):
     accounting_standard: str = "PSAK_72"
     facts: list[ExtractedFactItem]
     narratives: list[ExtractedNarrativeItem] = Field(default_factory=list)
+    causal_links: list[ExtractedCausalLink] = Field(default_factory=list)
     guidance: list[ExtractedGuidanceItem] = Field(default_factory=list)
 
 

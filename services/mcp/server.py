@@ -455,6 +455,64 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
                     except Exception as e:
                         log.warning("Automatic fallback narrative chunking failed", error=str(e), path=str(cand))
 
+        # 2.5 Insert Causal Links into Knowledge Graph (kg_nodes & kg_edges)
+        causal_count = 0
+        for cl in payload.causal_links:
+            # 1. Insert Metric Node (DST)
+            metric_res = await conn.execute(
+                text(
+                    """
+                    INSERT INTO kg_nodes (node_type, ticker, fiscal_period, payload, source_ref)
+                    VALUES ('METRIC', :ticker, :period, CAST(:payload AS jsonb), CAST(:src AS jsonb))
+                    RETURNING id;
+                    """
+                ),
+                {
+                    "ticker": ticker,
+                    "period": fiscal_period,
+                    "payload": json.dumps({"metric": cl.metric_affected, "direction": cl.direction}),
+                    "src": json.dumps({"doc_id": doc_id, "page": cl.source_page}),
+                },
+            )
+            metric_node_id = metric_res.scalar()
+
+            # 2. Insert Cause Claim Node (SRC)
+            cause_res = await conn.execute(
+                text(
+                    """
+                    INSERT INTO kg_nodes (node_type, ticker, fiscal_period, payload, source_ref)
+                    VALUES ('CLAIM', :ticker, :period, CAST(:payload AS jsonb), CAST(:src AS jsonb))
+                    RETURNING id;
+                    """
+                ),
+                {
+                    "ticker": ticker,
+                    "period": fiscal_period,
+                    "payload": json.dumps({"driver": cl.driver_description, "category": cl.cause_category}),
+                    "src": json.dumps({"doc_id": doc_id, "page": cl.source_page}),
+                },
+            )
+            cause_node_id = cause_res.scalar()
+
+            # 3. Insert Edge: Cause -> CAUSED_BY -> Metric
+            if metric_node_id and cause_node_id:
+                await conn.execute(
+                    text(
+                        """
+                        INSERT INTO kg_edges (src_id, dst_id, edge_type, confidence, evidence_ref, payload)
+                        VALUES (:src, :dst, 'CAUSED_BY', :conf, CAST(:evidence AS jsonb), CAST(:pld AS jsonb));
+                        """
+                    ),
+                    {
+                        "src": cause_node_id,
+                        "dst": metric_node_id,
+                        "conf": cl.confidence,
+                        "evidence": json.dumps({"citation": f"[{ticker}-FS-{fiscal_period}#p{cl.source_page}]"}),
+                        "pld": json.dumps({"category": cl.cause_category}),
+                    },
+                )
+                causal_count += 1
+
         # 3. Update document status and archive local file if in incoming folder
         doc_res = await conn.execute(text("SELECT source_url FROM documents WHERE id = :id"), {"id": doc_id})
         doc_row = doc_res.mappings().first()
