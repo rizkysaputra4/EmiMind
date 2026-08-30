@@ -64,7 +64,8 @@ Call this first before opening any PDF:
   "fiscal_period": "2026Q2"
 }
 ```
-- If response `status == "ALREADY_PROCESSED"`, output: `[SKIPPED] Already in database.` and move to the next file.
+- If response `status == "ALREADY_PROCESSED"`, the MCP server automatically archives the file to `incoming_reports/processed/`. Output: `[SKIPPED] Already in database. Moved to processed/` and proceed to the next file.
+- When `commit_verified_report` successfully commits, the MCP server automatically moves the completed PDF from `incoming_reports/` to `incoming_reports/processed/` so the incoming folder always stays clean.
 
 ### 2. `get_extraction_contract`
 Call this to get the exact checklist:

@@ -27,10 +27,28 @@ from services.mcp.validator import validate_draft_submission
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
+import shutil
+
 from services.shared.config import get_settings
 from services.shared.logging import get_logger
 
 log = get_logger("mcp.server")
+
+
+def _archive_processed_file(file_path_str: str) -> str | None:
+    """Moves a processed file to a 'processed/' subfolder if located in an incoming directory."""
+    try:
+        p = Path(file_path_str)
+        if p.exists() and p.is_file() and "processed" not in p.parts:
+            processed_dir = p.parent / "processed"
+            processed_dir.mkdir(parents=True, exist_ok=True)
+            target_path = processed_dir / p.name
+            shutil.move(str(p), str(target_path))
+            log.info("Archived file to processed directory", src=str(p), dest=str(target_path))
+            return str(target_path)
+    except Exception as e:
+        log.warning("Failed to move processed file to archive", error=str(e))
+    return None
 
 
 def get_engine():
@@ -97,6 +115,8 @@ async def inspect_document(
             facts_count = f_res.scalar() or 0
 
             if facts_count > 0 and doc["status"] in ("parsed", "facts_extracted"):
+                # Archive to processed subfolder if located in incoming_reports
+                new_path = _archive_processed_file(str(p))
                 return DocumentInspectionResult(
                     status=InspectionStatus.ALREADY_PROCESSED,
                     doc_hash=doc_hash,
@@ -104,7 +124,7 @@ async def inspect_document(
                     ticker=t,
                     fiscal_period=fp,
                     doc_type=doc["doc_type"],
-                    message=f"Document already fully processed and committed to database with {facts_count} financial facts. Do NOT spend tokens re-extracting.",
+                    message=f"Document already fully processed and committed to database with {facts_count} financial facts. File moved to processed/ archive.",
                     existing_facts_count=facts_count,
                 )
 
@@ -371,7 +391,12 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
             )
             narratives_count += 1
 
-        # 3. Update document status
+        # 3. Update document status and archive local file if in incoming folder
+        doc_res = await conn.execute(text("SELECT source_url FROM documents WHERE id = :id"), {"id": doc_id})
+        doc_row = doc_res.mappings().first()
+        if doc_row and doc_row.get("source_url"):
+            _archive_processed_file(doc_row["source_url"])
+
         await conn.execute(
             text("UPDATE documents SET status = 'facts_extracted', ingested_at = now() WHERE id = :id"),
             {"id": doc_id},
