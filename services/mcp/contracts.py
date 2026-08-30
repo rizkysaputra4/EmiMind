@@ -234,6 +234,12 @@ SECTOR_EXTENSIONS: dict[str, list[ExtractionFactRule]] = {
             statement_type="NOTES",
             required=False,
         ),
+        ExtractionFactRule(
+            concept_id="idx:CapitalAdequacyRatio",
+            label="Rasio Kecukupan Modal / Capital Adequacy Ratio (CAR)",
+            statement_type="NOTES",
+            required=False,
+        ),
     ],
     "MINING": [
         ExtractionFactRule(
@@ -292,6 +298,46 @@ SECTOR_EXTENSIONS: dict[str, list[ExtractionFactRule]] = {
             statement_type="NOTES",
             required=False,
         ),
+        ExtractionFactRule(
+            concept_id="idx:PlantedAreaHectares",
+            label="Luas Areal Tertanam (Planted Area in Hectares)",
+            statement_type="NOTES",
+            required=False,
+        ),
+    ],
+    "CONSUMER": [
+        ExtractionFactRule(
+            concept_id="idx:RevenueByBrandDivision",
+            label="Pendapatan per Divisi Produk (Noodles, Dairy, Beverage, dll)",
+            statement_type="NOTES",
+            required=False,
+        ),
+        ExtractionFactRule(
+            concept_id="idx:RawMaterialCost",
+            label="Beban Bahan Baku Utama (Gandum, Susu, Kedelai)",
+            statement_type="NOTES",
+            required=False,
+        ),
+    ],
+    "PROPERTY": [
+        ExtractionFactRule(
+            concept_id="idx:MarketingSalesPresales",
+            label="Marketing Sales / Presales Properti",
+            statement_type="NOTES",
+            required=False,
+        ),
+        ExtractionFactRule(
+            concept_id="idx:RecurringIncome",
+            label="Pendapatan Berulang (Mall, Hotel, Rumah Sakit)",
+            statement_type="NOTES",
+            required=False,
+        ),
+        ExtractionFactRule(
+            concept_id="idx:LandbankAreaHectares",
+            label="Cadangan Lahan (Landbank Area in Hectares)",
+            statement_type="NOTES",
+            required=False,
+        ),
     ],
     "TELCO": [
         ExtractionFactRule(
@@ -311,6 +357,145 @@ SECTOR_EXTENSIONS: dict[str, list[ExtractionFactRule]] = {
             label="Average Revenue Per User (ARPU)",
             statement_type="NOTES",
             required=False,
+        ),
+        ExtractionFactRule(
+            concept_id="idx:DataTrafficPetabytes",
+            label="Volume Lalu Lintas Data (Petabytes)",
+            statement_type="NOTES",
+            required=False,
+        ),
+    ],
+    "HEALTHCARE": [
+        ExtractionFactRule(
+            concept_id="idx:OperationalBedsCount",
+            label="Jumlah Tempat Tidur Operasional (Beds)",
+            statement_type="NOTES",
+            required=False,
+        ),
+        ExtractionFactRule(
+            concept_id="idx:InpatientDays",
+            label="Hari Rawat Inap (Inpatient Days)",
+            statement_type="NOTES",
+            required=False,
+        ),
+        ExtractionFactRule(
+            concept_id="idx:OutpatientVisits",
+            label="Kunjungan Rawat Jalan (Outpatient Visits)",
+            statement_type="NOTES",
+            required=False,
+        ),
+    ],
+}
+
+SECTOR_GRANULAR_MODULES: dict[str, list[GranularNoteModule]] = {
+    "BANK": [
+        GranularNoteModule(
+            name="BANK_LOANS_BY_SEGMENT",
+            description="Rincian penyaluran kredit per segmen (Korporasi, Komersial, UKM/SME, Mikro, Konsumer/KPR/Kendaraan/Kartu Kredit).",
+            typical_note_title="Catatan Kredit yang Diberikan Berdasarkan Segmen",
+            target_concepts=["idx:LoansAndAdvances"],
+            expected_segment_fields=["segment", "type", "pct_total"],
+            guideline="Extract loan balance per segment with segment={'segment': '<Segment Name>', 'type': 'loan_segment'}.",
+        ),
+        GranularNoteModule(
+            name="BANK_LOAN_QUALITY_NPL",
+            description="Kualitas aset dan kredit berdasarkan kolektibilitas: Kol 1 (Lancar), Kol 2 (Dalam Perhatian Khusus), Kol 3 (Kurang Lancar), Kol 4 (Diragukan), Kol 5 (Macet).",
+            typical_note_title="Catatan Kualitas Aset Produktif / Kolektibilitas Kredit",
+            target_concepts=["idx:LoansAndAdvances", "idx:NonPerformingLoansGross"],
+            expected_segment_fields=["segment", "type", "kol_rating", "npl_status"],
+            guideline="Extract loan quality per collectibility category with segment={'segment': 'Kol 1 - Lancar / Kol 2 - DPK / Kol 3-5 - NPL', 'type': 'loan_collectibility'}.",
+        ),
+        GranularNoteModule(
+            name="BANK_FEE_BASED_INCOME",
+            description="Rincian pendapatan non-bunga / fee-based income (Digital Banking/App, Treasury, Transaksi Trade Finance, Jasa Administrasi).",
+            typical_note_title="Catatan Pendapatan Provisi dan Komisi / Fee-Based Income",
+            target_concepts=["ifrs:Revenue", "idx:FeeBasedIncome"],
+            expected_segment_fields=["segment", "type"],
+            guideline="Extract fee-based income streams with segment={'segment': '<Fee Category>', 'type': 'fee_based_stream'}.",
+        ),
+    ],
+    "MINING": [
+        GranularNoteModule(
+            name="MINING_PRODUCTION_AND_SALES",
+            description="Rincian volume produksi dan volume penjualan per produk/komoditas (Saprolite, Limonite, FeNi, MHP, Batubara Kalori Tinggi/Rendah) serta pasar Domestik (DMO) vs Ekspor.",
+            typical_note_title="Catatan Informasi Segmen Tambang / Penjualan Komoditas",
+            target_concepts=["idx:CoalProductionVolume", "idx:CoalSalesVolume", "ifrs:Revenue"],
+            expected_segment_fields=["segment", "type", "volume", "unit", "market"],
+            guideline="Extract production & sales breakdown with segment={'segment': '<Product/Grade Name>', 'type': 'mining_product', 'market': 'Domestic/Export'}.",
+        ),
+        GranularNoteModule(
+            name="MINING_RESERVES_AND_RESOURCES",
+            description="Cadangan dan sumber daya tambang (Proved & Probable Reserves, Measured & Indicated Resources) serta konsesi IUP/PKP2B.",
+            typical_note_title="Catatan Cadangan & Sumber Daya Tambang / Aset Eksplorasi",
+            target_concepts=["idx:MiningReservesMt", "idx:MiningResourcesMt", "idx:StripRatio"],
+            expected_segment_fields=["segment", "type", "concession_location", "reserves_mt"],
+            guideline="Extract mining assets and concessions with segment={'segment': '<Mine/Concession Name>', 'type': 'mining_asset'}.",
+        ),
+    ],
+    "CPO": [
+        GranularNoteModule(
+            name="BIOLOGICAL_ASSETS_DETAIL",
+            description="Profil perkebunan kelapa sawit: luas areal tertanam (tanaman menghasilkan/mature vs belum menghasilkan/immature) dalam hektar.",
+            typical_note_title="Catatan Tanaman Produktif / Aset Biologis / Perkebunan",
+            target_concepts=["ifrs:BiologicalAssets", "idx:PlantedAreaHectares", "idx:UnplantedAreaHectares"],
+            expected_segment_fields=["segment", "type", "planted_area_ha", "average_age_years"],
+            guideline="Extract planted hectares breakdown with segment={'segment': 'Mature/Immature/Plasma', 'type': 'biological_asset_maturity', 'planted_area_ha': <ha>}.",
+        )
+    ],
+    "CONSUMER": [
+        GranularNoteModule(
+            name="CONSUMER_BRAND_DIVISION",
+            description="Rincian penjualan dan profitabilitas per divisi/merek produk (Makanan Instan, Susu/Dairy, Makanan Ringan, Minuman, Pakan Ternak/Feedmill).",
+            typical_note_title="Catatan Informasi Segmen Usaha / Lini Produk",
+            target_concepts=["ifrs:Revenue", "ifrs:OperatingProfit"],
+            expected_segment_fields=["segment", "type", "pct_total"],
+            guideline="Extract consumer divisional revenue with segment={'segment': '<Division/Brand Name>', 'type': 'consumer_division'}.",
+        ),
+        GranularNoteModule(
+            name="CONSUMER_RAW_MATERIALS",
+            description="Rincian biaya bahan baku utama (Gandum/Terigu, Susu Bubuk, Bungkil Kedelai, Jagung) dan kepekaan harga komoditas pangan.",
+            typical_note_title="Catatan Beban Pokok Penjualan / Bahan Baku",
+            target_concepts=["ifrs:CostOfSales", "idx:CostOfGoodsSoldComponent"],
+            expected_segment_fields=["segment", "type"],
+            guideline="Extract major raw materials with segment={'segment': '<Raw Material Name>', 'type': 'raw_material_component'}.",
+        ),
+    ],
+    "PROPERTY": [
+        GranularNoteModule(
+            name="PROPERTY_PRESALES_MARKETING",
+            description="Realisasi marketing sales (presales) per segmen properti: Rumah Tapak (Residential), Ruko/Komersial, Kavling Tanah, dan Apartemen.",
+            typical_note_title="Catatan Pendapatan Pra-Penjualan Properti / Segmen Real Estat",
+            target_concepts=["idx:MarketingSalesPresales", "ifrs:Revenue"],
+            expected_segment_fields=["segment", "type", "project_location"],
+            guideline="Extract presales and project revenues with segment={'segment': '<Project/Property Type>', 'type': 'property_segment'}.",
+        ),
+        GranularNoteModule(
+            name="PROPERTY_LANDBANK",
+            description="Luas cadangan lahan (landbank) dalam hektar per kawasan pengembangan kota mandiri (Township / Kawasan Industri).",
+            typical_note_title="Catatan Tanah untuk Pengembangan / Cadangan Lahan",
+            target_concepts=["idx:LandbankAreaHectares", "ifrs:Inventories"],
+            expected_segment_fields=["segment", "type", "location", "hectares"],
+            guideline="Extract landbank per location with segment={'segment': '<Location/Township Name>', 'type': 'landbank_location', 'hectares': <ha>}.",
+        ),
+    ],
+    "TELCO": [
+        GranularNoteModule(
+            name="TELCO_OPERATIONAL_METRICS",
+            description="Rincian operasional telekomunikasi: Trafik Data (Petabytes), ARPU Prabayar/Pascabayar, Jumlah Menara/Tower, dan Homepass Fiber FTTH.",
+            typical_note_title="Catatan Informasi Segmen Telekomunikasi & Jaringan",
+            target_concepts=["idx:DataRevenue", "idx:SubscriberCount", "idx:ArpuBlended"],
+            expected_segment_fields=["segment", "type"],
+            guideline="Extract telco operational KPIs with segment={'segment': '<Metric/Service Line>', 'type': 'telco_kpi'}.",
+        ),
+    ],
+    "HEALTHCARE": [
+        GranularNoteModule(
+            name="HOSPITAL_OPERATIONAL_METRICS",
+            description="Kapasitas tempat tidur operasional, Bed Occupancy Rate (BOR), hari rawat inap, kunjungan poliklinik rawat jalan, dan rata-rata pendapatan per tempat tidur (ARPOB).",
+            typical_note_title="Catatan Segmen Rumah Sakit & Layanan Kesehatan",
+            target_concepts=["ifrs:Revenue", "idx:OperationalBedsCount"],
+            expected_segment_fields=["segment", "type"],
+            guideline="Extract hospital KPIs with segment={'segment': '<Hospital Unit/Service Line>', 'type': 'hospital_kpi'}.",
         ),
     ],
 }
@@ -419,28 +604,7 @@ BASE_GRANULAR_NOTE_MODULES: list[GranularNoteModule] = [
     ),
 ]
 
-SECTOR_GRANULAR_MODULES: dict[str, list[GranularNoteModule]] = {
-    "CPO": [
-        GranularNoteModule(
-            name="BIOLOGICAL_ASSETS_DETAIL",
-            description="Profil perkebunan kelapa sawit: luas areal tertanam (tanaman menghasilkan/mature vs belum menghasilkan/immature) dalam hektar.",
-            typical_note_title="Catatan Tanaman Produktif / Aset Biologis / Perkebunan",
-            target_concepts=["ifrs:BiologicalAssets", "idx:PlantedAreaHectares", "idx:UnplantedAreaHectares"],
-            expected_segment_fields=["segment", "type", "planted_area_ha", "average_age_years"],
-            guideline="Extract planted hectares breakdown with segment={'segment': 'Mature/Immature/Plasma', 'type': 'biological_asset_maturity', 'planted_area_ha': <ha>}.",
-        )
-    ],
-    "MINING": [
-        GranularNoteModule(
-            name="MINING_RESERVES_AND_RESOURCES",
-            description="Cadangan dan sumber daya tambang (Reserves & Resources) serta konsesi IUP/PKP2B.",
-            typical_note_title="Catatan Aset Eksplorasi & Evaluasi / Cadangan Tambang",
-            target_concepts=["idx:MiningReservesMt", "idx:MiningResourcesMt", "idx:StripRatio"],
-            expected_segment_fields=["segment", "type", "concession_location", "reserves_mt"],
-            guideline="Extract mining metrics with segment={'segment': '<mine_concession_name>', 'type': 'mining_asset'}.",
-        )
-    ],
-}
+
 
 
 def build_extraction_contract(
