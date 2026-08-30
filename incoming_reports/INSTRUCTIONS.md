@@ -80,23 +80,71 @@ sequenceDiagram
 Call this first before opening any PDF:
 ```json
 {
-  "file_path": "incoming_reports/NCKL_2026Q2.pdf",
-  "ticker": "NCKL",
-  "fiscal_period": "2026Q2"
+  "file_path": "incoming_reports/LSIP_bilingual_31 des_2025_released.pdf",
+  "ticker": "LSIP",
+  "fiscal_period": "2025FY"
 }
 ```
-- If response `status == "ALREADY_PROCESSED"`, the MCP server automatically archives the file to `incoming_reports/processed/`. Output: `[SKIPPED] Already in database. Moved to processed/` and proceed to the next file.
-- When `commit_verified_report` successfully commits, the MCP server automatically moves the completed PDF from `incoming_reports/` to `incoming_reports/processed/` so the incoming folder always stays clean.
 
 ### 2. `get_extraction_contract`
-Call this to get the exact checklist:
+Retrieves the dynamic extraction checklist, scaling rules, and sector-specific granular modules:
 ```json
 {
-  "doc_id": "<doc_id_from_inspection>"
+  "doc_id": "<doc_id_from_inspect>"
 }
 ```
 
-### 3. Unit Scaling Rule (MANDATORY)
+### 3. `get_metric_ontology`
+Queries canonical financial and operational metric definitions, formulas, and synonyms for a specific sector:
+```json
+{
+  "sector": "BANK",
+  "query": "CASA"
+}
+```
+
+### 4. `submit_draft_extraction`
+Submits the extracted JSON for multi-tier accounting equation and unit scale validation:
+```json
+{
+  "payload_json": "<stringified_DraftSubmissionPayload>"
+}
+```
+
+### 5. `submit_discovered_metric`
+If you encounter a new, high-value industry KPI during extraction (e.g. *Smelter Recovery Rate* or *DOC Chick Price*) that does not exist in the contract:
+```json
+{
+  "candidate": {
+    "metric_id": "idx:GeothermalGenerationGWh",
+    "name_en": "Geothermal Net Generation",
+    "name_id": "Produksi Listrik Geotermal Neto",
+    "category": "OPERATIONAL",
+    "sector_code": "RENEWABLE_ENERGY",
+    "unit": "GWH",
+    "source_page": 42,
+    "sample_text": "Total produksi listrik neto dari PLTP mencapai 2.450 GWh."
+  }
+}
+```
+
+### 6. `commit_verified_report`
+Persists the validated extraction into PostgreSQL, auto-infers segments, inserts causal links into the knowledge graph, and automatically moves the PDF to `incoming_reports/processed/`:
+```json
+{
+  "payload_json": "<stringified_DraftSubmissionPayload>"
+}
+```
+
+### 7. `get_issuer_context`
+Fetches historical facts, prior period numbers, and peer metrics to assist in comparative extraction:
+```json
+{
+  "ticker": "BMRI"
+}
+```
+
+### 8. Unit Scaling Rule (MANDATORY)
 Inspect the top header of the table:
 - If *"Disajikan dalam jutaan rupiah / in millions of IDR"*: Multiply extracted value by `1,000,000`.
 - If *"Disajikan dalam ribuan rupiah / in thousands of IDR"*: Multiply extracted value by `1,000`.

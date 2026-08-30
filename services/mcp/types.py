@@ -162,3 +162,53 @@ class CommitReport(BaseModel):
     profile_refreshed: bool
     live_valuation_computed: bool
     message: str
+
+
+class MetricOntologyDefinition(BaseModel):
+    metric_id: str
+    name_en: str
+    name_id: str
+    category: str
+    sector_applicability: list[str]
+    importance: str
+    value_type: str
+    unit: str
+    flow_stock_type: str
+    extraction_mode: str
+    calculation_formula: str | None = None
+    dependencies: list[str] = Field(default_factory=list)
+    source_priority: list[str] = Field(default_factory=list)
+    synonyms_id: list[str] = Field(default_factory=list)
+    synonyms_en: list[str] = Field(default_factory=list)
+
+
+class MetricOntologyQueryResult(BaseModel):
+    total_found: int
+    sector: str
+    metrics: list[MetricOntologyDefinition]
+
+
+class DiscoveredMetricCandidate(BaseModel):
+    metric_id: str
+    name_en: str
+    name_id: str
+    category: str
+    sector_code: str
+    sub_industry: str | None = None
+    importance: str = "HIGH"
+    value_type: str = "FLOAT"
+    unit: str
+    flow_stock_type: str = "FLOW_PERIOD"
+    typical_source: str = "FS_NOTES_DETAIL"
+    source_page: int
+    sample_text: str
+    synonyms_id: list[str] = Field(default_factory=list)
+    synonyms_en: list[str] = Field(default_factory=list)
+    analytical_rationale: str | None = None
+
+
+class DiscoveredMetricResult(BaseModel):
+    status: str  # 'QUARANTINED', 'PROMOTED', 'EXISTING'
+    metric_id: str
+    message: str
+

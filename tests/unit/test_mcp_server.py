@@ -122,3 +122,44 @@ async def test_mcp_submit_draft_extraction_and_commit() -> None:
     assert commit_rep.facts_committed == len(facts)
     assert commit_rep.narratives_committed == 1
     assert commit_rep.derived_metrics_computed > 0
+
+
+@pytest.mark.asyncio
+async def test_get_metric_ontology():
+    from services.mcp.server import get_metric_ontology
+
+    # Query banking metrics
+    res = await get_metric_ontology(sector="BANK")
+    assert res.total_found > 0
+    concept_ids = [m.metric_id for m in res.metrics]
+    assert "idx:LoansAndAdvances" in concept_ids or "ifrs:Revenue" in concept_ids
+
+    # Query specific search keyword
+    query_res = await get_metric_ontology(query="CASA")
+    assert query_res.total_found > 0
+    assert any("CASA" in m.name_en or "CASA" in m.metric_id for m in query_res.metrics)
+
+
+@pytest.mark.asyncio
+async def test_submit_discovered_metric():
+    from services.mcp.server import submit_discovered_metric
+    from services.mcp.types import DiscoveredMetricCandidate
+
+    cand = DiscoveredMetricCandidate(
+        metric_id="idx:GeothermalGenerationGWh",
+        name_en="Geothermal Net Generation",
+        name_id="Produksi Listrik Geotermal Neto",
+        category="OPERATIONAL",
+        sector_code="RENEWABLE_ENERGY",
+        importance="HIGH",
+        value_type="FLOAT",
+        unit="GWH",
+        source_page=42,
+        sample_text="Total produksi listrik neto dari PLTP Wayang Windu dan Salak mencapai 2.450 GWh.",
+        synonyms_id=["Produksi Listrik Bersih", "Net Power Generation"],
+    )
+
+    res = await submit_discovered_metric(cand)
+    assert res.status in ("PROMOTED", "EXISTING")
+    assert res.metric_id == "idx:GeothermalGenerationGWh"
+
