@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "emimind": {
+      "command": "uv",
+      "args": [
+        "run",
+        "python",
+        "scripts/run_mcp_server.py"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  }
+}
