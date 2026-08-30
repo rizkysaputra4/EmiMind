@@ -44,6 +44,15 @@ class ExtractionNarrativeRule(BaseModel):
     guideline: str
 
 
+class GranularNoteModule(BaseModel):
+    name: str  # e.g. 'REVENUE_BREAKDOWN', 'COGS_COMPONENTS', 'SUBSIDIARIES', 'DEBT_BY_LENDER', 'BIOLOGICAL_ASSETS'
+    description: str
+    typical_note_title: str
+    target_concepts: list[str] = Field(default_factory=list)
+    expected_segment_fields: list[str] = Field(default_factory=list)
+    guideline: str
+
+
 class ExtractionContract(BaseModel):
     doc_id: str
     ticker: str
@@ -54,6 +63,7 @@ class ExtractionContract(BaseModel):
     scaling_rules: dict[str, Any]
     required_facts: list[ExtractionFactRule]
     required_narratives: list[ExtractionNarrativeRule] = Field(default_factory=list)
+    granular_note_modules: list[GranularNoteModule] = Field(default_factory=list)
     sector_specific_guidelines: list[str] = Field(default_factory=list)
     do_not_extract: list[str] = Field(default_factory=list)
 
@@ -65,6 +75,7 @@ class ExtractedFactItem(BaseModel):
     period_type: str = "instant"  # 'instant', 'duration_ytd', 'duration_q'
     source_page: int
     source_label_original: str | None = None
+    segment: dict[str, Any] | None = None
     bbox: list[float] | None = None
     note_reference: str | None = None
 

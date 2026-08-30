@@ -64,6 +64,19 @@ async def test_mcp_submit_draft_extraction_and_commit() -> None:
         ExtractedFactItem(concept_id="idx:LoansAndAdvances", value_numeric=Decimal("1400000000000"), source_page=1),
         ExtractedFactItem(concept_id="idx:CustomerDeposits", value_numeric=Decimal("1300000000000"), source_page=2),
         ExtractedFactItem(concept_id="idx:NetInterestIncome", value_numeric=Decimal("250000000000"), source_page=3),
+        # Granular Segmented Fact Items
+        ExtractedFactItem(
+            concept_id="ifrs:Revenue",
+            value_numeric=Decimal("400000000000"),
+            source_page=15,
+            segment={"segment": "Kredit Korporasi / Wholesale", "type": "product_segment", "pct_total": 66.7},
+        ),
+        ExtractedFactItem(
+            concept_id="ifrs:Revenue",
+            value_numeric=Decimal("200000000000"),
+            source_page=15,
+            segment={"segment": "Kredit Ritel & Konsumer", "type": "product_segment", "pct_total": 33.3},
+        ),
     ]
 
     narratives = [

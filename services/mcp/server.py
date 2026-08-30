@@ -330,16 +330,17 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
                     """
                     INSERT INTO financial_facts (
                         source_doc_id, ticker, period_end, fiscal_period, statement, concept_id, concept_local,
-                        value_numeric, unit, period_type, accounting_std, source_page, extraction_conf, extraction_method
+                        value_numeric, unit, segment, period_type, accounting_std, source_page, extraction_conf, extraction_method
                     ) VALUES (
                         :doc_id, :ticker, :period_end, :period, :statement, :concept_id, :label,
-                        :val, :unit, :period_type, :std, :page, 0.95, 'llm_extract'
+                        :val, :unit, CAST(:seg AS jsonb), :period_type, :std, :page, 0.95, 'llm_extract'
                     )
                     ON CONFLICT (ticker, fiscal_period, concept_id, (coalesce(segment->>'segment','')))
                     WHERE is_restated = false
                     DO UPDATE SET
                         value_numeric = EXCLUDED.value_numeric,
                         unit = EXCLUDED.unit,
+                        segment = EXCLUDED.segment,
                         source_page = EXCLUDED.source_page,
                         source_doc_id = EXCLUDED.source_doc_id,
                         extraction_method = 'llm_extract',
@@ -356,6 +357,7 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
                     "label": f.source_label_original or cid,
                     "val": float(f.value_numeric),
                     "unit": f.unit,
+                    "seg": json.dumps(f.segment) if f.segment else None,
                     "period_type": p_type,
                     "std": payload.accounting_standard,
                     "page": f.source_page,

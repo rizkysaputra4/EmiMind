@@ -149,6 +149,14 @@ When validation returns `"VALID"`, commit the verified facts and causality graph
       "source_label_original": "Penjualan"
     },
     {
+      "concept_id": "ifrs:CostOfSales",
+      "value_numeric": 2800000000000.0,
+      "unit": "IDR",
+      "period_type": "duration_ytd",
+      "source_page": 3,
+      "source_label_original": "Beban Pokok Penjualan"
+    },
+    {
       "concept_id": "ifrs:OperatingProfit",
       "value_numeric": 1100000000000.0,
       "unit": "IDR",
@@ -171,6 +179,136 @@ When validation returns `"VALID"`, commit the verified facts and causality graph
       "period_type": "duration_ytd",
       "source_page": 4,
       "source_label_original": "Arus Kas Bersih dari Aktivitas Operasi"
+    },
+    {
+      "concept_id": "idx:SharesOutstanding",
+      "value_numeric": 6819958000.0,
+      "unit": "SHARES",
+      "period_type": "instant",
+      "source_page": 2,
+      "source_label_original": "Jumlah Saham Ditempatkan dan Disetor Penuh"
+    },
+    {
+      "concept_id": "ifrs:Revenue",
+      "value_numeric": 3570000000000.0,
+      "unit": "IDR",
+      "period_type": "duration_ytd",
+      "source_page": 48,
+      "source_label_original": "Minyak Kelapa Sawit (CPO)",
+      "segment": {
+        "segment": "Minyak Kelapa Sawit (CPO)",
+        "type": "product",
+        "pct_total": 85.0
+      }
+    },
+    {
+      "concept_id": "ifrs:Revenue",
+      "value_numeric": 420000000000.0,
+      "unit": "IDR",
+      "period_type": "duration_ytd",
+      "source_page": 48,
+      "source_label_original": "Inti Sawit (Palm Kernel)",
+      "segment": {
+        "segment": "Inti Sawit (Palm Kernel)",
+        "type": "product",
+        "pct_total": 10.0
+      }
+    },
+    {
+      "concept_id": "idx:CustomerConcentration",
+      "value_numeric": 2016000000000.0,
+      "unit": "IDR",
+      "period_type": "duration_ytd",
+      "source_page": 49,
+      "source_label_original": "PT Salim Ivomas Pratama Tbk",
+      "segment": {
+        "segment": "PT Salim Ivomas Pratama Tbk",
+        "type": "customer_concentration",
+        "pct_total": 48.0,
+        "is_related_party": true
+      }
+    },
+    {
+      "concept_id": "idx:CostOfGoodsSoldComponent",
+      "value_numeric": 980000000000.0,
+      "unit": "IDR",
+      "period_type": "duration_ytd",
+      "source_page": 52,
+      "source_label_original": "Biaya Pemupukan dan Pemeliharaan Kebun",
+      "segment": {
+        "segment": "Biaya Pemupukan dan Pemeliharaan Kebun",
+        "type": "cogs_component",
+        "pct_cogs": 35.0
+      }
+    },
+    {
+      "concept_id": "idx:CostOfGoodsSoldComponent",
+      "value_numeric": 784000000000.0,
+      "unit": "IDR",
+      "period_type": "duration_ytd",
+      "source_page": 52,
+      "source_label_original": "Upah dan Tunjangan Karyawan Panen",
+      "segment": {
+        "segment": "Upah dan Tunjangan Karyawan Panen",
+        "type": "cogs_component",
+        "pct_cogs": 28.0
+      }
+    },
+    {
+      "concept_id": "ifrs:CashAndCashEquivalents",
+      "value_numeric": 4200000000000.0,
+      "unit": "IDR",
+      "period_type": "instant",
+      "source_page": 24,
+      "source_label_original": "PT Bank Mandiri (Persero) Tbk - Deposito",
+      "segment": {
+        "segment": "PT Bank Mandiri (Persero) Tbk",
+        "type": "bank_placement",
+        "currency": "IDR",
+        "interest_rate": "5.75% - 6.25%"
+      }
+    },
+    {
+      "concept_id": "idx:PlantedAreaHectares",
+      "value_numeric": 84500.0,
+      "unit": "HECTARES",
+      "period_type": "instant",
+      "source_page": 56,
+      "source_label_original": "Tanaman Menghasilkan (Mature)",
+      "segment": {
+        "segment": "Tanaman Kelapa Sawit Menghasilkan (Mature)",
+        "type": "biological_asset_maturity",
+        "planted_area_ha": 84500.0,
+        "average_age_years": 14
+      }
+    },
+    {
+      "concept_id": "idx:PlantedAreaHectares",
+      "value_numeric": 11200.0,
+      "unit": "HECTARES",
+      "period_type": "instant",
+      "source_page": 56,
+      "source_label_original": "Tanaman Belum Menghasilkan (Immature)",
+      "segment": {
+        "segment": "Tanaman Kelapa Sawit Belum Menghasilkan (Immature)",
+        "type": "biological_asset_maturity",
+        "planted_area_ha": 11200.0
+      }
+    },
+    {
+      "concept_id": "idx:SubsidiaryInvestment",
+      "value_numeric": 1250000000000.0,
+      "unit": "IDR",
+      "period_type": "instant",
+      "source_page": 18,
+      "source_label_original": "PT Lajuperdana Indah",
+      "segment": {
+        "segment": "PT Lajuperdana Indah",
+        "type": "subsidiary",
+        "ownership_pct": 99.8,
+        "location": "Sumatera Selatan",
+        "activity": "Perkebunan Kelapa Sawit"
+      }
     }
   ],
   "narratives": [
