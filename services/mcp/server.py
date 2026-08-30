@@ -36,10 +36,10 @@ log = get_logger("mcp.server")
 
 
 def _archive_processed_file(file_path_str: str) -> str | None:
-    """Moves a processed file to a 'processed/' subfolder if located in an incoming directory."""
+    """Moves a processed file to a 'processed/' subfolder if located in incoming_reports/."""
     try:
-        p = Path(file_path_str)
-        if p.exists() and p.is_file() and "processed" not in p.parts:
+        p = Path(file_path_str).resolve()
+        if p.exists() and p.is_file() and "incoming_reports" in p.parts and "processed" not in p.parts:
             processed_dir = p.parent / "processed"
             processed_dir.mkdir(parents=True, exist_ok=True)
             target_path = processed_dir / p.name
