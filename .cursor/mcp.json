@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "emimind": {
+      "command": "c:\\Users\\rizky\\Documents\\Code\\EmiMind\\.venv\\Scripts\\python.exe",
+      "args": [
+        "c:\\Users\\rizky\\Documents\\Code\\EmiMind\\scripts\\run_mcp_server.py"
+      ],
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONPATH": "c:\\Users\\rizky\\Documents\\Code\\EmiMind"
+      }
+    }
+  }
+}
