@@ -37,6 +37,11 @@ async def test_inspect_document_real_fixture() -> None:
 
 @pytest.mark.asyncio
 async def test_mcp_submit_draft_extraction_and_commit() -> None:
+    # 0. Ensure document exists via inspect
+    insp = await inspect_document("tests/fixtures/sample_bmri.pdf", ticker="BMRI", fiscal_period="2024Q4")
+    assert insp.doc_id is not None
+    doc_id = insp.doc_id
+
     facts = [
         ExtractedFactItem(concept_id="ifrs:Assets", value_numeric=Decimal("2000000000000"), source_page=1),
         ExtractedFactItem(concept_id="ifrs:CurrentAssets", value_numeric=Decimal("800000000000"), source_page=1),
@@ -56,7 +61,7 @@ async def test_mcp_submit_draft_extraction_and_commit() -> None:
     ]
 
     payload = DraftSubmissionPayload(
-        doc_id="3d3f701d-9cd6-4696-a11c-f85d23263454",
+        doc_id=doc_id,
         ticker="BMRI",
         fiscal_period="2024Q4",
         facts=facts,

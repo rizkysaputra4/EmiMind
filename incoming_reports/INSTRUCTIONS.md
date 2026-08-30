@@ -199,6 +199,20 @@ When validation returns `"VALID"`, commit the verified facts:
       "source_page": 8,
       "source_label_original": "Arus Kas Bersih dari Aktivitas Operasi"
     }
+  ],
+  "narratives": [
+    {
+      "section": "MDA",
+      "text_original": "Perseroan bergerak di bidang perkebunan kelapa sawit terpadu dan pengolahan minyak kelapa sawit...",
+      "source_page": 9,
+      "topic": "General Corporate Overview"
+    },
+    {
+      "section": "FOOTNOTE",
+      "text_original": "Penjualan segmen produk kelapa sawit memberikan kontribusi sebesar 85% dari total pendapatan...",
+      "source_page": 45,
+      "topic": "Segment Performance"
+    }
   ]
 }
 ```

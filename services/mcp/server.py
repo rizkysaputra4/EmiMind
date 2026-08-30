@@ -366,30 +366,94 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
         # 2. Insert narrative chunks
         narratives_count = 0
         valid_sections = {"MDA", "RISK", "GUIDANCE", "MGMT_STMT", "FOOTNOTE", "OTHER"}
-        for n in payload.narratives:
-            sec = n.section.upper() if n.section.upper() in valid_sections else "OTHER"
-            await conn.execute(
-                text(
-                    """
-                    INSERT INTO narrative_chunks (
-                        source_doc_id, ticker, period_end, fiscal_period, section, source_page, text_original, text_en
-                    ) VALUES (
-                        :doc_id, :ticker, :period_end, :period, :sec, :page, :orig, :en
-                    );
-                    """
-                ),
-                {
-                    "doc_id": doc_id,
-                    "ticker": ticker,
-                    "period_end": period_end_dt,
-                    "period": fiscal_period,
-                    "sec": sec,
-                    "page": n.source_page,
-                    "orig": n.text_original,
-                    "en": n.text_en or n.text_original,
-                },
-            )
-            narratives_count += 1
+        if payload.narratives:
+            for n in payload.narratives:
+                sec = n.section.upper() if n.section.upper() in valid_sections else "OTHER"
+                await conn.execute(
+                    text(
+                        """
+                        INSERT INTO narrative_chunks (
+                            source_doc_id, ticker, period_end, fiscal_period, section, source_page, text_original, text_en, tsv
+                        ) VALUES (
+                            :doc_id, :ticker, :period_end, :period, :sec, :page, :orig, :en, to_tsvector('simple', :orig)
+                        );
+                        """
+                    ),
+                    {
+                        "doc_id": doc_id,
+                        "ticker": ticker,
+                        "period_end": period_end_dt,
+                        "period": fiscal_period,
+                        "sec": sec,
+                        "page": n.source_page,
+                        "orig": n.text_original,
+                        "en": n.text_en or n.text_original,
+                    },
+                )
+                narratives_count += 1
+        else:
+            # Automatic narrative chunking fallback from local PDF file
+            doc_file_res = await conn.execute(text("SELECT source_url FROM documents WHERE id = :id"), {"id": doc_id})
+            doc_f = doc_file_res.mappings().first()
+            candidate_paths: list[Path] = []
+            if doc_f and doc_f.get("source_url"):
+                candidate_paths.append(Path(doc_f["source_url"]))
+                candidate_paths.append(Path(doc_f["source_url"]).parent / "processed" / Path(doc_f["source_url"]).name)
+
+            for p in Path("incoming_reports/processed").glob(f"*{ticker}*.pdf"):
+                candidate_paths.append(p)
+            for p in Path("incoming_reports").glob(f"*{ticker}*.pdf"):
+                candidate_paths.append(p)
+
+            for cand in candidate_paths:
+                if cand.exists() and cand.is_file():
+                    try:
+                        import pymupdf
+                        from services.narrative.chunker import chunk_pages
+                        from services.shared.types import PageContent
+
+                        pdf_doc = pymupdf.open(str(cand))
+                        pdf_pages = []
+                        for i, pg in enumerate(pdf_doc):
+                            txt = pg.get_text("text")
+                            pdf_pages.append(PageContent(page_num=i + 1, text=txt, language="mixed", has_text_layer=True))
+                        pdf_doc.close()
+
+                        auto_chunks = chunk_pages(pdf_pages, ticker, "FS_ANNUAL", fiscal_period)
+                        for c in auto_chunks:
+                            sec = c.section if c.section in valid_sections else "OTHER"
+                            await conn.execute(
+                                text(
+                                    """
+                                    INSERT INTO narrative_chunks (
+                                        source_doc_id, ticker, period_end, fiscal_period, section, source_page,
+                                        language, text_original, text_en, speaker, claim_type, mentioned_concepts, tsv
+                                    ) VALUES (
+                                        :doc_id, :ticker, :period_end, :period, :sec, :page,
+                                        :lang, :orig, :en, :speaker, :claim, :concepts, to_tsvector('simple', :orig)
+                                    );
+                                    """
+                                ),
+                                {
+                                    "doc_id": doc_id,
+                                    "ticker": ticker,
+                                    "period_end": period_end_dt,
+                                    "period": fiscal_period,
+                                    "sec": sec,
+                                    "page": c.source_page,
+                                    "lang": c.language,
+                                    "orig": c.text_original,
+                                    "en": c.text_en or c.text_original,
+                                    "speaker": c.speaker,
+                                    "claim": c.claim_type,
+                                    "concepts": c.mentioned_concepts or [],
+                                },
+                            )
+                            narratives_count += 1
+                        log.info("Auto-extracted narrative chunks from PDF", count=narratives_count, path=str(cand))
+                        break
+                    except Exception as e:
+                        log.warning("Automatic fallback narrative chunking failed", error=str(e), path=str(cand))
 
         # 3. Update document status and archive local file if in incoming folder
         doc_res = await conn.execute(text("SELECT source_url FROM documents WHERE id = :id"), {"id": doc_id})
