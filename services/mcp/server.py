@@ -325,6 +325,31 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
                 stmt_type = "NOTE"
                 p_type = f.period_type or "instant"
 
+            # Auto-infer structured segment if f.segment is missing but source_label_original has granular info
+            seg_dict = f.segment
+            if not seg_dict and f.source_label_original:
+                lbl_lower = f.source_label_original.strip().lower()
+                generic_labels = {
+                    "jumlah aset", "total aset", "total assets", "jumlah liabilitas", "total liabilitas",
+                    "total liabilities", "jumlah ekuitas", "total ekuitas", "total equity", "penjualan",
+                    "pendapatan", "revenue", "net sales", "beban pokok penjualan", "cost of sales",
+                    "laba usaha", "operating profit", "laba tahun berjalan", "laba bersih", "net profit",
+                    "kas dan setara kas", "cash and cash equivalents", "arus kas bersih",
+                }
+                if lbl_lower not in generic_labels:
+                    seg_type = "note_segment"
+                    if "customer" in cid.lower() or "pelanggan" in lbl_lower:
+                        seg_type = "customer_concentration"
+                    elif "cogs" in cid.lower() or "cost" in cid.lower() or "pupuk" in lbl_lower or "upah" in lbl_lower:
+                        seg_type = "cogs_component"
+                    elif "planted" in cid.lower() or "hektar" in lbl_lower or "sawit" in lbl_lower:
+                        seg_type = "biological_asset_maturity"
+                    elif "borrowing" in cid.lower() or "bank" in lbl_lower or "kredit" in lbl_lower:
+                        seg_type = "debt_facility"
+                    elif cid == "ifrs:Revenue":
+                        seg_type = "product_segment"
+                    seg_dict = {"segment": f.source_label_original.strip(), "type": seg_type}
+
             await conn.execute(
                 text(
                     """
@@ -357,7 +382,7 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
                     "label": f.source_label_original or cid,
                     "val": float(f.value_numeric),
                     "unit": f.unit,
-                    "seg": json.dumps(f.segment) if f.segment else None,
+                    "seg": json.dumps(seg_dict) if seg_dict else None,
                     "period_type": p_type,
                     "std": payload.accounting_standard,
                     "page": f.source_page,
