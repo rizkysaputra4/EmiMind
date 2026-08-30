@@ -15,7 +15,13 @@ from services.mcp.server import (
     inspect_document,
     submit_draft_extraction,
 )
-from services.mcp.types import DraftSubmissionPayload, ExtractedFactItem, InspectionStatus
+from services.mcp.types import (
+    DraftSubmissionPayload,
+    ExtractedCausalLink,
+    ExtractedFactItem,
+    ExtractedNarrativeItem,
+    InspectionStatus,
+)
 
 
 @pytest.mark.asyncio
@@ -60,11 +66,34 @@ async def test_mcp_submit_draft_extraction_and_commit() -> None:
         ExtractedFactItem(concept_id="idx:NetInterestIncome", value_numeric=Decimal("250000000000"), source_page=3),
     ]
 
+    narratives = [
+        ExtractedNarrativeItem(
+            section="MDA",
+            text_original="PT Bank Mandiri (Persero) Tbk mencatatkan pertumbuhan penyaluran kredit...",
+            text_en="PT Bank Mandiri (Persero) Tbk recorded loan growth...",
+            source_page=10,
+            topic="Loan Growth Review",
+        )
+    ]
+
+    causal_links = [
+        ExtractedCausalLink(
+            metric_affected="idx:NetInterestIncome",
+            direction="INCREASED",
+            cause_category="VOLUME_GROWTH",
+            driver_description="Pertumbuhan volume kredit wholesale dan retail mendorong peningkatan pendapatan bunga bersih.",
+            source_page=10,
+            confidence=0.95,
+        )
+    ]
+
     payload = DraftSubmissionPayload(
         doc_id=doc_id,
         ticker="BMRI",
         fiscal_period="2024Q4",
         facts=facts,
+        narratives=narratives,
+        causal_links=causal_links,
     )
 
     payload_json = json.dumps(payload.model_dump(mode="json"))
@@ -78,4 +107,5 @@ async def test_mcp_submit_draft_extraction_and_commit() -> None:
     commit_rep = await commit_verified_report(payload_json)
     assert commit_rep.status == "COMMITTED"
     assert commit_rep.facts_committed == len(facts)
+    assert commit_rep.narratives_committed == 1
     assert commit_rep.derived_metrics_computed > 0
