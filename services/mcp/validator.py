@@ -49,6 +49,8 @@ def validate_draft_submission(
             if not is_present_in_facts:
                 if is_declared_omitted:
                     omitted_item = omitted_by_concept[rule.concept_id]
+                    expl_lower = omitted_item.explanation.lower()
+
                     if len(omitted_item.explanation.strip()) < 15:
                         issues.append(
                             ValidationIssue(
@@ -58,6 +60,35 @@ def validate_draft_submission(
                                 feedback_message=(
                                     f"Omission explanation for '{rule.label}' ({rule.concept_id}) is too brief ('{omitted_item.explanation}'). "
                                     f"Please provide a substantive explanation describing why the metric is absent in this filing."
+                                ),
+                                target_pages=omitted_item.search_pages_checked,
+                            )
+                        )
+                    elif not omitted_item.search_pages_checked:
+                        issues.append(
+                            ValidationIssue(
+                                severity=IssueSeverity.ERROR,
+                                category="MISSING_SEARCH_PAGES_AUDIT",
+                                concept_id=rule.concept_id,
+                                feedback_message=(
+                                    f"Omission entry for '{rule.label}' ({rule.concept_id}) must specify 'search_pages_checked' "
+                                    f"as a list of page numbers you searched (e.g. [22, 287, 361]) to prove search verification."
+                                ),
+                                target_pages=[],
+                            )
+                        )
+                    # Contradictory omission detection: If the explanation indicates that the value is in MD&A or Highlights
+                    elif any(kw in expl_lower for kw in ["disclosed in md&a", "in md&a", "in highlights", "disclosed in highlights", "is reported in", "available on page"]):
+                        issues.append(
+                            ValidationIssue(
+                                severity=IssueSeverity.ERROR,
+                                category="CONTRADICTORY_OMISSION",
+                                concept_id=rule.concept_id,
+                                feedback_message=(
+                                    f"Contradictory Omission for '{rule.label}' ({rule.concept_id}): You stated in the explanation that "
+                                    f"this metric is disclosed in MD&A / Highlights ('{omitted_item.explanation}'). In EMIMIND, all operational "
+                                    f"metrics found anywhere in the Annual Report (including MD&A / Operational Highlights pages) MUST be extracted "
+                                    f"into the 'facts' array as numeric ExtractedFactItem with exact value, unit, and source_page, NOT declared in omitted_kpis!"
                                 ),
                                 target_pages=omitted_item.search_pages_checked,
                             )

@@ -489,6 +489,72 @@ SECTOR_EXTENSIONS: dict[str, list[ExtractionFactRule]] = {
             required=True,
         ),
     ],
+    "TOWER": [
+        ExtractionFactRule(concept_id="idx:TowerCount", label="Jumlah Menara Telekomunikasi / Tower Sites", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:TenancyRatio", label="Rasio Kolokasi Penyewa / Tenancy Ratio", statement_type="NOTES", required=True),
+    ],
+    "GOLD_COPPER": [
+        ExtractionFactRule(concept_id="idx:GoldProductionOz", label="Produksi Emas / Gold Production (Oz)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:CopperCathodeOutputMT", label="Produksi Katoda Tembaga / Copper Cathode Output (MT)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:AllInSustainingCost", label="Biaya Berkelanjutan Menyeluruh / AISC ($/oz)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:CopperConcentrateGrade", label="Kadar Konsentrat Tembaga (%)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:GoldReservesOz", label="Cadangan Emas Terbukti & Terduga (Oz)", statement_type="NOTES", required=True),
+    ],
+    "OIL_GAS": [
+        ExtractionFactRule(concept_id="idx:ProvedReserves2P", label="Cadangan Terbukti & Terduga (2P Reserves in MMBOE)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:OilProductionBOPD", label="Produksi Minyak / Oil Lifting (BOPD)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:GasProductionMMSCFD", label="Produksi Gas Bumi / Gas Output (MMSCFD)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:LiftingCostPerBOE", label="Biaya Angkat per BOE / Lifting Cost ($/BOE)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:RealizedICP", label="Harga Jual Realisasi Minyak Mentah (ICP $/bbl)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:RealizedGasASP", label="Harga Jual Rata-Rata Gas ($/MMBTU)", statement_type="NOTES", required=True),
+    ],
+    "RENEWABLE_ENERGY": [
+        ExtractionFactRule(concept_id="idx:InstalledCapacityMW", label="Kapasitas Pembangkit Terpasang (MW)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:NetGenerationGWh", label="Produksi Listrik Bersih Disalurkan (GWh)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:CapacityFactor", label="Faktor Kapasitas Pembangkit / Capacity Factor (%)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:RealizedElectricityTariff", label="Tarif Realisasi Listrik (USD/kWh)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:SteamProductionTonnes", label="Produksi Uap Panas Bumi (Ton)", statement_type="NOTES", required=True),
+    ],
+    "AUTOMOTIVE": [
+        ExtractionFactRule(concept_id="idx:CarWholesaleUnits", label="Penjualan Mobil 4W Wholesale (Unit)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:CarRetailUnits", label="Penjualan Mobil 4W Retail (Unit)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:MotorcycleUnitSales", label="Penjualan Sepeda Motor 2W (Unit)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:MarketShareGaikindo", label="Pangsa Pasar Otomotif Gaikindo/AISI (%)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:ExportVolumeUnits", label="Volume Ekspor Kendaraan CBU (Unit)", statement_type="NOTES", required=True),
+    ],
+    "POULTRY": [
+        ExtractionFactRule(concept_id="idx:FeedMillSalesVolumeMT", label="Volume Penjualan Pakan Ternak (Ton)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:DayOldChickVolume", label="Volume Penjualan DOC (Juta Ekor)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:DOCFarmgatePrice", label="Harga DOC Tingkat Peternak (IDR/ekor)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:LiveBirdPriceIDR", label="Harga Ayam Hidup Komersial Broiler (IDR/kg)", statement_type="NOTES", required=True),
+    ],
+    "RETAIL": [
+        ExtractionFactRule(concept_id="idx:SameStoreSalesGrowth", label="Pertumbuhan Penjualan Toko yang Sama / SSSG (%)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:TotalStoreCount", label="Jumlah Total Gerai / Store Count", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:NetNewStoreOpenings", label="Pembukaan Gerai Baru Bersih (Stores)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:SalesPerSquareMeter", label="Densitas Penjualan per m2 / Sales Density", statement_type="NOTES", required=True),
+    ],
+    "PETROCHEMICAL": [
+        ExtractionFactRule(concept_id="idx:NaphthaCrackerUtilization", label="Tingkat Utilisasi Cracker Nafta (%)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:PolyolefinProductionMT", label="Volume Produksi Polietilena & Polipropilena PE/PP (MT)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:PolymerNaphthaSpread", label="Spread Polimer atas Nafta ($/MT)", statement_type="NOTES", required=True),
+    ],
+    "CONTRACTOR": [
+        ExtractionFactRule(concept_id="idx:NewContractWins", label="Nilai Kontrak Baru / New Contract Wins (IDR)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:OrderBookBacklog", label="Buku Pesanan / Sisa Kontrak Backlog (IDR)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:GovernmentProjectMix", label="Porsi Proyek Pemerintah & BUMN (%)", statement_type="NOTES", required=True),
+    ],
+    "SHIPPING": [
+        ExtractionFactRule(concept_id="idx:FleetCount", label="Jumlah Armada Kapal / Fleet Size", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:TotalDWT", label="Total Bobot Mati Armada (DWT)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:CharterRate", label="Tarif Sewa Kapal Setara Waktu / TCE ($/hari)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:BunkerFuelCost", label="Biaya Bahan Bakar Bunker ($/ton)", statement_type="NOTES", required=True),
+    ],
+    "DIGITAL": [
+        ExtractionFactRule(concept_id="idx:GrossTransactionValue", label="Nilai Transaksi Bruto / GTV (IDR)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:TakeRate", label="Rasio Komisi / Blended Take Rate (%)", statement_type="NOTES", required=True),
+        ExtractionFactRule(concept_id="idx:MonthlyActiveTransactingUsers", label="Pengguna Bertransaksi Bulanan / MTU (Users)", statement_type="NOTES", required=True),
+    ],
 }
 
 SECTOR_GRANULAR_MODULES: dict[str, list[GranularNoteModule]] = {
