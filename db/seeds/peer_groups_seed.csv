@@ -1,0 +1,9 @@
+id,name,tickers,sector,sub_sector
+bank_kbmi4,KBMI 4 Banks,"{BMRI,BBRI,BBNI,BBCA}",BANK,COMMERCIAL_BANK
+banking_bumn,State-Owned BUMN Banks,"{BMRI,BBRI,BBNI,BBTN,BRIS}",BANK,STATE_OWNED
+banking_private,Large Private Banks,"{BBCA,BDMN,BNGA,NISP,BTPN}",BANK,PRIVATE
+coal_large,Large Coal Miners,"{ADRO,PTBA,ITMG,HRUM,INDY,BUMI}",MINING,COAL
+cpo_large,Large Palm Oil Producers,"{AALI,LSIP,SIMP,TAPG,DSNG}",CPO,PLANTATION
+telco_big3,Big 3 Telecom Operators,"{TLKM,ISAT,EXCL}",TELCO,WIRELESS
+consumer_staples,Large Consumer Goods,"{ICBP,INDF,MYOR,UNVR,KLBF}",CONSUMER,PACKAGED_GOODS
+property_developer,Major Township Developers,"{CTRA,BSDE,PWON,SMRA,ASRI}",PROPERTY,DEVELOPMENT

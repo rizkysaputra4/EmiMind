@@ -1,0 +1,101 @@
+ticker,name,sector,sub_sector,index_membership
+BMRI,PT Bank Mandiri (Persero) Tbk,BANK,State-Owned Banks,KOMPAS100
+BBRI,PT Bank Rakyat Indonesia (Persero) Tbk,BANK,State-Owned Banks,KOMPAS100
+BBCA,PT Bank Central Asia Tbk,BANK,Private Commercial Banks,KOMPAS100
+BBNI,PT Bank Negara Indonesia (Persero) Tbk,BANK,State-Owned Banks,KOMPAS100
+BRIS,PT Bank Syariah Indonesia Tbk,BANK,Sharia Banking,KOMPAS100
+BDMN,PT Bank Danamon Indonesia Tbk,BANK,Private Commercial Banks,KOMPAS100
+BNGA,PT Bank CIMB Niaga Tbk,BANK,Private Commercial Banks,KOMPAS100
+BBTN,PT Bank Tabungan Negara (Persero) Tbk,BANK,State-Owned Banks,KOMPAS100
+BJBR,PT Bank Pembangunan Daerah Jawa Barat Tbk,BANK,Regional Development Banks,KOMPAS100
+BJTM,PT Bank Pembangunan Daerah Jawa Timur Tbk,BANK,Regional Development Banks,KOMPAS100
+BTPN,PT Bank BTPN Tbk,BANK,Private Commercial Banks,KOMPAS100
+NISP,PT Bank OCBC NISP Tbk,BANK,Private Commercial Banks,KOMPAS100
+ADRO,PT Adaro Energy Indonesia Tbk,MINING,Thermal Coal,KOMPAS100
+PTBA,PT Bukit Asam Tbk,MINING,Thermal Coal,KOMPAS100
+ITMG,PT Indo Tambangraya Mega Tbk,MINING,Thermal Coal,KOMPAS100
+HRUM,PT Harum Energy Tbk,MINING,Coal & Nickel,KOMPAS100
+INDY,PT Indika Energy Tbk,MINING,Diversified Mining & Energy,KOMPAS100
+BUMI,PT Bumi Resources Tbk,MINING,Thermal Coal,KOMPAS100
+DOID,PT Delta Dunia Makmur Tbk,MINING,Mining Services,KOMPAS100
+MBMA,PT Merdeka Battery Materials Tbk,MINING,Nickel & Battery Materials,KOMPAS100
+NCKL,PT Trimegah Bangun Persada Tbk,MINING,Nickel Smelting,KOMPAS100
+MEDC,PT Medco Energi Internasional Tbk,ENERGY,Oil & Gas E&P,KOMPAS100
+PGAS,PT Perusahaan Gas Negara Tbk,ENERGY,Gas Distribution,KOMPAS100
+AKRA,PT AKR Corporindo Tbk,ENERGY,Fuel Distribution & Logistics,KOMPAS100
+ELSA,PT Elnusa Tbk,ENERGY,Upstream Energy Services,KOMPAS100
+ANTM,PT Aneka Tambang Tbk,BASIC_MATERIALS,Gold & Nickel Mining,KOMPAS100
+INCO,PT Vale Indonesia Tbk,BASIC_MATERIALS,Nickel Mining,KOMPAS100
+MDKA,PT Merdeka Copper Gold Tbk,BASIC_MATERIALS,Gold & Copper,KOMPAS100
+BRPT,PT Barito Pacific Tbk,BASIC_MATERIALS,Petrochemicals & Energy,KOMPAS100
+TPIA,PT Chandra Asri Pacific Tbk,BASIC_MATERIALS,Petrochemicals,KOMPAS100
+INTP,PT Indocement Tunggal Prakarsa Tbk,BASIC_MATERIALS,Cement,KOMPAS100
+SMGR,PT Semen Indonesia (Persero) Tbk,BASIC_MATERIALS,Cement,KOMPAS100
+INKP,PT Indah Kiat Pulp & Paper Tbk,BASIC_MATERIALS,Paper & Pulp,KOMPAS100
+TKIM,PT Pabrik Kertas Tjiwi Kimia Tbk,BASIC_MATERIALS,Paper & Pulp,KOMPAS100
+AVIA,PT Avia Avian Tbk,BASIC_MATERIALS,Paints & Coatings,KOMPAS100
+TLKM,PT Telkom Indonesia (Persero) Tbk,TELCO,Integrated Telecommunications,KOMPAS100
+ISAT,PT Indosat Tbk,TELCO,Wireless Telecommunications,KOMPAS100
+EXCL,PT XL Axiata Tbk,TELCO,Wireless Telecommunications,KOMPAS100
+MTEL,PT Dayamitra Telekomunikasi Tbk,TELCO,Telecom Infrastructure,KOMPAS100
+TOWR,PT Sarana Menara Nusantara Tbk,TELCO,Telecom Towers,KOMPAS100
+TBIG,PT Tower Bersama Infrastructure Tbk,TELCO,Telecom Towers,KOMPAS100
+ASII,PT Astra International Tbk,INDUSTRIALS,Automotive & Conglomerate,KOMPAS100
+UNTR,PT United Tractors Tbk,INDUSTRIALS,Heavy Equipment & Mining Contracting,KOMPAS100
+AUTO,PT Astra Otoparts Tbk,INDUSTRIALS,Automotive Components,KOMPAS100
+HEXA,PT Hexindo Adiperkasa Tbk,INDUSTRIALS,Heavy Equipment,KOMPAS100
+ICBP,PT Indofood CBP Sukses Makmur Tbk,CONSUMER,Packaged Food & Beverages,KOMPAS100
+INDF,PT Indofood Sukses Makmur Tbk,CONSUMER,Diversified Food,KOMPAS100
+MYOR,PT Mayora Indah Tbk,CONSUMER,Packaged Food,KOMPAS100
+UNVR,PT Unilever Indonesia Tbk,CONSUMER,Personal & Home Care,KOMPAS100
+KLBF,PT Kalbe Farma Tbk,HEALTHCARE,Pharmaceuticals & Healthcare,KOMPAS100
+MIKA,PT Mitra Keluarga Karyasehat Tbk,HEALTHCARE,Hospitals,KOMPAS100
+HEAL,PT Medikaloka Hermina Tbk,HEALTHCARE,Hospitals,KOMPAS100
+SILO,PT Siloam International Hospitals Tbk,HEALTHCARE,Hospitals,KOMPAS100
+SIDO,PT Industri Jamu dan Farmasi Sido Muncul Tbk,HEALTHCARE,Herbal Medicine,KOMPAS100
+AALI,PT Astra Agro Lestari Tbk,CPO,Palm Oil Plantations,KOMPAS100
+LSIP,PT PP London Sumatra Indonesia Tbk,CPO,Palm Oil Plantations,KOMPAS100
+SIMP,PT Salim Ivomas Pratama Tbk,CPO,Agribusiness & Edible Oils,KOMPAS100
+TAPG,PT Triputra Agro Persada Tbk,CPO,Palm Oil Plantations,KOMPAS100
+DSNG,PT Dharma Satya Nusantara Tbk,CPO,Palm Oil & Wood Products,KOMPAS100
+CPIN,PT Charoen Pokphand Indonesia Tbk,CONSUMER,Poultry & Feed,KOMPAS100
+JPFA,PT Japfa Comfeed Indonesia Tbk,CONSUMER,Poultry & Feed,KOMPAS100
+MAIN,PT Malindo Feedmill Tbk,CONSUMER,Poultry & Feed,KOMPAS100
+GOTO,PT GoTo Gojek Tokopedia Tbk,TECHNOLOGY,Digital Ecosystem,KOMPAS100
+BUKA,PT Bukalapak.com Tbk,TECHNOLOGY,E-Commerce & Digital,KOMPAS100
+EMTK,PT Elang Mahkota Teknologi Tbk,TECHNOLOGY,Media & Technology,KOMPAS100
+AMRT,PT Sumber Alfaria Tbk,CONSUMER,Retail & Minimarkets,KOMPAS100
+ACES,PT Aspirasi Hidup Indonesia Tbk,CONSUMER,Home Improvement Retail,KOMPAS100
+MAPI,PT Mitra Adiperkasa Tbk,CONSUMER,Fashion & Department Stores,KOMPAS100
+ERAA,PT Erajaya Swasembada Tbk,CONSUMER,Mobile Device Retail,KOMPAS100
+RALS,PT Ramayana Lestari Sentosa Tbk,CONSUMER,Department Stores,KOMPAS100
+CTRA,PT Ciputra Development Tbk,PROPERTY,Residential & Commercial Property,KOMPAS100
+BSDE,PT Bumi Serpong Damai Tbk,PROPERTY,Township & Residential Property,KOMPAS100
+PWON,PT Pakuwon Jati Tbk,PROPERTY,Retail Malls & Mixed-Use Property,KOMPAS100
+SMRA,PT Summarecon Agung Tbk,PROPERTY,Township Property,KOMPAS100
+ASRI,PT Alam Sutera Realty Tbk,PROPERTY,Township Property,KOMPAS100
+LPKR,PT Lippo Karawaci Tbk,PROPERTY,Integrated Real Estate & Healthcare,KOMPAS100
+DILD,PT Intiland Development Tbk,PROPERTY,Real Estate,KOMPAS100
+PTPP,PT PP (Persero) Tbk,CONSTRUCTION,State-Owned Infrastructure Construction,KOMPAS100
+WIKA,PT Wijaya Karya (Persero) Tbk,CONSTRUCTION,State-Owned Construction & EPC,KOMPAS100
+ADHI,PT Adhi Karya (Persero) Tbk,CONSTRUCTION,State-Owned Rail & EPC Construction,KOMPAS100
+TOTL,PT Total Bangun Persada Tbk,CONSTRUCTION,Building Construction,KOMPAS100
+JSMR,PT Jasa Marga (Persero) Tbk,INFRASTRUCTURE,Toll Road Operator,KOMPAS100
+WEGE,PT Wijaya Karya Bangunan Gedung Tbk,CONSTRUCTION,Building Construction,KOMPAS100
+HMSP,PT H.M. Sampoerna Tbk,CONSUMER,Tobacco & Cigarettes,KOMPAS100
+GGRM,PT Gudang Garam Tbk,CONSUMER,Tobacco & Cigarettes,KOMPAS100
+WIIM,PT Wismilak Inti Makmur Tbk,CONSUMER,Tobacco,KOMPAS100
+ARTO,PT Bank Jago Tbk,BANK,Digital Banking,KOMPAS100
+BBHI,PT Allo Bank Indonesia Tbk,BANK,Digital Banking,KOMPAS100
+CMRY,PT Cisarua Mountain Dairy Tbk,CONSUMER,Dairy & Processed Meats,KOMPAS100
+CLEO,PT Sariguna Primatirta Tbk,CONSUMER,Bottled Drinking Water,KOMPAS100
+MYTX,PT Asia Pacific Investama Tbk,INDUSTRIALS,Textiles,KOMPAS100
+SSMS,PT Sawit Sumbermas Sarana Tbk,CPO,Palm Oil,KOMPAS100
+STAA,PT Sumber Tani Agung Resources Tbk,CPO,Palm Oil,KOMPAS100
+ENRG,PT Energi Mega Persada Tbk,ENERGY,Oil & Gas,KOMPAS100
+RAJA,PT Rukun Raharja Tbk,ENERGY,Gas Infrastructure,KOMPAS100
+CPRO,PT Central Proteina Prima Tbk,CONSUMER,Aquaculture,KOMPAS100
+MAPA,PT MAP Aktif Adiperkasa Tbk,CONSUMER,Sports Retail,KOMPAS100
+PRDA,PT Prodia Widyahusada Tbk,HEALTHCARE,Clinical Laboratories,KOMPAS100
+MCOL,PT Prima Andalan Mandiri Tbk,MINING,Coal Mining,KOMPAS100
+ABMM,PT ABM Investama Tbk,MINING,Integrated Mining Services,KOMPAS100

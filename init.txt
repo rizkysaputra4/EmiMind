@@ -1,0 +1,773 @@
+You are a senior AI architect, financial data engineer, quantitative researcher, and fintech product strategist.
+
+I am planning to build and commercialize an AI financial research platform specifically for the Indonesian Stock Exchange (IDX).
+
+IMPORTANT PRODUCT THESIS
+
+The core product is NOT an AI stock screener.
+
+The core product is:
+
+"An AI chat that deeply understands the context and history of Indonesian publicly listed companies."
+
+Existing Indonesian securities platforms already have large amounts of data:
+- Financial statements
+- Key statistics
+- Stock prices
+- Historical prices
+- Charts
+- News
+- Corporate actions
+- Analyst information
+- Company profiles
+- Some AI-generated analysis
+
+However, their AI integration is usually limited.
+
+The user may receive an AI-generated analysis, but cannot freely challenge it, ask follow-up questions, investigate the reasoning, compare it against historical information, or continue a deep conversation while maintaining the entire company context.
+
+Generic LLMs such as ChatGPT have excellent reasoning capabilities, but they don't inherently have a comprehensive, structured, longitudinal knowledge base of IDX companies.
+
+A user currently has to manually:
+1. Open a securities platform
+2. Find financial data
+3. Screenshot/copy the data
+4. Feed it into an LLM
+5. Ask a question
+6. Find another report
+7. Feed more context
+8. Repeat the process
+
+This is inefficient and the context is fragmented.
+
+The product should eliminate this friction.
+
+The desired experience is:
+
+User:
+"Why did BMRI's net profit increase even though revenue declined?"
+
+AI:
+Provides an evidence-backed explanation.
+
+User:
+"But NIM improved. Doesn't that contradict your conclusion?"
+
+AI:
+Understands the previous discussion and retrieves the relevant data.
+
+User:
+"Was this already happening in Q4 2025?"
+
+AI:
+Retrieves historical context.
+
+User:
+"Compare this with BBCA and BBRI."
+
+AI:
+Retrieves the equivalent data from peers and compares them.
+
+User:
+"Is the market already pricing this in?"
+
+AI:
+Combines financial fundamentals, valuation, historical price behavior, and recent events.
+
+User:
+"Challenge the bear case."
+
+AI:
+Builds an evidence-based counterargument.
+
+The key product concept is:
+
+CONTEXT-AWARE FINANCIAL CONVERSATION.
+
+The product should feel like having an AI research analyst who already knows the company's history.
+
+--------------------------------------------------
+CORE SYSTEM CONCEPT
+--------------------------------------------------
+
+Do NOT simply put entire financial reports into an LLM context window.
+
+Instead, create a persistent "Issuer Brain" / "Company Memory" for every IDX-listed company.
+
+Example:
+
+BMRI
+├── Identity
+│   ├── Company profile
+│   ├── Sector
+│   ├── Business segments
+│   └── Subsidiaries
+│
+├── Fundamentals
+│   ├── Income statement
+│   ├── Balance sheet
+│   ├── Cash flow
+│   ├── Quarterly data
+│   ├── Annual data
+│   └── Historical trends
+│
+├── KPIs
+│   ├── Revenue
+│   ├── Net profit
+│   ├── Margins
+│   ├── ROE
+│   ├── ROA
+│   ├── NIM
+│   ├── NPL
+│   └── Other industry-specific KPIs
+│
+├── Management Narrative
+│   ├── Management explanations
+│   ├── Strategy
+│   ├── Business outlook
+│   ├── Risks
+│   └── Management commentary
+│
+├── Guidance
+│   ├── Historical guidance
+│   ├── Current guidance
+│   ├── Actual results
+│   └── Guidance accuracy
+│
+├── Events
+│   ├── Corporate actions
+│   ├── Acquisitions
+│   ├── Dividends
+│   ├── Regulation
+│   ├── Major announcements
+│   └── Material information
+│
+├── Market
+│   ├── OHLCV
+│   ├── Market capitalization
+│   ├── Valuation
+│   └── Relative performance
+│
+├── Technical State
+│   ├── Trend
+│   ├── Momentum
+│   ├── Volatility
+│   ├── Volume
+│   ├── Support/resistance
+│   └── Technical regime
+│
+└── Relationships
+    ├── Event → Fundamental impact
+    ├── Event → Price reaction
+    ├── Guidance → Actual
+    ├── Commodity → Revenue
+    ├── Fundamental → Valuation
+    ├── Company → Peer
+    └── Management claim → Outcome
+
+The system should combine:
+
+1. SQL / relational database
+2. Time-series database
+3. Vector search
+4. Knowledge graph / relationship layer
+5. Object storage for original documents
+6. LLM reasoning
+
+The LLM must NOT be the source of truth.
+
+The architecture should follow:
+
+SOURCE DOCUMENT
+        ↓
+DOCUMENT PARSER
+        ↓
+STRUCTURED FACTS
+        ↓
+FINANCIAL DATABASE
+        ↓
+DERIVED METRICS
+        ↓
+MEMORY / KNOWLEDGE GRAPH
+        ↓
+RETRIEVAL
+        ↓
+LLM
+        ↓
+CONVERSATIONAL ANSWER
+
+The database calculates reality.
+
+The memory layer stores context.
+
+The LLM interprets and reasons over the retrieved information.
+
+--------------------------------------------------
+DATA SOURCES
+--------------------------------------------------
+
+The system should potentially process:
+
+- IDX financial statements
+- Quarterly reports
+- Annual reports
+- Public Expose / PubEx
+- Corporate announcements
+- Material information
+- Company presentations
+- Management commentary
+- Corporate actions
+- Historical OHLCV
+- Valuation data
+- News
+- Industry/commodity data where relevant
+
+Every important financial fact and claim must preserve provenance:
+
+company
+metric
+value
+unit
+currency
+period
+period_type
+source_document
+source_page
+source_date
+extraction_method
+confidence
+
+The system must always be able to answer:
+
+"Where did this number come from?"
+
+For important narrative claims:
+
+company
+period
+claim
+management_statement
+subject
+explanation
+expected_impact
+actual_outcome
+source_document
+source_page
+confidence
+
+--------------------------------------------------
+MEMORY DESIGN
+--------------------------------------------------
+
+Design a memory system with at least these layers:
+
+1. RAW DOCUMENT MEMORY
+
+Original PDFs and extracted text.
+
+This is the ultimate source of truth.
+
+2. FINANCIAL FACT MEMORY
+
+Structured numerical facts.
+
+Example:
+
+{
+  company: "BMRI",
+  metric: "net_profit",
+  period: "2026-H1",
+  value: ...,
+  currency: "IDR",
+  source: "...",
+  page: ...
+}
+
+3. DERIVED FINANCIAL MEMORY
+
+Deterministically calculate:
+
+- YoY
+- QoQ
+- HoH
+- CAGR
+- Margins
+- Growth acceleration
+- Historical averages
+- Percentiles
+- Record highs/lows
+- Guidance deviations
+- Peer-relative metrics
+
+Do NOT repeatedly ask the LLM to calculate these.
+
+4. NARRATIVE MEMORY
+
+Management claims, explanations, strategic statements, risks, expectations, and commentary.
+
+5. RELATIONSHIP MEMORY
+
+Examples:
+
+Revenue decline
+→ caused by lower segment X contribution
+
+Profit increase
+→ despite revenue decline
+→ because credit cost declined
+
+Management guidance
+→ actual result
+→ exceeded guidance
+
+Corporate event
+→ stock price reaction
+
+6. LONG-TERM ISSUER MEMORY
+
+Higher-level context such as:
+
+- Historical business characteristics
+- Recurring themes
+- Management strategy
+- Long-term risks
+- Historical patterns
+- Management credibility
+- Repeated explanations
+
+--------------------------------------------------
+TECHNICAL / PRICE ANALYSIS
+--------------------------------------------------
+
+The system should also support market analysis.
+
+Technical indicators should NOT become permanent LLM memory because they become stale.
+
+Instead:
+
+OHLCV
+↓
+Technical Calculation Engine
+↓
+Current Technical State
+
+Examples:
+
+- SMA20
+- SMA50
+- SMA200
+- RSI
+- MACD
+- Bollinger Bands
+- ATR
+- Volume averages
+- 52-week high/low
+- Breakouts
+- Drawdowns
+- Relative strength
+
+Store current or historical technical state rather than treating raw indicator values as permanent semantic memory.
+
+Example:
+
+BMRI
+Trend: Bullish
+Momentum: Strong
+Volume: Expanding
+Volatility: Normal
+Position: Near 52-week high
+Technical Regime: Bullish breakout
+
+This allows natural-language questions such as:
+
+"Is BMRI's fundamental improvement reflected in its stock price?"
+
+The system can combine:
+
+Fundamentals
++
+Valuation
++
+Technical state
++
+Recent events
++
+Historical price reaction
+
+--------------------------------------------------
+STOCK SCREENER
+--------------------------------------------------
+
+The system should support natural-language stock screening.
+
+Example:
+
+"Find IDX companies with:
+- revenue growth >10%
+- net profit growth >15%
+- ROE >15%
+- debt/equity <1
+- PE <15"
+
+The LLM should interpret the request and convert it into a structured screening query.
+
+Example:
+
+USER
+↓
+LLM
+↓
+Screener DSL
+↓
+Deterministic database query
+↓
+Candidate stocks
+↓
+Issuer Memory retrieval
+↓
+LLM explanation
+
+The LLM must NOT decide numerical screening results itself.
+
+The database/screener engine determines which companies pass.
+
+The LLM explains and contextualizes the results.
+
+The system should eventually support semantic screens such as:
+
+"Find companies whose fundamentals are improving but whose stock price has not reacted yet."
+
+"Find companies where management guidance has consistently been exceeded."
+
+"Find companies where management has repeatedly blamed external factors but the underlying problem appears persistent."
+
+"Find companies with accelerating earnings growth but valuation below their historical average."
+
+These require the combination of structured financial data and narrative memory.
+
+--------------------------------------------------
+IMPORTANT PRODUCT DIFFERENTIATOR
+--------------------------------------------------
+
+The most important feature is not the initial AI answer.
+
+It is conversational continuity.
+
+Example:
+
+AI:
+"Profit growth was primarily driven by lower credit costs."
+
+User:
+"But revenue declined."
+
+AI:
+"Correct. Revenue declined 5%, but credit costs fell significantly enough to offset the impact."
+
+User:
+"Was that unusual?"
+
+AI:
+"Yes. Compared with the previous five years..."
+
+User:
+"Was management expecting this?"
+
+AI:
+"Management had previously guided..."
+
+User:
+"Did they make the same claim last year?"
+
+AI:
+"Yes. In Q2 2025 they stated..."
+
+User:
+"What happened after that?"
+
+AI:
+"Actual results subsequently..."
+
+This is the core product experience.
+
+The user should be able to challenge the AI repeatedly.
+
+--------------------------------------------------
+EVIDENCE SYSTEM
+--------------------------------------------------
+
+Financial AI must be highly trustworthy.
+
+Every important answer should be traceable:
+
+CLAIM
+↓
+FINANCIAL FACT / NARRATIVE
+↓
+SOURCE DOCUMENT
+↓
+PAGE / DATE
+
+The UI should allow users to inspect the source.
+
+Avoid hallucinated financial numbers.
+
+If evidence is insufficient, the AI should explicitly say so.
+
+--------------------------------------------------
+POTENTIAL ADVANCED FEATURES
+--------------------------------------------------
+
+Explore these features:
+
+1. Management credibility score
+
+Compare:
+
+GUIDANCE
+↓
+ACTUAL
+↓
+HISTORICAL ACCURACY
+
+Example:
+
+Revenue guidance accuracy: 80%
+Margin guidance accuracy: 65%
+Capex guidance accuracy: 45%
+
+2. Event intelligence
+
+EVENT
+↓
+FUNDAMENTAL IMPACT
+↓
+PRICE REACTION
+↓
+TECHNICAL REGIME
+
+3. Historical precedent
+
+"Has this happened before?"
+
+4. Bull/bear case generation
+
+"Build the bull case."
+
+"Challenge the bull case."
+
+"Build the bear case."
+
+5. Peer comparison
+
+Compare companies across:
+- Growth
+- Margins
+- ROE
+- Valuation
+- Technical state
+- Management guidance
+- Historical performance
+
+6. Market pricing analysis
+
+"Has the stock already priced in the earnings improvement?"
+
+7. Earnings intelligence
+
+"What changed this quarter?"
+
+8. Management statement tracking
+
+"Has management changed its narrative?"
+
+9. Contradiction detection
+
+"Management said X, but actual data suggests Y."
+
+10. Event studies
+
+"How did this stock historically react to similar events?"
+
+--------------------------------------------------
+COMMERCIALIZATION
+--------------------------------------------------
+
+I intend to commercialize this product.
+
+Do NOT position it simply as:
+- AI stock screener
+- AI stock analysis
+- Stock chatbot
+
+Those are relatively easy to copy and already exist in some form.
+
+Potential positioning:
+
+"AI Financial Intelligence for the Indonesian Stock Market."
+
+Or:
+
+"Your AI research analyst for IDX."
+
+Core promise:
+
+"It knows the context. You just ask."
+
+The target users could include:
+
+- Serious retail investors
+- Stock-market enthusiasts
+- Financial content creators
+- Professional analysts
+- Small investment firms
+- Family offices
+- Research communities
+
+The product should initially focus on research intelligence rather than brokerage/trading execution.
+
+--------------------------------------------------
+COMPETITIVE DIFFERENTIATION
+--------------------------------------------------
+
+Think about the following comparison:
+
+Traditional securities platform:
+Data: Excellent
+AI conversation: Limited
+
+Generic LLM:
+Reasoning: Excellent
+IDX-specific context: Limited
+Data integration: Poor
+
+Our product:
+IDX data: Excellent
+Longitudinal context: Excellent
+Conversational reasoning: Excellent
+Evidence/provenance: Excellent
+
+The moat is NOT the LLM.
+
+The moat is:
+
+- Historical normalized IDX data
+- Issuer memory
+- Management statements
+- Guidance history
+- Claims and outcomes
+- Relationships
+- Event history
+- Financial calculations
+- Market history
+- Provenance
+- High-quality retrieval
+
+A competitor can copy the UI and prompt.
+
+It is much harder to recreate a high-quality longitudinal knowledge base of hundreds of Indonesian public companies.
+
+--------------------------------------------------
+DATA LICENSING
+--------------------------------------------------
+
+This is a major business risk.
+
+Investigate the legal/commercial rights for:
+
+- IDX data
+- Historical price data
+- Real-time price data
+- Financial statements
+- PubEx documents
+- Corporate actions
+- News
+- Broker data
+- Foreign flow
+- Ownership data
+- Market depth
+
+Do not assume that data accessible on a website can automatically be commercially redistributed.
+
+Treat data licensing and provenance as a first-class architectural requirement.
+
+--------------------------------------------------
+MVP
+--------------------------------------------------
+
+Propose a realistic MVP.
+
+Potential MVP:
+
+1. IDX listed companies
+2. 5 years of financial history
+3. Annual + quarterly reports
+4. PubEx
+5. Financial fact extraction
+6. Company memory
+7. Evidence citations
+8. Conversational company research
+9. Fundamental screener
+10. Historical price data
+11. Basic technical analysis
+12. Peer comparison
+
+The killer demo should be:
+
+"Ask anything about an IDX company."
+
+--------------------------------------------------
+YOUR TASK
+--------------------------------------------------
+
+Act as a combination of:
+
+- Principal AI architect
+- Financial data architect
+- Quantitative researcher
+- LLM/RAG expert
+- Knowledge graph expert
+- Fintech product strategist
+- Startup founder
+
+Help me design this product from the ground up.
+
+I want you to:
+
+1. Evaluate whether the product idea is technically feasible.
+2. Identify the strongest product-market opportunity.
+3. Design the optimal memory architecture.
+4. Design the database schema.
+5. Design the knowledge graph.
+6. Design the RAG/retrieval architecture.
+7. Explain what should be stored as structured data vs embeddings vs graph relationships.
+8. Design the ingestion pipeline for financial statements and PubEx.
+9. Design the LLM agent architecture.
+10. Design the conversational context mechanism.
+11. Design the screener architecture.
+12. Design the technical-analysis architecture.
+13. Design evidence/provenance mechanisms.
+14. Explain how to minimize LLM token usage.
+15. Design an evaluation framework for financial accuracy.
+16. Identify likely failure modes and hallucination risks.
+17. Identify the most difficult engineering problems.
+18. Identify the strongest defensible moat.
+19. Analyze competitors and differentiation.
+20. Propose an MVP architecture.
+21. Propose a scalable production architecture.
+22. Estimate infrastructure and LLM costs.
+23. Suggest pricing and monetization.
+24. Identify data licensing risks.
+25. Suggest the best UX for the conversational research experience.
+26. Design example user journeys.
+27. Suggest features that would make the product genuinely difficult for existing securities platforms to copy.
+
+Do not give generic startup advice.
+
+Be specific to IDX, Indonesian listed companies, financial statements, PubEx, financial research, LLM memory, RAG, knowledge graphs, screening, valuation, price analysis, and technical analysis.
+
+Most importantly, optimize the architecture around this principle:
+
+"Database calculates reality → Memory stores context → Retrieval selects evidence → LLM reasons over the evidence → User gets a conversational, challengeable answer."
+
+I want the result to be practical enough that I can use it as the technical and product blueprint for actually building the startup.

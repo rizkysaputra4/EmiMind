@@ -1,0 +1,197 @@
+local_label,sector,psak_version,canonical_concept_id,confidence
+Pendapatan Bunga,BANK,PSAK_71,ifrs:InterestIncome,1.00
+Interest Income,BANK,PSAK_71,ifrs:InterestIncome,1.00
+Beban Bunga,BANK,PSAK_71,ifrs:InterestExpense,1.00
+Interest Expense,BANK,PSAK_71,ifrs:InterestExpense,1.00
+Pendapatan Bunga Bersih,BANK,PSAK_71,idx:NetInterestIncome,1.00
+Net Interest Income,BANK,PSAK_71,idx:NetInterestIncome,1.00
+Pendapatan Operasional Lainnya,BANK,PSAK_71,idx:OtherOperatingIncome,1.00
+Other Operating Income,BANK,PSAK_71,idx:OtherOperatingIncome,1.00
+Beban Operasional Lainnya,BANK,PSAK_71,idx:OtherOperatingExpenses,1.00
+Other Operating Expenses,BANK,PSAK_71,idx:OtherOperatingExpenses,1.00
+Beban Operasional,BANK,PSAK_71,idx:OperatingExpenses,1.00
+Operating Expenses,BANK,PSAK_71,idx:OperatingExpenses,1.00
+Beban Provisi dan Komisi,BANK,PSAK_71,idx:FeeAndCommissionExpense,1.00
+Pendapatan Provisi dan Komisi,BANK,PSAK_71,idx:FeeAndCommissionIncome,1.00
+Laba Sebelum Pajak,BANK,PSAK_71,ifrs:ProfitBeforeTax,1.00
+Profit Before Tax,BANK,PSAK_71,ifrs:ProfitBeforeTax,1.00
+Laba Bersih,BANK,PSAK_71,ifrs:ProfitLoss,1.00
+Net Profit,BANK,PSAK_71,ifrs:ProfitLoss,1.00
+Laba Periode Berjalan,BANK,PSAK_71,ifrs:ProfitLoss,1.00
+Laba Tahun Berjalan,BANK,PSAK_71,ifrs:ProfitLoss,1.00
+Laba Yang Dapat Diatribusikan Kepada Pemilik Entitas Induk,BANK,PSAK_71,ifrs:ProfitLossAttributableToOwnersOfParent,1.00
+Net Income Attributable to Owners of the Parent,BANK,PSAK_71,ifrs:ProfitLossAttributableToOwnersOfParent,1.00
+Total Aset,BANK,PSAK_71,ifrs:Assets,1.00
+Total Assets,BANK,PSAK_71,ifrs:Assets,1.00
+Total Liabilitas,BANK,PSAK_71,ifrs:Liabilities,1.00
+Total Liabilities,BANK,PSAK_71,ifrs:Liabilities,1.00
+Total Ekuitas,BANK,PSAK_71,ifrs:Equity,1.00
+Ekuitas,BANK,PSAK_71,ifrs:Equity,1.00
+Total Equity,BANK,PSAK_71,ifrs:Equity,1.00
+Kas dan Setara Kas,BANK,PSAK_71,ifrs:CashAndCashEquivalents,1.00
+Cash and Cash Equivalents,BANK,PSAK_71,ifrs:CashAndCashEquivalents,1.00
+Kredit yang Diberikan,BANK,PSAK_71,idx:LoansAndReceivables,1.00
+Loans and Advances,BANK,PSAK_71,idx:LoansAndReceivables,1.00
+Pinjaman yang Diberikan,BANK,PSAK_71,idx:LoansAndReceivables,1.00
+Gross Loans,BANK,PSAK_71,idx:LoansAndReceivables,1.00
+Simpanan Nasabah,BANK,PSAK_71,idx:CustomerDeposits,1.00
+Customer Deposits,BANK,PSAK_71,idx:CustomerDeposits,1.00
+Dana Pihak Ketiga,BANK,PSAK_71,idx:ThirdPartyFunds,1.00
+Third Party Funds,BANK,PSAK_71,idx:ThirdPartyFunds,1.00
+Giro,BANK,PSAK_71,idx:DemandDeposits,1.00
+Demand Deposits,BANK,PSAK_71,idx:DemandDeposits,1.00
+Current Accounts,BANK,PSAK_71,idx:DemandDeposits,1.00
+Tabungan,BANK,PSAK_71,idx:SavingsDeposits,1.00
+Savings Deposits,BANK,PSAK_71,idx:SavingsDeposits,1.00
+Deposito Berjangka,BANK,PSAK_71,idx:TimeDeposits,1.00
+Deposito,BANK,PSAK_71,idx:TimeDeposits,1.00
+Time Deposits,BANK,PSAK_71,idx:TimeDeposits,1.00
+Kredit Bermasalah,BANK,PSAK_71,idx:NonPerformingLoans,1.00
+Non Performing Loans,BANK,PSAK_71,idx:NonPerformingLoans,1.00
+NPL Gross,BANK,PSAK_71,idx:NonPerformingLoansGross,1.00
+NPL Net,BANK,PSAK_71,idx:NonPerformingLoansNet,1.00
+Cadangan Kerugian Penurunan Nilai,BANK,PSAK_71,idx:AllowanceForImpairment,1.00
+CKPN,BANK,PSAK_71,idx:AllowanceForImpairment,1.00
+Allowance for Impairment Losses,BANK,PSAK_71,idx:AllowanceForImpairment,1.00
+Rasio Kecukupan Modal,BANK,PSAK_71,idx:CapitalAdequacyRatio,1.00
+Capital Adequacy Ratio,BANK,PSAK_71,idx:CapitalAdequacyRatio,1.00
+CAR,BANK,PSAK_71,idx:CapitalAdequacyRatio,1.00
+Net Interest Margin,BANK,PSAK_71,idx:NetInterestMargin,1.00
+NIM,BANK,PSAK_71,idx:NetInterestMargin,1.00
+Margin Bunga Bersih,BANK,PSAK_71,idx:NetInterestMargin,1.00
+Loan to Deposit Ratio,BANK,PSAK_71,idx:LoanToDepositRatio,1.00
+LDR,BANK,PSAK_71,idx:LoanToDepositRatio,1.00
+Biaya Operasional terhadap Pendapatan Operasional,BANK,PSAK_71,idx:BOPO,1.00
+BOPO,BANK,PSAK_71,idx:BOPO,1.00
+Cost to Income Ratio,BANK,PSAK_71,idx:CostToIncomeRatio,1.00
+CIR,BANK,PSAK_71,idx:CostToIncomeRatio,1.00
+Return on Assets,BANK,PSAK_71,idx:ROA,1.00
+ROA,BANK,PSAK_71,idx:ROA,1.00
+Return on Equity,BANK,PSAK_71,idx:ROE,1.00
+ROE,BANK,PSAK_71,idx:ROE,1.00
+Penjualan Bersih,MINING,PSAK_72,ifrs:Revenue,1.00
+Pendapatan Bersih,MINING,PSAK_72,ifrs:Revenue,1.00
+Pendapatan Usaha,MINING,PSAK_72,ifrs:Revenue,1.00
+Net Revenue,MINING,PSAK_72,ifrs:Revenue,1.00
+Revenue,MINING,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Penjualan,MINING,PSAK_72,ifrs:CostOfSales,1.00
+Beban Pokok Pendapatan,MINING,PSAK_72,ifrs:CostOfSales,1.00
+Cost of Goods Sold,MINING,PSAK_72,ifrs:CostOfSales,1.00
+Cost of Revenue,MINING,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,MINING,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,MINING,PSAK_72,ifrs:GrossProfit,1.00
+Beban Penjualan dan Pemasaran,MINING,PSAK_72,idx:SellingAndMarketingExpense,1.00
+Selling and Marketing Expenses,MINING,PSAK_72,idx:SellingAndMarketingExpense,1.00
+Beban Umum dan Administrasi,MINING,PSAK_72,idx:GeneralAndAdministrativeExpense,1.00
+General and Administrative Expenses,MINING,PSAK_72,idx:GeneralAndAdministrativeExpense,1.00
+Laba Usaha,MINING,PSAK_72,ifrs:OperatingProfit,1.00
+Laba Operasional,MINING,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,MINING,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Income,MINING,PSAK_72,ifrs:OperatingProfit,1.00
+Biaya Keuangan,MINING,PSAK_72,ifrs:FinanceCosts,1.00
+Finance Costs,MINING,PSAK_72,ifrs:FinanceCosts,1.00
+Laba Sebelum Pajak Penghasilan,MINING,PSAK_72,ifrs:ProfitBeforeTax,1.00
+Profit Before Income Tax,MINING,PSAK_72,ifrs:ProfitBeforeTax,1.00
+Beban Pajak Penghasilan,MINING,PSAK_72,ifrs:IncomeTaxExpense,1.00
+Income Tax Expense,MINING,PSAK_72,ifrs:IncomeTaxExpense,1.00
+Laba Bersih Tahun Berjalan,MINING,PSAK_72,ifrs:ProfitLoss,1.00
+Net Profit for the Year,MINING,PSAK_72,ifrs:ProfitLoss,1.00
+Laba Bersih yang Diatribusikan ke Pemilik Entitas Induk,MINING,PSAK_72,ifrs:ProfitLossAttributableToOwnersOfParent,1.00
+Net Profit Attributable to Owners of Parent,MINING,PSAK_72,ifrs:ProfitLossAttributableToOwnersOfParent,1.00
+Total Aset Lancar,MINING,PSAK_72,ifrs:CurrentAssets,1.00
+Current Assets,MINING,PSAK_72,ifrs:CurrentAssets,1.00
+Total Aset Tidak Lancar,MINING,PSAK_72,ifrs:NonCurrentAssets,1.00
+Non-Current Assets,MINING,PSAK_72,ifrs:NonCurrentAssets,1.00
+Total Liabilitas Jangka Pendek,MINING,PSAK_72,ifrs:CurrentLiabilities,1.00
+Current Liabilities,MINING,PSAK_72,ifrs:CurrentLiabilities,1.00
+Total Liabilitas Jangka Panjang,MINING,PSAK_72,ifrs:NonCurrentLiabilities,1.00
+Non-Current Liabilities,MINING,PSAK_72,ifrs:NonCurrentLiabilities,1.00
+Volume Produksi Batubara,MINING,PSAK_72,idx:CoalProductionVolume,1.00
+Coal Production Volume,MINING,PSAK_72,idx:CoalProductionVolume,1.00
+Produksi Batubara,MINING,PSAK_72,idx:CoalProductionVolume,1.00
+Volume Penjualan Batubara,MINING,PSAK_72,idx:CoalSalesVolume,1.00
+Coal Sales Volume,MINING,PSAK_72,idx:CoalSalesVolume,1.00
+Penjualan Batubara,MINING,PSAK_72,idx:CoalSalesVolume,1.00
+Harga Jual Rata-rata,MINING,PSAK_72,idx:AverageSellingPrice,1.00
+Average Selling Price,MINING,PSAK_72,idx:AverageSellingPrice,1.00
+ASP,MINING,PSAK_72,idx:AverageSellingPrice,1.00
+Cash Cost,MINING,PSAK_72,idx:CashCost,1.00
+Biaya Kas,MINING,PSAK_72,idx:CashCost,1.00
+Strip Ratio,MINING,PSAK_72,idx:StripRatio,1.00
+Nisbah Kupas,MINING,PSAK_72,idx:StripRatio,1.00
+Royalti dan Iuran Pertambangan,MINING,PSAK_72,idx:MiningRoyalties,1.00
+Mining Royalties,MINING,PSAK_72,idx:MiningRoyalties,1.00
+Beban Penambangan dan Pengupasan Tanah,MINING,PSAK_72,idx:MiningAndOverburdenRemoval,1.00
+Overburden Removal Cost,MINING,PSAK_72,idx:MiningAndOverburdenRemoval,1.00
+Beban Pengangkutan Batubara,MINING,PSAK_72,idx:CoalHaulingAndBarging,1.00
+Freight and Barging Expenses,MINING,PSAK_72,idx:CoalHaulingAndBarging,1.00
+Piutang Usaha,GENERIC,PSAK_72,ifrs:TradeAndOtherReceivables,1.00
+Trade Receivables,GENERIC,PSAK_72,ifrs:TradeAndOtherReceivables,1.00
+Piutang Lain-lain,GENERIC,PSAK_72,ifrs:OtherReceivables,1.00
+Other Receivables,GENERIC,PSAK_72,ifrs:OtherReceivables,1.00
+Persediaan,GENERIC,PSAK_72,ifrs:Inventories,1.00
+Inventories,GENERIC,PSAK_72,ifrs:Inventories,1.00
+Pajak Dibayar di Muka,GENERIC,PSAK_72,ifrs:PrepaidTaxes,1.00
+Biaya Dibayar di Muka,GENERIC,PSAK_72,ifrs:Prepayments,1.00
+Uang Muka,GENERIC,PSAK_72,ifrs:Advances,1.00
+Aset Tetap,GENERIC,PSAK_72,ifrs:PropertyPlantAndEquipment,1.00
+Property Plant and Equipment,GENERIC,PSAK_72,ifrs:PropertyPlantAndEquipment,1.00
+Investasi pada Entitas Asosiasi,GENERIC,PSAK_72,ifrs:InvestmentsInAssociates,1.00
+Aset Pajak Tangguhan,GENERIC,PSAK_72,ifrs:DeferredTaxAssets,1.00
+Utang Usaha,GENERIC,PSAK_72,ifrs:TradeAndOtherPayables,1.00
+Trade Payables,GENERIC,PSAK_72,ifrs:TradeAndOtherPayables,1.00
+Utang Bank,GENERIC,PSAK_72,idx:BankLoans,1.00
+Bank Loans,GENERIC,PSAK_72,idx:BankLoans,1.00
+Beban Akrual,GENERIC,PSAK_72,ifrs:AccruedExpenses,1.00
+Accrued Expenses,GENERIC,PSAK_72,ifrs:AccruedExpenses,1.00
+Liabilitas Imbalan Kerja,GENERIC,PSAK_72,ifrs:EmployeeBenefitsLiabilities,1.00
+Modal Saham,GENERIC,PSAK_72,ifrs:ShareCapital,1.00
+Share Capital,GENERIC,PSAK_72,ifrs:ShareCapital,1.00
+Saldo Laba,GENERIC,PSAK_72,ifrs:RetainedEarnings,1.00
+Retained Earnings,GENERIC,PSAK_72,ifrs:RetainedEarnings,1.00
+Kepentingan Non-Pengendali,GENERIC,PSAK_72,ifrs:NonControllingInterests,1.00
+Non-Controlling Interests,GENERIC,PSAK_72,ifrs:NonControllingInterests,1.00
+Arus Kas dari Aktivitas Operasi,GENERIC,PSAK_72,ifrs:CashFlowsFromUsedInOperatingActivities,1.00
+Arus Kas Bersih dari Aktivitas Operasi,GENERIC,PSAK_72,ifrs:CashFlowsFromUsedInOperatingActivities,1.00
+Cash Flows from Operating Activities,GENERIC,PSAK_72,ifrs:CashFlowsFromUsedInOperatingActivities,1.00
+Net Cash Flows from Operating Activities,GENERIC,PSAK_72,ifrs:CashFlowsFromUsedInOperatingActivities,1.00
+Arus Kas dari Aktivitas Investasi,GENERIC,PSAK_72,ifrs:CashFlowsFromUsedInInvestingActivities,1.00
+Cash Flows from Investing Activities,GENERIC,PSAK_72,ifrs:CashFlowsFromUsedInInvestingActivities,1.00
+Arus Kas dari Aktivitas Pendanaan,GENERIC,PSAK_72,ifrs:CashFlowsFromUsedInFinancingActivities,1.00
+Cash Flows from Financing Activities,GENERIC,PSAK_72,ifrs:CashFlowsFromUsedInFinancingActivities,1.00
+Perolehan Aset Tetap,GENERIC,PSAK_72,ifrs:PaymentsToAcquirePropertyPlantAndEquipment,1.00
+Pembelian Aset Tetap,GENERIC,PSAK_72,ifrs:PaymentsToAcquirePropertyPlantAndEquipment,1.00
+Acquisitions of Property Plant and Equipment,GENERIC,PSAK_72,ifrs:PaymentsToAcquirePropertyPlantAndEquipment,1.00
+Capital Expenditure,GENERIC,PSAK_72,ifrs:PaymentsToAcquirePropertyPlantAndEquipment,1.00
+Beban Penyusutan dan Amortisasi,GENERIC,PSAK_72,ifrs:DepreciationAndAmortisationExpense,1.00
+Penyusutan dan Amortisasi,GENERIC,PSAK_72,ifrs:DepreciationAndAmortisationExpense,1.00
+Depreciation and Amortisation,GENERIC,PSAK_72,ifrs:DepreciationAndAmortisationExpense,1.00
+Beban Keuangan,GENERIC,PSAK_72,ifrs:FinanceCosts,1.00
+Beban Bunga,GENERIC,PSAK_72,ifrs:FinanceCosts,1.00
+Finance Costs,GENERIC,PSAK_72,ifrs:FinanceCosts,1.00
+Interest Expense,GENERIC,PSAK_72,ifrs:FinanceCosts,1.00
+Pinjaman Jangka Pendek,GENERIC,PSAK_72,ifrs:ShortTermBorrowings,1.00
+Utang Bank Jangka Pendek,GENERIC,PSAK_72,ifrs:ShortTermBorrowings,1.00
+Short-term Bank Loans,GENERIC,PSAK_72,ifrs:ShortTermBorrowings,1.00
+Short-term Borrowings,GENERIC,PSAK_72,ifrs:ShortTermBorrowings,1.00
+Pinjaman Jangka Panjang,GENERIC,PSAK_72,ifrs:LongTermBorrowings,1.00
+Utang Bank Jangka Panjang,GENERIC,PSAK_72,ifrs:LongTermBorrowings,1.00
+Long-term Bank Loans,GENERIC,PSAK_72,ifrs:LongTermBorrowings,1.00
+Long-term Borrowings,GENERIC,PSAK_72,ifrs:LongTermBorrowings,1.00
+Laba per Saham Dasar,GENERIC,PSAK_72,ifrs:BasicEarningsLossPerShare,1.00
+Laba per Saham,GENERIC,PSAK_72,ifrs:BasicEarningsLossPerShare,1.00
+Basic Earnings Per Share,GENERIC,PSAK_72,ifrs:BasicEarningsLossPerShare,1.00
+Earnings Per Share,GENERIC,PSAK_72,ifrs:BasicEarningsLossPerShare,1.00
+EPS,GENERIC,PSAK_72,ifrs:BasicEarningsLossPerShare,1.00
+Ekuitas yang Dapat Diatribusikan kepada Pemilik Entitas Induk,GENERIC,PSAK_72,ifrs:EquityAttributableToOwnersOfParent,1.00
+Equity Attributable to Owners of Parent,GENERIC,PSAK_72,ifrs:EquityAttributableToOwnersOfParent,1.00
+Jumlah Saham Beredar,GENERIC,PSAK_72,idx:SharesOutstanding,1.00
+Shares Outstanding,GENERIC,PSAK_72,idx:SharesOutstanding,1.00
+Kapitalisasi Pasar,GENERIC,PSAK_72,idx:MarketCap,1.00
+Market Capitalization,GENERIC,PSAK_72,idx:MarketCap,1.00
+Market Cap,GENERIC,PSAK_72,idx:MarketCap,1.00
+Free Float,GENERIC,PSAK_72,idx:FreeFloat,1.00
+Saham Beredar Bebas,GENERIC,PSAK_72,idx:FreeFloat,1.00
+Dividen per Saham,GENERIC,PSAK_72,idx:DividendPerShare,1.00
+Dividend Per Share,GENERIC,PSAK_72,idx:DividendPerShare,1.00
+

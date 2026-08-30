@@ -1,0 +1,19 @@
+line-length = 100
+target-version = "py311"
+
+[lint]
+select = ["E", "F", "I", "N", "B", "UP", "PL", "RUF", "T20", "ASYNC", "S"]
+ignore = ["PLR0913", "PLR2004"]
+
+[lint.per-file-ignores]
+"tests/**" = ["S101", "PLR2004", "T201", "E501", "PLC0415"]
+"scripts/**" = ["T201", "E501", "RUF059"]
+"eval/**" = ["T201", "PLR2004", "E501", "RUF059", "PLR0915"]
+"services/api/routers/**" = ["B008", "PLR0917", "E501", "S110"]
+"services/ingest/tasks/**" = ["PLR0915", "PLR0912", "E501"]
+"services/extraction/**" = ["PLR0915", "PLR0912", "PLR0911", "E501", "S110"]
+"services/derive/**" = ["E501"]
+"services/narrative/**" = ["E501", "PLC0415", "S324"]
+"services/llm/**" = ["PLR0917", "PLR0915", "PLR0912", "E501"]
+"services/retrieval/**" = ["PLR0917", "PLR0915", "PLR0912", "PLR0911", "E501", "S608"]
+"services/shared/**" = ["E501"]

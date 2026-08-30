@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xbrli:xbrl
+  xmlns:xbrli="http://www.xbrl.org/2003/instance"
+  xmlns:idx-cor="http://www.idx.co.id/xbrl/idx-cor"
+  xmlns:iso4217="http://www.xbrl.org/2003/iso4217">
+
+  <xbrli:context id="CurrentYearDuration">
+    <xbrli:entity>
+      <xbrli:identifier scheme="http://www.idx.co.id/ticker">BMRI</xbrli:identifier>
+    </xbrli:entity>
+    <xbrli:period>
+      <xbrli:startDate>2024-01-01</xbrli:startDate>
+      <xbrli:endDate>2024-12-31</xbrli:endDate>
+    </xbrli:period>
+  </xbrli:context>
+
+  <xbrli:context id="CurrentYearInstant">
+    <xbrli:entity>
+      <xbrli:identifier scheme="http://www.idx.co.id/ticker">BMRI</xbrli:identifier>
+    </xbrli:entity>
+    <xbrli:period>
+      <xbrli:instant>2024-12-31</xbrli:instant>
+    </xbrli:period>
+  </xbrli:context>
+
+  <xbrli:unit id="IDR">
+    <xbrli:measure>iso4217:IDR</xbrli:measure>
+  </xbrli:unit>
+
+  <!-- Income Statement Facts -->
+  <idx-cor:NetInterestIncome contextRef="CurrentYearDuration" unitRef="IDR">72300000000000</idx-cor:NetInterestIncome>
+  <idx-cor:InterestIncome contextRef="CurrentYearDuration" unitRef="IDR">110500000000000</idx-cor:InterestIncome>
+  <idx-cor:InterestExpense contextRef="CurrentYearDuration" unitRef="IDR">38200000000000</idx-cor:InterestExpense>
+  <idx-cor:ProfitLoss contextRef="CurrentYearDuration" unitRef="IDR">55100000000000</idx-cor:ProfitLoss>
+  <idx-cor:ProfitLossAttributableToOwnersOfParent contextRef="CurrentYearDuration" unitRef="IDR">55100000000000</idx-cor:ProfitLossAttributableToOwnersOfParent>
+
+  <!-- Balance Sheet Facts -->
+  <idx-cor:Assets contextRef="CurrentYearInstant" unitRef="IDR">2174200000000000</idx-cor:Assets>
+  <idx-cor:Liabilities contextRef="CurrentYearInstant" unitRef="IDR">1890200000000000</idx-cor:Liabilities>
+  <idx-cor:Equity contextRef="CurrentYearInstant" unitRef="IDR">284000000000000</idx-cor:Equity>
+  <idx-cor:LoansAndAdvances contextRef="CurrentYearInstant" unitRef="IDR">1530000000000000</idx-cor:LoansAndAdvances>
+  <idx-cor:CustomerDeposits contextRef="CurrentYearInstant" unitRef="IDR">1650400000000000</idx-cor:CustomerDeposits>
+</xbrli:xbrl>

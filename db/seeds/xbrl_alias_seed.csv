@@ -1,0 +1,37 @@
+taxonomy_concept,canonical_concept_id,description
+http://www.idx.co.id/xbrl/idx-cor/InterestIncome,ifrs:InterestIncome,Pendapatan bunga
+http://www.idx.co.id/xbrl/idx-cor/InterestExpense,ifrs:InterestExpense,Beban bunga
+http://www.idx.co.id/xbrl/idx-cor/NetInterestIncome,idx:NetInterestIncome,Pendapatan bunga bersih
+http://www.idx.co.id/xbrl/idx-cor/OtherOperatingIncome,idx:OtherOperatingIncome,Pendapatan operasional lainnya
+http://www.idx.co.id/xbrl/idx-cor/OperatingExpenses,idx:OperatingExpenses,Beban operasional
+http://www.idx.co.id/xbrl/idx-cor/ProfitLossBeforeTax,ifrs:ProfitBeforeTax,Laba sebelum pajak
+http://www.idx.co.id/xbrl/idx-cor/ProfitLoss,ifrs:ProfitLoss,Laba bersih tahun berjalan
+http://www.idx.co.id/xbrl/idx-cor/ProfitLossAttributableToOwnersOfParent,ifrs:ProfitLossAttributableToOwnersOfParent,Laba diatribusikan ke pemilik entitas induk
+http://www.idx.co.id/xbrl/idx-cor/Assets,ifrs:Assets,Total aset
+http://www.idx.co.id/xbrl/idx-cor/Liabilities,ifrs:Liabilities,Total liabilitas
+http://www.idx.co.id/xbrl/idx-cor/Equity,ifrs:Equity,Total ekuitas
+http://www.idx.co.id/xbrl/idx-cor/CashAndCashEquivalents,ifrs:CashAndCashEquivalents,Kas dan setara kas
+http://www.idx.co.id/xbrl/idx-cor/LoansAndAdvances,idx:LoansAndReceivables,Kredit yang diberikan
+http://www.idx.co.id/xbrl/idx-cor/CustomerDeposits,idx:CustomerDeposits,Simpanan nasabah
+http://www.idx.co.id/xbrl/idx-cor/DemandDeposits,idx:DemandDeposits,Giro
+http://www.idx.co.id/xbrl/idx-cor/SavingsDeposits,idx:SavingsDeposits,Tabungan
+http://www.idx.co.id/xbrl/idx-cor/TimeDeposits,idx:TimeDeposits,Deposito berjangka
+http://www.idx.co.id/xbrl/idx-cor/NonPerformingLoans,idx:NonPerformingLoans,Kredit bermasalah
+http://www.idx.co.id/xbrl/idx-cor/AllowanceForImpairment,idx:AllowanceForImpairment,Cadangan kerugian penurunan nilai
+http://www.idx.co.id/xbrl/idx-cor/Revenue,ifrs:Revenue,Pendapatan usaha / penjualan bersih
+http://www.idx.co.id/xbrl/idx-cor/CostOfSales,ifrs:CostOfSales,Beban pokok penjualan
+http://www.idx.co.id/xbrl/idx-cor/GrossProfit,ifrs:GrossProfit,Laba kotor
+http://www.idx.co.id/xbrl/idx-cor/OperatingProfit,ifrs:OperatingProfit,Laba usaha
+http://www.idx.co.id/xbrl/idx-cor/SellingAndMarketingExpense,idx:SellingAndMarketingExpense,Beban penjualan dan pemasaran
+http://www.idx.co.id/xbrl/idx-cor/GeneralAndAdministrativeExpense,idx:GeneralAndAdministrativeExpense,Beban umum dan administrasi
+http://www.idx.co.id/xbrl/idx-cor/FinanceCosts,ifrs:FinanceCosts,Biaya keuangan
+http://www.idx.co.id/xbrl/idx-cor/IncomeTaxExpense,ifrs:IncomeTaxExpense,Beban pajak penghasilan
+http://www.idx.co.id/xbrl/idx-cor/CurrentAssets,ifrs:CurrentAssets,Total aset lancar
+http://www.idx.co.id/xbrl/idx-cor/NonCurrentAssets,ifrs:NonCurrentAssets,Total aset tidak lancar
+http://www.idx.co.id/xbrl/idx-cor/CurrentLiabilities,ifrs:CurrentLiabilities,Total liabilitas jangka pendek
+http://www.idx.co.id/xbrl/idx-cor/NonCurrentLiabilities,ifrs:NonCurrentLiabilities,Total liabilitas jangka panjang
+http://www.idx.co.id/xbrl/idx-cor/CoalProductionVolume,idx:CoalProductionVolume,Volume produksi batubara
+http://www.idx.co.id/xbrl/idx-cor/CoalSalesVolume,idx:CoalSalesVolume,Volume penjualan batubara
+http://www.idx.co.id/xbrl/idx-cor/AverageSellingPrice,idx:AverageSellingPrice,Harga jual rata-rata
+http://www.idx.co.id/xbrl/idx-cor/StripRatio,idx:StripRatio,Nisbah kupas
+http://www.idx.co.id/xbrl/idx-cor/CashCost,idx:CashCost,Biaya kas pertambangan
