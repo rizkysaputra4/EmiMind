@@ -23,7 +23,11 @@ def validate_draft_submission(
     submission_id = f"sub_{uuid.uuid4().hex[:8]}"
     issues: list[ValidationIssue] = []
 
-    facts_by_concept = {f.concept_id: f for f in payload.facts}
+    # Prefer unsegmented total facts for top-level accounting equation audits
+    facts_by_concept: dict[str, ExtractedFactItem] = {}
+    for f in payload.facts:
+        if f.concept_id not in facts_by_concept or f.segment is None:
+            facts_by_concept[f.concept_id] = f
     contract = build_extraction_contract(
         doc_id=payload.doc_id,
         ticker=payload.ticker,
