@@ -63,7 +63,15 @@ async def test_mcp_submit_draft_extraction_and_commit() -> None:
         ExtractedFactItem(concept_id="ifrs:CashFlowsFromUsedInOperatingActivities", value_numeric=Decimal("180000000000"), source_page=4),
         ExtractedFactItem(concept_id="idx:LoansAndAdvances", value_numeric=Decimal("1400000000000"), source_page=1),
         ExtractedFactItem(concept_id="idx:CustomerDeposits", value_numeric=Decimal("1300000000000"), source_page=2),
+        ExtractedFactItem(concept_id="idx:CASA", value_numeric=Decimal("950000000000"), source_page=2),
         ExtractedFactItem(concept_id="idx:NetInterestIncome", value_numeric=Decimal("250000000000"), source_page=3),
+        ExtractedFactItem(concept_id="idx:NetInterestMargin", value_numeric=Decimal("5.35"), source_page=20),
+        ExtractedFactItem(concept_id="idx:NonPerformingLoansGross", value_numeric=Decimal("15000000000"), source_page=22),
+        ExtractedFactItem(concept_id="idx:CapitalAdequacyRatio", value_numeric=Decimal("21.5"), source_page=25),
+        ExtractedFactItem(concept_id="idx:BOPO", value_numeric=Decimal("58.2"), source_page=26),
+        ExtractedFactItem(concept_id="idx:CostOfCredit", value_numeric=Decimal("0.95"), source_page=26),
+        ExtractedFactItem(concept_id="idx:LoanToDepositRatio", value_numeric=Decimal("84.2"), source_page=27),
+        ExtractedFactItem(concept_id="idx:NPLCoverageRatio", value_numeric=Decimal("310.5"), source_page=28),
         # Granular Segmented Fact Items
         ExtractedFactItem(
             concept_id="ifrs:Revenue",

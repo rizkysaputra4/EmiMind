@@ -544,6 +544,30 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
                 )
                 causal_count += 1
 
+        # 2.5 Record metric omissions into concept_review table for auditing
+        omissions_count = 0
+        for omitted in payload.omitted_kpis:
+            await conn.execute(
+                text(
+                    """
+                    INSERT INTO concept_review (
+                        ticker, doc_id, local_label, suggested_canonical, similarity_score, status, resolved_by
+                    ) VALUES (
+                        :ticker, :doc_id, :label, :canonical, 0.00, 'resolved', :reason
+                    )
+                    ON CONFLICT (ticker, doc_id, local_label) DO NOTHING;
+                    """
+                ),
+                {
+                    "ticker": ticker,
+                    "doc_id": doc_id,
+                    "label": f"OMITTED: {omitted.metric_id}",
+                    "canonical": omitted.metric_id,
+                    "reason": f"[{omitted.reason}] {omitted.explanation} (Checked pages: {omitted.search_pages_checked})",
+                },
+            )
+            omissions_count += 1
+
         # 3. Update document status and archive local file if in incoming folder
         doc_res = await conn.execute(text("SELECT source_url FROM documents WHERE id = :id"), {"id": doc_id})
         doc_row = doc_res.mappings().first()
@@ -580,6 +604,7 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
         facts_committed=facts_count,
         narratives_committed=narratives_count,
         guidance_committed=len(payload.guidance),
+        omissions_recorded=omissions_count,
         derived_metrics_computed=compute_rep.computed,
         profile_refreshed=profile_refreshed,
         live_valuation_computed=live_val_ok,

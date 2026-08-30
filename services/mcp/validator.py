@@ -39,18 +39,61 @@ def validate_draft_submission(
     # -------------------------------------------------------------
     # LEVEL 1: Schema & Completeness Validation
     # -------------------------------------------------------------
+    omitted_by_concept = {item.metric_id: item for item in payload.omitted_kpis}
+
     for rule in contract.required_facts:
-        if rule.required and rule.concept_id not in facts_by_concept:
+        if rule.required:
+            is_present_in_facts = rule.concept_id in facts_by_concept
+            is_declared_omitted = rule.concept_id in omitted_by_concept
+
+            if not is_present_in_facts:
+                if is_declared_omitted:
+                    omitted_item = omitted_by_concept[rule.concept_id]
+                    if len(omitted_item.explanation.strip()) < 15:
+                        issues.append(
+                            ValidationIssue(
+                                severity=IssueSeverity.ERROR,
+                                category="INSUFFICIENT_OMISSION_EXPLANATION",
+                                concept_id=rule.concept_id,
+                                feedback_message=(
+                                    f"Omission explanation for '{rule.label}' ({rule.concept_id}) is too brief ('{omitted_item.explanation}'). "
+                                    f"Please provide a substantive explanation describing why the metric is absent in this filing."
+                                ),
+                                target_pages=omitted_item.search_pages_checked,
+                            )
+                        )
+                else:
+                    issues.append(
+                        ValidationIssue(
+                            severity=IssueSeverity.ERROR,
+                            category="MISSING_MANDATORY_METRIC_OR_EXPLANATION",
+                            concept_id=rule.concept_id,
+                            feedback_message=(
+                                f"Mandatory concept/KPI '{rule.label}' ({rule.concept_id}) was neither extracted in 'facts' "
+                                f"nor declared in 'omitted_kpis'. You MUST search the financial notes, operational highlights, or presentation deck. "
+                                f"If this metric is genuinely not disclosed in this filing, you MUST add an entry in 'omitted_kpis' with "
+                                f"'reason' ('NOT_DISCLOSED_IN_REPORT'), a clear 'explanation' describing why it is missing, and 'search_pages_checked'."
+                            ),
+                            target_pages=[],
+                        )
+                    )
+
+    # Check Granular Segment Breakdown Requirement for Revenue
+    if "ifrs:Revenue" in facts_by_concept:
+        segmented_rev = [f for f in payload.facts if f.concept_id == "ifrs:Revenue" and f.segment is not None]
+        if not segmented_rev and "REVENUE_BREAKDOWN" not in omitted_by_concept and "ifrs:Revenue_SEGMENTS" not in omitted_by_concept:
             issues.append(
                 ValidationIssue(
-                    severity=IssueSeverity.ERROR,
-                    category="MISSING_REQUIRED_FACT",
-                    concept_id=rule.concept_id,
+                    severity=IssueSeverity.WARNING,
+                    category="MISSING_GRANULAR_REVENUE_BREAKDOWN",
+                    concept_id="ifrs:Revenue",
                     feedback_message=(
-                        f"Required concept '{rule.label}' ({rule.concept_id}) is missing from the submitted facts. "
-                        f"Please locate this line item in the {rule.statement_type.replace('_', ' ').lower()} and extract it."
+                        "Revenue was submitted only as an unsegmented total. Please extract the product line / division breakdown "
+                        "from the 'Segment Information' / 'Pendapatan Usaha' note as ExtractedFactItems with "
+                        "segment={'segment': '<Product/Service>', 'type': 'product'}. "
+                        "If the issuer operates in a single line with no breakdown, declare this in 'omitted_kpis'."
                     ),
-                    target_pages=[],
+                    target_pages=[facts_by_concept["ifrs:Revenue"].source_page],
                 )
             )
 

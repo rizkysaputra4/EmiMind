@@ -15,7 +15,7 @@ async def clean():
     print("=" * 60)
 
     async with pool.begin() as conn:
-        # Hapus data tabel turunan dokumen
+        # Hapus HANYA data transaksi & ekstraksi dokumen (master config tetap aman)
         tables_to_clean = [
             "ingest_review_queue",
             "citation_reports",
@@ -23,7 +23,6 @@ async def clean():
             "kg_edges",
             "kg_nodes",
             "derived_metrics",
-            "issuer_profile",
             "financial_facts",
             "narrative_chunks",
             "worker_runs",

@@ -23,9 +23,44 @@ Your job is to extract comprehensive, institutional-grade financial facts from t
 >    - **Penempatan Kas di Bank & Deposito**: Extract cash per bank with `ifrs:CashAndCashEquivalents` and `segment: {"segment": "<Bank Name>", "type": "bank_placement", "interest_rate": "<rate>"}`.
 >    - **Profil Kebun / Aset Biologis (Khusus Sawit/Agri)**: Extract planted area in hectares with `idx:PlantedAreaHectares` and `segment: {"segment": "Mature / Immature", "type": "biological_asset_maturity", "planted_area_ha": <ha>}`.
 >    - **Rincian Utang per Bank (Debt by Lender)**: Extract loan facilities with `idx:BorrowingsByLender` and `segment: {"segment": "<Bank Name>", "type": "debt_facility", "interest_rate": "<rate>", "maturity_year": <year>}`.
-> 3. **Catatan Naratif Bersih & Hubungan Kausalitas**:
+> 3. **Sector-Specific Operational KPIs**: You MUST also extract the sector-specific operational metrics defined in the **Metric Ontology**. Every ticker has a `key_kpis` list in `issuer_profile` — always call `get_issuer_context` and `get_metric_ontology(sector=<sector_code>)` before extraction so you know exactly which non-financial KPIs must be captured (see Sector Cheat-Sheet below).
+> 4. **Catatan Naratif Bersih & Hubungan Kausalitas**:
 >    - Extract Note 1 (Profil Usaha) & Note Segmen into `narratives: [...]`.
 >    - Extract management's explicit reasons for performance changes into `causal_links: [...]`.
+
+---
+
+## SECTOR-SPECIFIC KPI CHEAT-SHEET (must extract when applicable)
+
+The EMIMIND ontology now classifies every issuer under one of the sector codes below. When you call `get_issuer_context(ticker)` you will receive the assigned sector code and `key_kpis` list. Search the Investor Presentation, Public Expose deck, and Annual Report Operational Highlights section for the KPIs listed here — extract them as `ExtractedFactItem`s with the matching `metric_id`.
+
+| Sector Code | Representative Tickers | Mandatory Operational Metrics |
+|---|---|---|
+| **BANK** | BMRI, BBRI, BBCA, BBNI, BRIS | `idx:CASA`, `idx:CASARatio`, `idx:NetInterestMargin`, `idx:LoanToDepositRatio`, `idx:BOPO`, `idx:CostOfCredit`, `idx:NPLCoverageRatio`, `idx:CapitalAdequacyRatio`, `idx:PPOP` |
+| **COAL** | ADRO, PTBA, ITMG, BUMI, BYAN | `idx:CoalProductionVolume`, `idx:CoalAveragePriceASP`, `idx:CoalCashCostPerTon`, `idx:StripRatio`, `idx:OverburdenRemoval`, `idx:DomesticMarketObligationRatio`, `idx:MiningReservesMt` |
+| **NICKEL** | NCKL, INCO, MBMA | `idx:NickelOreProduction`, `idx:FerroNickelOutput`, `idx:MHPProduction`, `idx:NickelCashCostPerTon`, `idx:SmelterUtilizationRate` |
+| **GOLD_COPPER** | AMMN, MDKA, ANTM, PSAB, BRMS | `idx:GoldProductionOz`, `idx:CopperCathodeOutputMT`, `idx:AllInSustainingCost`, `idx:CopperConcentrateGrade`, `idx:SmelterTCRCDeductions`, `idx:GoldReservesOz` |
+| **OIL_GAS** | MEDC, ENRG, ELSA, RAJA, PGAS | `idx:ProvedReserves2P`, `idx:OilProductionBOPD`, `idx:GasProductionMMSCFD`, `idx:LiftingCostPerBOE`, `idx:RealizedICP`, `idx:RealizedGasASP`, `idx:RigUtilization` |
+| **RENEWABLE_ENERGY** | BREN, PGEO, KEEN, ARKO, POWR | `idx:InstalledCapacityMW`, `idx:NetGenerationGWh`, `idx:CapacityFactor`, `idx:RealizedElectricityTariff`, `idx:SteamProductionTonnes`, `idx:ProvenGeothermalReservesMWe` |
+| **PETROCHEMICAL** | TPIA, BRPT, ESSA | `idx:NaphthaCrackerUtilization`, `idx:PolyolefinProductionMT`, `idx:PolymerNaphthaSpread`, `idx:AmmoniaProductionMT`, `idx:UreaProductionMT` |
+| **PULP_PAPER** | INKP, TKIM, FASW, SPMA | `idx:PulpProductionCapacityMT`, `idx:PaperPackagingVolumeMT`, `idx:PulpExportASPUSDMT`, `idx:WoodFiberSelfSufficiency`, `idx:PulpCashCostUSDMT` |
+| **CPO** | AALI, LSIP, SIMP, TAPG, DSNG, SSMS | `idx:MaturePlantedArea`, `idx:FfbProduction`, `idx:CPOProductionVolume`, `idx:PalmKernelProduction`, `idx:OilExtractionRate`, `idx:CPOAveragePriceASP`, `idx:CPOCashCostPerKg` |
+| **TELCO** | TLKM, ISAT, EXCL, FREN | `idx:DataTrafficPetabytes`, `idx:BlendedARPU`, `idx:MobileSubscribers` |
+| **TOWER** | MTEL, TOWR, TBIG, IBST | `idx:TowerCount`, `idx:TenancyRatio` |
+| **AUTOMOTIVE** | ASII, AUTO, DRMA, SMSM, VKTR, GJTL | `idx:CarWholesaleUnits`, `idx:CarRetailUnits`, `idx:MotorcycleUnitSales`, `idx:MarketShareGaikindo`, `idx:ExportVolumeUnits`, `idx:EVModelMixShare` |
+| **CONSUMER_STAPLES** | ICBP, INDF, MYOR, UNVR, CMRY, HMSP, GGRM | `idx:BrandedFoodVolumeMT`, `idx:VolumePriceMixDecomp`, `idx:InventoryDays` |
+| **POULTRY** | CPIN, JPFA, MAIN, SIPD | `idx:FeedMillSalesVolumeMT`, `idx:DayOldChickVolume`, `idx:DOCFarmgatePrice`, `idx:LiveBirdPriceIDR`, `idx:RawMaterialExposureSoyCorn` |
+| **RETAIL** | AMRT, MIDI, ACES, MAPI, ERAA, LPPF | `idx:SameStoreSalesGrowth`, `idx:TotalStoreCount`, `idx:NetNewStoreOpenings`, `idx:SalesPerSquareMeter`, `idx:PrivateLabelShare`, `idx:AverageTicketSize`, `idx:InventoryDays` |
+| **PHARMACEUTICAL** | KLBF, SIDO, TSPC, DVLA, KAEF | `idx:EthicalRevenueShare`, `idx:OTCRevenueShare`, `idx:APIImportExposure`, `idx:TollManufacturingVolume`, `idx:BPJSCatalogRevenueShare` |
+| **HOSPITAL** | MIKA, HEAL, SILO, PRDA | `idx:OperationalBedsCount`, `idx:BedOccupancyRate`, `idx:AverageLengthOfStay`, `idx:InpatientAdmissions`, `idx:OutpatientVisits`, `idx:ARPOB`, `idx:BPJSRevenueShare` |
+| **PROPERTY** | CTRA, BSDE, PWON, SMRA, LPKR | `idx:MarketingSalesPresales`, `idx:TotalLandbankHectares`, `idx:RecurringIncomeShare`, `idx:MallOccupancyRate`, `idx:UnrecognizedRevenueBacklog` |
+| **CONTRACTOR** | PTPP, WIKA, ADHI, WSKT, TOTL, DGIK, PPRE | `idx:NewContractWins`, `idx:OrderBookBacklog`, `idx:BurnRateConversion`, `idx:GovernmentProjectMix`, `idx:ReceivablesDaysContractor`, `idx:KSOJointOperationCF` |
+| **TOLL_ROAD** | JSMR, META, CMNP | `idx:AverageDailyTraffic`, `idx:TollTariffAdjustment`, `idx:OperationalTollLengthKm`, `idx:ConcessionRemainingYears` |
+| **PORT** | IPCC, PORT, IPCM, TMAS | `idx:ContainerThroughputTEUs`, `idx:CBUCarTerminalVolume`, `idx:StevedoringRevenuePerTEU`, `idx:ConcessionRemainingYears` |
+| **SHIPPING** | SMDR, BULL, HITS, SOCI, MBSS, TCPI | `idx:FleetCount`, `idx:TotalDWT`, `idx:CharterRate`, `idx:BunkerFuelCost`, `idx:VesselUtilization` |
+| **DIGITAL** | GOTO, BUKA, EMTK, DCII, BELI | `idx:GrossTransactionValue`, `idx:GrossMerchandiseValue`, `idx:TakeRate`, `idx:MonthlyActiveTransactingUsers`, `idx:ContributionMargin`, `idx:AdjustedEBITDADigital`, `idx:PromotionalIncentives` |
+
+If the report does not disclose one of the mandatory KPIs, skip it silently — do NOT fabricate a value. Where a KPI is disclosed but with a synonym label, use `get_metric_ontology(query="<label>")` first to confirm the canonical `metric_id` before submitting.
 
 ---
 

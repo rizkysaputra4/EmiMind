@@ -109,6 +109,13 @@ class ExtractedGuidanceItem(BaseModel):
     context_statement: str | None = None
 
 
+class OmittedMetricItem(BaseModel):
+    metric_id: str
+    reason: str = "NOT_DISCLOSED_IN_REPORT"  # 'NOT_DISCLOSED_IN_REPORT', 'NOT_APPLICABLE_FOR_INTERIM', 'ONLY_IN_PRESENTATION_DECK', 'MERGED_WITH_OTHER_LINE'
+    explanation: str
+    search_pages_checked: list[int] = Field(default_factory=list)
+
+
 class DraftSubmissionPayload(BaseModel):
     doc_id: str
     ticker: str
@@ -118,6 +125,7 @@ class DraftSubmissionPayload(BaseModel):
     narratives: list[ExtractedNarrativeItem] = Field(default_factory=list)
     causal_links: list[ExtractedCausalLink] = Field(default_factory=list)
     guidance: list[ExtractedGuidanceItem] = Field(default_factory=list)
+    omitted_kpis: list[OmittedMetricItem] = Field(default_factory=list)
 
 
 class IssueSeverity(str, Enum):
@@ -158,6 +166,7 @@ class CommitReport(BaseModel):
     facts_committed: int
     narratives_committed: int
     guidance_committed: int
+    omissions_recorded: int = 0
     derived_metrics_computed: int
     profile_refreshed: bool
     live_valuation_computed: bool

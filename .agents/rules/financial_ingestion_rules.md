@@ -21,7 +21,11 @@ When processing financial statements or files located in `incoming_reports/`:
      - Biological Assets / Hectares (if Agri/CPO) $\to$ `idx:PlantedAreaHectares` with `segment: {"segment": "Mature/Immature", "type": "biological_asset_maturity"}`
      - Debt by Lender $\to$ `idx:BorrowingsByLender` with `segment: {"segment": "<Bank>", "type": "debt_facility"}`
      - Management Causality $\to$ `causal_links: [...]` (explaining why revenue/margins changed).
-5. Detect table scale ("dalam jutaan rupiah" vs "dalam ribuan rupiah") and convert values to full IDR integer scale in the JSON payload.
-6. Submit draft payload to `submit_draft_extraction` for mathematical validation.
-7. If validation fails, re-examine ONLY the specific `target_pages` returned in the MCP error feedback.
-8. Call `commit_verified_report` only when the report is valid.
+5. **Mandatory Sector Operational KPIs**:
+   - Extract all required sector metrics specified in the contract (`SECTOR_EXTENSIONS` & `key_kpis`).
+   - If a required metric is genuinely NOT disclosed in this financial statement PDF, you MUST declare it in `omitted_kpis: [{"metric_id": "...", "reason": "NOT_DISCLOSED_IN_REPORT", "explanation": "...", "search_pages_checked": [...]}]`.
+   - The MCP validator will REJECT any payload missing a mandatory metric without an explicit omission justification.
+6. Detect table scale ("dalam jutaan rupiah" vs "dalam ribuan rupiah") and convert values to full IDR integer scale in the JSON payload.
+7. Submit draft payload to `submit_draft_extraction` for mathematical equation and completeness validation.
+8. If validation fails, re-examine ONLY the specific `target_pages` returned in the MCP error feedback.
+9. Call `commit_verified_report` only when the report is valid.

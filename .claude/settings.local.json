@@ -3,7 +3,9 @@
     "allow": [
       "WebSearch",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\rizky\\\\Documents\\\\Code\\\\EmiMind\" -Force)",
-      "Bash(Select-Object Name, Mode)"
+      "Bash(Select-Object Name, Mode)",
+      "Bash(python *)",
+      "Bash(.venv/Scripts/python *)"
     ]
   }
 }
