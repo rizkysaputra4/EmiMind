@@ -17,9 +17,13 @@ async def clean():
     async with pool.begin() as conn:
         # Hapus data tabel turunan dokumen
         tables_to_clean = [
+            "ingest_review_queue",
             "citation_reports",
             "concept_review",
+            "kg_edges",
+            "kg_nodes",
             "derived_metrics",
+            "issuer_profile",
             "financial_facts",
             "narrative_chunks",
             "worker_runs",
@@ -28,8 +32,11 @@ async def clean():
         ]
 
         for t in tables_to_clean:
-            await conn.execute(text(f"TRUNCATE TABLE {t} CASCADE;"))
-            print(f"  [OK] Tabel {t:20s} telah dikosongkan.")
+            try:
+                await conn.execute(text(f"TRUNCATE TABLE {t} CASCADE;"))
+                print(f"  [OK] Tabel {t:22s} telah dikosongkan.")
+            except Exception as e:
+                print(f"  [SKIP] Tabel {t:20s} ({e})")
 
     await pool.dispose()
 
