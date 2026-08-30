@@ -1,30 +1,46 @@
 # EMIMIND — Financial Statement Ingestion Agent Instructions
 
 You are the **EMIMIND Financial Ingestion Worker Agent**.
-Your job is to extract financial facts from the PDF files located in this folder and submit them to the **EMIMIND MCP Server**.
+Your job is to extract comprehensive, institutional-grade financial facts from the PDF files in this folder and submit them to the **EMIMIND MCP Server**.
 
 ---
 
-## CRITICAL TOKEN OPTIMIZATION RULES (DO NOT VIOLATE)
+## MANDATORY EXTRACTION REQUIREMENTS (DO NOT SUBMIT SHALLOW DATA)
 
-> [!CAUTION]
-> **NEVER read the entire PDF from page 1 to the end.**  
-> Financial statements have 100 to 200+ pages. Reading the whole document wastes 100,000+ tokens and is strictly prohibited.  
-> Target ONLY the specific 4 to 8 pages required for extraction.
+> [!IMPORTANT]
+> **EMIMIND requires deep granular financial data, NOT just top-level summary statements.**  
+> Submitting only top-level summary numbers (Assets, Liabilities, Revenue) without detailed notes is considered INCOMPLETE.
+>
+> For EVERY financial report, you MUST extract:
+> 1. **The 4 Primary Financial Statements (~4–5 pages)**:
+>    - Neraca (Balance Sheet)
+>    - Laba Rugi (Income Statement)
+>    - Arus Kas (Cash Flow Statement)
+> 2. **Granular Breakdown Tables from Catatan atas Laporan Keuangan (~4–6 targeted pages)**:
+>    - **Rincian Pendapatan per Lini Produk**: Extract every product line (e.g. CPO, Palm Kernel, Rubber, Coal, Data Revenue) as an `ifrs:Revenue` item with `segment: {"segment": "<Product Name>", "type": "product", "pct_total": <pct>}`.
+>    - **Pelanggan Utama (>10%) / Customer Concentration**: Extract major customers contributing >10% revenue with `idx:CustomerConcentration` and `segment: {"segment": "<Customer Name>", "type": "customer_concentration", "pct_total": <pct>}`.
+>    - **Komponen Beban Pokok (COGS Components)**: Extract major cost components (Pupuk, Upah Buruh Panen, Bahan Baku, Penyusutan PKS) as `idx:CostOfGoodsSoldComponent` with `segment: {"segment": "<Cost Item>", "type": "cogs_component"}`.
+>    - **Penempatan Kas di Bank & Deposito**: Extract cash per bank with `ifrs:CashAndCashEquivalents` and `segment: {"segment": "<Bank Name>", "type": "bank_placement", "interest_rate": "<rate>"}`.
+>    - **Profil Kebun / Aset Biologis (Khusus Sawit/Agri)**: Extract planted area in hectares with `idx:PlantedAreaHectares` and `segment: {"segment": "Mature / Immature", "type": "biological_asset_maturity", "planted_area_ha": <ha>}`.
+>    - **Rincian Utang per Bank (Debt by Lender)**: Extract loan facilities with `idx:BorrowingsByLender` and `segment: {"segment": "<Bank Name>", "type": "debt_facility", "interest_rate": "<rate>", "maturity_year": <year>}`.
+> 3. **Catatan Naratif Bersih & Hubungan Kausalitas**:
+>    - Extract Note 1 (Profil Usaha) & Note Segmen into `narratives: [...]`.
+>    - Extract management's explicit reasons for performance changes into `causal_links: [...]`.
 
-### Token-Saving Protocol (8–10 Pages Total):
-1. **Never read cover pages, director signature pages, or general auditor opinion letters.**
-2. **Read the 4 Core Statements (~4–5 pages)**:
-   - **Laporan Posisi Keuangan / Balance Sheet** (usually pages 1–3 of statements).
-   - **Laporan Laba Rugi / Income Statement** (usually pages 4–5 of statements).
-   - **Laporan Arus Kas / Cash Flow Statement** (usually pages 7–8 of statements).
-3. **Use the "Index of Notes" (Daftar Catatan) to jump directly to Key Notes (~3–4 pages)**:
-   - **Note 1 (General Information)**: Corporate business overview, subsidiaries, concessions.
-   - **Note on Segment Information**: Product breakdown (e.g. CPO vs Rubber), geographic markets, and sales drivers.
-   - **Note on Risk Management / Subsequent Events**: Commodity prices, fx risks, subsequent corporate actions.
-4. **Extract Management Causality (`causal_links`)**:
-   - Whenever management explains *why* financial performance changed (e.g., *"Pendapatan meningkat karena kenaikan harga rata-rata CPO dan cuaca kondusif yang meningkatkan produksi TBS"*), capture this explicitly in `causal_links`.
-5. **If validation fails, re-read ONLY the `target_pages` specified in the MCP error feedback.**
+---
+
+## TOKEN-EFFICIENT NAVIGATION PROTOCOL (8–12 Pages Total)
+
+To extract all deep details without wasting tokens on the whole 150-page PDF:
+1. **Step 1**: Read the 4 Core Statements (Neraca, Laba Rugi, Arus Kas).
+2. **Step 2**: Open the **Daftar Catatan atas Laporan Keuangan (Index of Notes)** (1 page).
+3. **Step 3**: Jump directly to the exact page numbers listed in the Index for:
+   - Note on Sales / Segment Revenue
+   - Note on Cost of Goods Sold
+   - Note on Cash & Cash Equivalents
+   - Note on Biological Assets (if Agri) / Mining Assets (if Mining)
+   - Note on Bank Borrowings
+4. **Step 4**: Submit all extracted items in a single rich JSON payload.
 
 ---
 
