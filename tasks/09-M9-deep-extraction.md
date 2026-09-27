@@ -167,7 +167,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
   - Existing tests in `tests/unit/test_mcp_*.py` still pass (update fixtures in `_mcp_contract_fixtures.py` to include `statement`).
 
 ### M9.1.5 — Single reset path
-- [ ] **Files:** `scripts/clean_documents.py` (delete), `scripts/reset_extraction_data.py` (add `document_pages`, `document_page_tables` to `EXTRACTION_TABLES` once M9.2.1 lands; guard with `IF EXISTS`), `README.md`/`docs/runbook.md` (any reference to `clean_documents.py`)
+- [x] **Files:** `scripts/clean_documents.py` (delete), `scripts/reset_extraction_data.py` (add `document_pages`, `document_page_tables` to `EXTRACTION_TABLES` once M9.2.1 lands; guard with `IF EXISTS`), `README.md`/`docs/runbook.md` (any reference to `clean_documents.py`)
 - **Depends on:** none
 - **What:** Remove the second reset script so there is exactly one documented reset.
 - **Done when:**
