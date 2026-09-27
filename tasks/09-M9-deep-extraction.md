@@ -57,7 +57,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
   - `global.documents` equals `SELECT count(*) FROM documents`, checked with `psql` or a one-line Python query.
 
 ### M9.0.2 — Synthetic PDF fixture builder
-- [ ] **Files:** `tests/fixtures/m9/build_fixtures.py` (new), `tests/fixtures/m9/*.pdf` (generated at test time into `tmp_path`, not committed), `tests/unit/test_m9_fixtures.py` (new)
+- [x] **Files:** `tests/fixtures/m9/build_fixtures.py` (new), `tests/fixtures/m9/*.pdf` (generated at test time into `tmp_path`, not committed), `tests/unit/test_m9_fixtures.py` (new)
 - **Depends on:** none. **Parallel-safe with:** M9.0.1, M9.1.*
 - **What:** Pytest fixtures (session-scoped) that generate, with PyMuPDF:
   1. `fs_small.pdf`, 8 pages:
