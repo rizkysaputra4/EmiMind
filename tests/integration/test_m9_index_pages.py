@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import contextlib
 import io
-from pathlib import Path
 import shutil
 import uuid
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -64,6 +64,30 @@ async def _verify_fs_small_pages(engine: AsyncEngine, doc_id: str, doc_hash: str
         runs = runs_res.mappings().all()
         assert len(runs) == 1
         assert runs[0]["status"] == "ok"
+
+        # Check document_page_tables for page_index = 2
+        table_count_res = await conn.execute(
+            text("SELECT count(*) FROM document_page_tables WHERE doc_id = :id AND page_index = 2"),
+            {"id": doc_id},
+        )
+        assert (table_count_res.scalar() or 0) >= 1
+
+        tables_p2 = (
+            await conn.execute(
+                text("SELECT cells, extraction_method, unit_hint FROM document_page_tables WHERE doc_id = :id AND page_index = 2"),
+                {"id": doc_id},
+            )
+        ).mappings().all()
+        assert len(tables_p2) >= 1
+        cells = tables_p2[0]["cells"]
+        assert isinstance(cells, list) and len(cells) > 0
+        for cell in cells:
+            assert "row" in cell
+            assert "col" in cell
+            assert "text" in cell
+            assert "value" in cell
+            assert "bbox" in cell
+            assert isinstance(cell["bbox"], list) and len(cell["bbox"]) == 4
 
 
 @pytest.mark.integration
@@ -207,6 +231,13 @@ async def test_index_pages_scanned(tmp_path: Path) -> None:
             for row in rows:
                 assert row["text_source"] == "ocr"
                 assert row["text_len"] > 50
+
+            # OCR pages get no grid
+            ocr_tables_count = await conn.execute(
+                text("SELECT count(*) FROM document_page_tables WHERE doc_id = :id"),
+                {"id": doc_id},
+            )
+            assert ocr_tables_count.scalar() == 0
 
     finally:
         async with engine.connect() as conn:

@@ -219,6 +219,7 @@ class TableCell(BaseModel):
     row: int
     col: int
     text: str
+    value: float | None = None
     bbox: BBox
     confidence: float = Field(ge=0.0, le=1.0)
 
@@ -228,8 +229,9 @@ class ExtractedTable(BaseModel):
 
     page_num: int
     cells: list[TableCell]
-    extraction_method: Literal["camelot_lattice", "camelot_stream", "ocr", "llm"]
+    extraction_method: Literal["camelot_lattice", "camelot_stream", "ocr", "llm", "pdfplumber"]
     confidence: float = Field(ge=0.0, le=1.0)
+    unit_hint: str | None = None
 
 
 class ExtractedFact(BaseModel):

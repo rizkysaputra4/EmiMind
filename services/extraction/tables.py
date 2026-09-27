@@ -122,6 +122,7 @@ def extract_tables(pdf_bytes: bytes, pages: list[PageContent]) -> list[Extracted
                 continue
 
             page_tables: list[ExtractedTable] = []
+            unit = detect_unit_from_header(page.text)
 
             # 1. Try Camelot lattice
             try:
@@ -142,6 +143,7 @@ def extract_tables(pdf_bytes: bytes, pages: list[PageContent]) -> list[Extracted
                                         cells=cells,
                                         extraction_method="camelot_lattice",
                                         confidence=0.95,
+                                        unit_hint=unit,
                                     )
                                 )
             except Exception:
@@ -166,6 +168,7 @@ def extract_tables(pdf_bytes: bytes, pages: list[PageContent]) -> list[Extracted
                                         cells=cells,
                                         extraction_method="camelot_stream",
                                         confidence=0.85,
+                                        unit_hint=unit,
                                     )
                                 )
                 except Exception:
@@ -199,6 +202,7 @@ def _camelot_table_to_cells(t: Any) -> list[TableCell]:
                         row=int(r_idx),
                         col=int(c_idx),
                         text=text,
+                        value=parse_numeric_value(text),
                         bbox=BBox(0.0, float(r_idx * 15), 500.0, float((r_idx + 1) * 15)),
                         confidence=0.90,
                     )
@@ -215,6 +219,7 @@ def _extract_tables_pdfplumber(pdf_bytes: bytes, pages: list[PageContent]) -> li
                 continue
             plumber_page = pdf.pages[page.page_num - 1]
             tables = plumber_page.extract_tables() or []
+            unit = detect_unit_from_header(page.text)
             for t in tables:
                 cells: list[TableCell] = []
                 for r_idx, row in enumerate(t):
@@ -226,6 +231,7 @@ def _extract_tables_pdfplumber(pdf_bytes: bytes, pages: list[PageContent]) -> li
                                     row=r_idx,
                                     col=c_idx,
                                     text=text,
+                                    value=parse_numeric_value(text),
                                     bbox=BBox(
                                         0.0, float(r_idx * 15), 500.0, float((r_idx + 1) * 15)
                                     ),
@@ -237,11 +243,50 @@ def _extract_tables_pdfplumber(pdf_bytes: bytes, pages: list[PageContent]) -> li
                         ExtractedTable(
                             page_num=page.page_num,
                             cells=cells,
-                            extraction_method="camelot_stream",
+                            extraction_method="pdfplumber",
                             confidence=0.80,
+                            unit_hint=unit,
                         )
                     )
     return extracted
+
+
+def table_to_page_grid_dict(table: ExtractedTable, table_index: int = 0) -> dict[str, Any]:
+    """Formats an ExtractedTable for storage in document_page_tables."""
+    cells_data = [
+        {
+            "row": c.row,
+            "col": c.col,
+            "text": c.text,
+            "value": c.value,
+            "bbox": [c.bbox[0], c.bbox[1], c.bbox[2], c.bbox[3]],
+            "confidence": c.confidence,
+        }
+        for c in table.cells
+    ]
+    return {
+        "page_index": table.page_num,
+        "table_index": table_index,
+        "extraction_method": table.extraction_method,
+        "confidence": table.confidence,
+        "unit_hint": table.unit_hint or "IDR",
+        "cells": cells_data,
+    }
+
+
+def extract_page_table_grids(
+    pdf_bytes: bytes,
+    pages: list[PageContent],
+) -> list[dict[str, Any]]:
+    """Extracts tables across pages and returns per-table grids formatted for document_page_tables."""
+    tables = extract_tables(pdf_bytes, pages)
+    grids: list[dict[str, Any]] = []
+    page_counts: dict[int, int] = {}
+    for t in tables:
+        t_idx = page_counts.get(t.page_num, 0)
+        page_counts[t.page_num] = t_idx + 1
+        grids.append(table_to_page_grid_dict(t, table_index=t_idx))
+    return grids
 
 
 def tables_to_facts(
@@ -317,7 +362,7 @@ def tables_to_facts(
 
             # If the first candidate column looks like an isolated note number (e.g. 1-99)
             # while the next column has a substantial financial number, skip the note number
-            chosen_col, chosen_val, chosen_cell = candidate_vals[0]
+            _chosen_col, chosen_val, chosen_cell = candidate_vals[0]
             if len(candidate_vals) > 1:
                 first_text = candidate_vals[0][2].text.strip()
                 # Check if first col is a small unformatted integer (e.g. "4", "5", "23") note reference
@@ -326,7 +371,7 @@ def tables_to_facts(
                     and abs(candidate_vals[0][1]) < 200
                     and abs(candidate_vals[1][1]) >= 100
                 ):
-                    chosen_col, chosen_val, chosen_cell = candidate_vals[1]
+                    _chosen_col, chosen_val, chosen_cell = candidate_vals[1]
 
             # Determine period type (BS is instant, others duration_ytd)
             period_type: PeriodType = "duration_ytd"

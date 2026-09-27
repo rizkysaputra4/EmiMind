@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import json
 import re
 from typing import Any
 
@@ -14,10 +15,12 @@ from sqlalchemy import text
 from services.extraction.ocr import ocr_page
 from services.extraction.page_quality import needs_ocr
 from services.extraction.pdf import detect_language, parse_pdf
+from services.extraction.tables import extract_page_table_grids
 from services.shared.config import get_settings
 from services.shared.db import create_pool
 from services.shared.logging import get_logger
 from services.shared.minio_client import ensure_bucket, get_minio
+from services.shared.types import PageContent
 
 log = get_logger("ingest.index_pages")
 WORKER_VERSION = "1.0"
@@ -155,6 +158,7 @@ async def index_pages_task(ctx: dict[str, Any], doc_id: str) -> dict[str, Any]:
 
         total_pages = len(mu_doc)
         log.info("Indexing pages for document", doc_id=doc_id, pages=total_pages)
+        pdf_text_pages: list[PageContent] = []
 
         try:
             for page_index in range(1, total_pages + 1):
@@ -173,6 +177,11 @@ async def index_pages_task(ctx: dict[str, Any], doc_id: str) -> dict[str, Any]:
                     text_source = "pdf_text"
                     page_text = raw_text
                     page_lang = parsed_page.language if parsed_page else detect_language(page_text)
+                    pdf_text_pages.append(
+                        parsed_page
+                        if parsed_page
+                        else PageContent(page_num=page_index, text=page_text, language=page_lang, has_text_layer=True)
+                    )
 
                 # 5. Render 150 DPI WebP image and upload to MinIO
                 pix = mu_page.get_pixmap(dpi=150)
@@ -222,7 +231,39 @@ async def index_pages_task(ctx: dict[str, Any], doc_id: str) -> dict[str, Any]:
                     },
                 )
 
-            # 8. Record worker_runs
+            # 8. Extract table grids for pdf_text pages and store in document_page_tables
+            if pdf_text_pages:
+                grids = extract_page_table_grids(pdf_bytes, pdf_text_pages)
+                for grid in grids:
+                    await conn.execute(
+                        text(
+                            """
+                            INSERT INTO document_page_tables (
+                                doc_id, page_index, table_index, extraction_method,
+                                confidence, unit_hint, cells
+                            ) VALUES (
+                                :doc_id, :page_index, :table_index, :extraction_method,
+                                :confidence, :unit_hint, CAST(:cells AS jsonb)
+                            )
+                            ON CONFLICT (doc_id, page_index, table_index) DO UPDATE SET
+                                extraction_method = EXCLUDED.extraction_method,
+                                confidence = EXCLUDED.confidence,
+                                unit_hint = EXCLUDED.unit_hint,
+                                cells = EXCLUDED.cells;
+                            """
+                        ),
+                        {
+                            "doc_id": doc_id,
+                            "page_index": grid["page_index"],
+                            "table_index": grid["table_index"],
+                            "extraction_method": grid["extraction_method"],
+                            "confidence": grid["confidence"],
+                            "unit_hint": grid["unit_hint"],
+                            "cells": json.dumps(grid["cells"]),
+                        },
+                    )
+
+            # 9. Record worker_runs
             await conn.execute(
                 text(
                     """

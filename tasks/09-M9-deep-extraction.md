@@ -224,7 +224,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
   - Running the task twice creates no duplicate rows and records one `worker_runs` row with status `ok`.
 
 ### M9.2.3 — Table grids at index time
-- [ ] **Files:** `services/ingest/tasks/index_pages.py` (extend) or `services/ingest/tasks/index_page_tables.py` (new), `services/extraction/tables.py` (add a helper returning per-table `unit_hint` and parsed cell `value`s), `tests/unit/test_tables.py` (extend), `tests/integration/test_m9_index_pages.py` (extend)
+- [x] **Files:** `services/ingest/tasks/index_pages.py` (extend) or `services/ingest/tasks/index_page_tables.py` (new), `services/extraction/tables.py` (add a helper returning per-table `unit_hint` and parsed cell `value`s), `tests/unit/test_tables.py` (extend), `tests/integration/test_m9_index_pages.py` (extend)
 - **Depends on:** M9.2.2
 - **What:**
   - For each `pdf_text` page, run the existing `extract_tables` cascade.
