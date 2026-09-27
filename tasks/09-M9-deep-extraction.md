@@ -134,7 +134,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
   - Integration (`tests/integration/test_m9_inspect.py`, marked): after inspecting the renamed fixture, `SELECT period_end, page_count, fiscal_period FROM documents WHERE id = :doc_id` returns `(2025-06-30, 8, '2025Q2')`.
 
 ### M9.1.3 — Migration 022: full-segment fact uniqueness
-- [ ] **Files:** `db/schema/022_fact_segment_uniqueness.sql` (new); `services/mcp/server.py`, `services/ingest/tasks/normalize_facts.py`, `services/ingest/tasks/xbrl_sidecar.py` (update their `ON CONFLICT` targets); `tests/integration/test_m9_fact_uniqueness.py` (new)
+- [x] **Files:** `db/schema/022_fact_segment_uniqueness.sql` (new); `services/mcp/server.py`, `services/ingest/tasks/normalize_facts.py`, `services/ingest/tasks/xbrl_sidecar.py` (update their `ON CONFLICT` targets); `tests/integration/test_m9_fact_uniqueness.py` (new)
 - **Depends on:** none. **Parallel-safe with:** M9.1.1, M9.1.2
 - **What:**
   - Drop `ux_financial_facts_ticker_period_concept_seg`.

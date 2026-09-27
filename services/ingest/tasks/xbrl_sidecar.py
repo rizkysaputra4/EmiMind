@@ -105,7 +105,7 @@ async def xbrl_sidecar(ctx: dict[str, Any], doc_id: str) -> dict[str, Any]:
                 :value_numeric, :unit, false, :period_type, :source_doc_id,
                 0, '[0, 0, 0, 0]'::jsonb, 'xbrl', 1.0, false
             )
-            ON CONFLICT (ticker, fiscal_period, concept_id, (coalesce(segment->>'segment',''))) WHERE is_restated = false
+            ON CONFLICT (ticker, fiscal_period, concept_id, (coalesce(segment, '{}'::jsonb))) WHERE is_restated = false
             DO UPDATE SET
                 value_numeric = EXCLUDED.value_numeric,
                 unit = EXCLUDED.unit,

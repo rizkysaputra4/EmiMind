@@ -797,7 +797,7 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
                         :doc_id, :ticker, :period_end, :period, :statement, :concept_id, :label,
                         :val, :unit, CAST(:seg AS jsonb), :period_type, :std, :page, 0.95, 'llm_extract'
                     )
-                    ON CONFLICT (ticker, fiscal_period, concept_id, (coalesce(segment->>'segment','')))
+                    ON CONFLICT (ticker, fiscal_period, concept_id, (coalesce(segment, '{}'::jsonb)))
                     WHERE is_restated = false
                     DO UPDATE SET
                         value_numeric = EXCLUDED.value_numeric,

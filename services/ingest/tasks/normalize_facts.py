@@ -171,7 +171,7 @@ async def normalize_facts_task(ctx: dict[str, Any], doc_id: str) -> dict[str, An
                 :value_numeric, :unit, false, :period_type, :source_doc_id,
                 :source_page, CAST(:source_bbox AS jsonb), :method, :extraction_conf, :needs_review
             )
-            ON CONFLICT (ticker, fiscal_period, concept_id, (coalesce(segment->>'segment',''))) WHERE is_restated = false
+            ON CONFLICT (ticker, fiscal_period, concept_id, (coalesce(segment, '{}'::jsonb))) WHERE is_restated = false
             DO UPDATE SET
                 value_numeric = EXCLUDED.value_numeric,
                 unit = EXCLUDED.unit,
