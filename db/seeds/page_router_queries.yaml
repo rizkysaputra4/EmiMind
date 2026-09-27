@@ -26,6 +26,23 @@ BALANCE_SHEET:
     anchor_patterns:
       - "LAPORAN POSISI KEUANGAN"
       - "STATEMENT OF FINANCIAL POSITION"
+  BANK:
+    terms_id:
+      - "laporan posisi keuangan"
+      - "laporan posisi keuangan konsolidasian"
+      - "jumlah aset"
+      - "liabilitas"
+      - "ekuitas"
+    terms_en:
+      - "statement of financial position"
+      - "financial position"
+      - "total assets"
+      - "liabilities"
+      - "equity"
+    max_pages: 8
+    anchor_patterns:
+      - "LAPORAN POSISI KEUANGAN"
+      - "STATEMENT OF FINANCIAL POSITION"
 
 INCOME_STATEMENT:
   ALL:
@@ -94,49 +111,100 @@ CASH_BANKS:
       - "current accounts in banks"
       - "time deposits"
       - "third parties"
-    max_pages: 3
+    max_pages: 4
     anchor_patterns:
       - "KAS DAN SETARA KAS"
       - "CASH AND CASH EQUIVALENTS"
+  BANK:
+    terms_id:
+      - "giro pada bank lain"
+      - "penempatan pada bank indonesia"
+      - "penempatan pada bank lain"
+      - "kas"
+    terms_en:
+      - "current accounts with other banks"
+      - "placements with bank indonesia"
+      - "placements with other banks"
+      - "cash"
+    max_pages: 6
+    anchor_patterns:
+      - "GIRO PADA BANK LAIN"
+      - "PENEMPATAN PADA BANK"
+      - "CURRENT ACCOUNTS WITH OTHER BANKS"
 
 REVENUE_CUSTOMERS:
   ALL:
     terms_id:
       - "pendapatan usaha"
+      - "penjualan"
       - "rincian pelanggan"
       - "penjualan melebihi 10%"
       - "pelanggan utama"
+      - "kontrak dengan pelanggan"
     terms_en:
       - "operating revenues"
+      - "sales"
       - "revenue by product"
       - "customers exceeding 10%"
       - "major customers"
-    max_pages: 4
+    max_pages: 5
     anchor_patterns:
       - "PENDAPATAN"
       - "REVENUE"
       - "PENJUALAN"
+      - "PELANGGAN"
+  BANK:
+    terms_id:
+      - "pendapatan bunga"
+      - "pendapatan syariah"
+      - "pendapatan provisi dan komisi"
+      - "pendapatan operasional lainnya"
+    terms_en:
+      - "interest income"
+      - "sharia income"
+      - "fees and commissions"
+      - "other operating income"
+    max_pages: 5
+    anchor_patterns:
+      - "PENDAPATAN BUNGA"
+      - "INTEREST INCOME"
 
 COGS_BREAKDOWN:
   ALL:
     terms_id:
       - "beban pokok penjualan"
       - "beban pokok pendapatan"
+      - "biaya produksi"
       - "bahan baku"
       - "upah tenaga kerja"
       - "penyusutan"
     terms_en:
       - "cost of goods sold"
       - "cost of revenue"
+      - "production cost"
       - "raw materials"
       - "direct labour"
       - "depreciation"
-    max_pages: 4
+    max_pages: 5
     anchor_patterns:
       - "BEBAN POKOK PENJUALAN"
       - "BEBAN POKOK PENDAPATAN"
       - "COST OF GOODS SOLD"
       - "COST OF REVENUES"
+  BANK:
+    terms_id:
+      - "beban bunga"
+      - "beban syariah"
+      - "beban bagi hasil"
+      - "beban provisi dan komisi"
+    terms_en:
+      - "interest expense"
+      - "sharia expense"
+      - "fees and commissions expense"
+    max_pages: 5
+    anchor_patterns:
+      - "BEBAN BUNGA"
+      - "INTEREST EXPENSE"
 
 DEBT_FACILITIES:
   ALL:
@@ -158,12 +226,31 @@ DEBT_FACILITIES:
       - "PINJAMAN JANGKA PANJANG"
       - "BANK LOANS"
       - "BORROWINGS"
+  BANK:
+    terms_id:
+      - "pinjaman yang diterima"
+      - "surat berharga yang diterbitkan"
+      - "pinjaman subordinasi"
+      - "suku bunga"
+      - "jatuh tempo"
+    terms_en:
+      - "borrowings"
+      - "securities issued"
+      - "subordinated loans"
+      - "interest rate"
+      - "maturity"
+    max_pages: 6
+    anchor_patterns:
+      - "PINJAMAN YANG DITERIMA"
+      - "SURAT BERHARGA YANG DITERBITKAN"
+      - "BORROWINGS"
 
 BANK_LOANS_NPL:
   ALL:
     terms_id:
       - "kredit yang diberikan"
       - "kolektibilitas"
+      - "kualitas aset"
       - "lancar"
       - "kurang lancar"
       - "diragukan"
@@ -173,12 +260,13 @@ BANK_LOANS_NPL:
     terms_en:
       - "loans and advances"
       - "collectibility"
+      - "asset quality"
       - "current"
       - "substandard"
       - "doubtful"
       - "loss"
       - "allowance for impairment losses"
-    max_pages: 6
+    max_pages: 12
     anchor_patterns:
       - "KREDIT YANG DIBERIKAN"
       - "KUALITAS ASET"
@@ -190,18 +278,24 @@ PLANTATION_AREA:
       - "aset biologis"
       - "tanaman menghasilkan"
       - "tanaman belum menghasilkan"
+      - "tanaman perkebunan"
+      - "tanaman produktif"
       - "luas areal perkebunan"
+      - "luas area tanaman produktif"
       - "hektar"
     terms_en:
       - "biological assets"
       - "mature plantations"
       - "immature plantations"
+      - "bearer plants"
+      - "total area of bearer plants"
       - "planted area"
       - "hectares"
-    max_pages: 4
+    max_pages: 6
     anchor_patterns:
       - "ASET BIOLOGIS"
       - "TANAMAN PERKEBUNAN"
+      - "LUAS AREA TANAMAN PRODUKTIF"
       - "BIOLOGICAL ASSETS"
 
 # Granular Module Synonyms / Aliases
@@ -219,6 +313,21 @@ REVENUE_BREAKDOWN:
     anchor_patterns:
       - "PENDAPATAN"
       - "REVENUE"
+  BANK:
+    terms_id:
+      - "pendapatan bunga"
+      - "pendapatan syariah"
+      - "pendapatan provisi dan komisi"
+      - "pendapatan operasional lainnya"
+    terms_en:
+      - "interest income"
+      - "sharia income"
+      - "fees and commissions"
+      - "other operating income"
+    max_pages: 5
+    anchor_patterns:
+      - "PENDAPATAN BUNGA"
+      - "INTEREST INCOME"
 
 CUSTOMER_CONCENTRATION:
   ALL:
@@ -226,14 +335,35 @@ CUSTOMER_CONCENTRATION:
       - "pelanggan utama"
       - "transaksi penjualan melebihi 10%"
       - "konsentrasi pelanggan"
+      - "pelanggan tunggal"
     terms_en:
       - "major customers"
       - "sales exceeding 10%"
       - "customer concentration"
+      - "single customer"
     max_pages: 3
     anchor_patterns:
-      - "PELANGGAN"
-      - "CUSTOMERS"
+      - "PELANGGAN TUNGGAL"
+      - "MELEBIHI 10%"
+      - "MAJOR CUSTOMERS"
+      - "EXCEEDING 10%"
+      - "KONSENTRASI PELANGGAN"
+      - "PENDAPATAN DARI KONTRAK"
+  BANK:
+    terms_id:
+      - "pendapatan bunga"
+      - "pendapatan syariah"
+      - "pendapatan provisi dan komisi"
+      - "pendapatan operasional lainnya"
+    terms_en:
+      - "interest income"
+      - "sharia income"
+      - "fees and commissions"
+      - "other operating income"
+    max_pages: 5
+    anchor_patterns:
+      - "PENDAPATAN BUNGA"
+      - "INTEREST INCOME"
 
 COGS_COMPONENTS:
   ALL:
@@ -251,6 +381,20 @@ COGS_COMPONENTS:
     anchor_patterns:
       - "BEBAN POKOK PENJUALAN"
       - "COST OF GOODS SOLD"
+  BANK:
+    terms_id:
+      - "beban bunga"
+      - "beban syariah"
+      - "beban bagi hasil"
+      - "beban provisi dan komisi"
+    terms_en:
+      - "interest expense"
+      - "sharia expense"
+      - "fees and commissions expense"
+    max_pages: 5
+    anchor_patterns:
+      - "BEBAN BUNGA"
+      - "INTEREST EXPENSE"
 
 DEBT_BY_LENDER:
   ALL:
@@ -268,6 +412,24 @@ DEBT_BY_LENDER:
     anchor_patterns:
       - "UTANG BANK"
       - "PINJAMAN JANGKA PANJANG"
+  BANK:
+    terms_id:
+      - "pinjaman yang diterima"
+      - "surat berharga yang diterbitkan"
+      - "pinjaman subordinasi"
+      - "suku bunga"
+      - "jatuh tempo"
+    terms_en:
+      - "borrowings"
+      - "securities issued"
+      - "subordinated loans"
+      - "interest rate"
+      - "maturity"
+    max_pages: 6
+    anchor_patterns:
+      - "PINJAMAN YANG DITERIMA"
+      - "SURAT BERHARGA YANG DITERBITKAN"
+      - "BORROWINGS"
 
 BANK_LOAN_QUALITY_NPL:
   ALL:

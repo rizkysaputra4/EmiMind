@@ -1,0 +1,669 @@
+{
+  "summary": {
+    "core_mean_recall": 1.0,
+    "notes_mean_recall": 1.0,
+    "overall_mean_recall": 1.0,
+    "total_evaluated_modules": 22,
+    "core_module_count": 6,
+    "notes_module_count": 16,
+    "thresholds_met": true
+  },
+  "modules": [
+    {
+      "gold_file": "BMRI_2025Q4.yaml",
+      "ticker": "BMRI",
+      "doc_id": "a7ccfea3-30b5-4e2d-b357-fb5648386eb2",
+      "module": "BALANCE_SHEET",
+      "type": "core",
+      "gold_pages": [
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29
+      ],
+      "returned_pages": [
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29
+      ],
+      "hits": [
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "BMRI_2025Q4.yaml",
+      "ticker": "BMRI",
+      "doc_id": "a7ccfea3-30b5-4e2d-b357-fb5648386eb2",
+      "module": "INCOME_STATEMENT",
+      "type": "core",
+      "gold_pages": [
+        30,
+        31,
+        32
+      ],
+      "returned_pages": [
+        30,
+        31,
+        32,
+        33,
+        34
+      ],
+      "hits": [
+        30,
+        31,
+        32
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "BMRI_2025Q4.yaml",
+      "ticker": "BMRI",
+      "doc_id": "a7ccfea3-30b5-4e2d-b357-fb5648386eb2",
+      "module": "CASH_FLOW",
+      "type": "core",
+      "gold_pages": [
+        35,
+        36,
+        37,
+        38
+      ],
+      "returned_pages": [
+        35,
+        36,
+        37,
+        38
+      ],
+      "hits": [
+        35,
+        36,
+        37,
+        38
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "BMRI_2025Q4.yaml",
+      "ticker": "BMRI",
+      "doc_id": "a7ccfea3-30b5-4e2d-b357-fb5648386eb2",
+      "module": "CASH_BANKS",
+      "type": "notes",
+      "gold_pages": [
+        183,
+        184,
+        185
+      ],
+      "returned_pages": [
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191
+      ],
+      "hits": [
+        183,
+        184,
+        185
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "BMRI_2025Q4.yaml",
+      "ticker": "BMRI",
+      "doc_id": "a7ccfea3-30b5-4e2d-b357-fb5648386eb2",
+      "module": "BANK_LOANS_NPL",
+      "type": "notes",
+      "gold_pages": [
+        217,
+        218,
+        219,
+        220,
+        221,
+        222,
+        223,
+        224,
+        225,
+        226
+      ],
+      "returned_pages": [
+        217,
+        218,
+        219,
+        220,
+        221,
+        222,
+        223,
+        224,
+        225,
+        226
+      ],
+      "hits": [
+        217,
+        218,
+        219,
+        220,
+        221,
+        222,
+        223,
+        224,
+        225,
+        226
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "BMRI_2025Q4.yaml",
+      "ticker": "BMRI",
+      "doc_id": "a7ccfea3-30b5-4e2d-b357-fb5648386eb2",
+      "module": "DEBT_FACILITIES",
+      "type": "notes",
+      "gold_pages": [
+        306,
+        307,
+        308,
+        309
+      ],
+      "returned_pages": [
+        305,
+        306,
+        307,
+        308,
+        309,
+        310,
+        483,
+        484,
+        485,
+        486,
+        487,
+        488,
+        532,
+        533,
+        534,
+        535,
+        536,
+        537
+      ],
+      "hits": [
+        306,
+        307,
+        308,
+        309
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "BMRI_2025Q4.yaml",
+      "ticker": "BMRI",
+      "doc_id": "a7ccfea3-30b5-4e2d-b357-fb5648386eb2",
+      "module": "DEBT_BY_LENDER",
+      "type": "notes",
+      "gold_pages": [
+        306,
+        307,
+        308,
+        309
+      ],
+      "returned_pages": [
+        305,
+        306,
+        307,
+        308,
+        309,
+        310,
+        483,
+        484,
+        485,
+        486,
+        487,
+        488,
+        532,
+        533,
+        534,
+        535,
+        536,
+        537
+      ],
+      "hits": [
+        306,
+        307,
+        308,
+        309
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "BMRI_2025Q4.yaml",
+      "ticker": "BMRI",
+      "doc_id": "a7ccfea3-30b5-4e2d-b357-fb5648386eb2",
+      "module": "REVENUE_CUSTOMERS",
+      "type": "notes",
+      "gold_pages": [
+        385,
+        386
+      ],
+      "returned_pages": [
+        383,
+        384,
+        385,
+        386,
+        387,
+        420,
+        421,
+        422,
+        423,
+        424
+      ],
+      "hits": [
+        385,
+        386
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "BMRI_2025Q4.yaml",
+      "ticker": "BMRI",
+      "doc_id": "a7ccfea3-30b5-4e2d-b357-fb5648386eb2",
+      "module": "REVENUE_BREAKDOWN",
+      "type": "notes",
+      "gold_pages": [
+        385,
+        386
+      ],
+      "returned_pages": [
+        383,
+        384,
+        385,
+        386,
+        387,
+        420,
+        421,
+        422,
+        423,
+        424
+      ],
+      "hits": [
+        385,
+        386
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "BMRI_2025Q4.yaml",
+      "ticker": "BMRI",
+      "doc_id": "a7ccfea3-30b5-4e2d-b357-fb5648386eb2",
+      "module": "COGS_BREAKDOWN",
+      "type": "notes",
+      "gold_pages": [
+        386,
+        387
+      ],
+      "returned_pages": [
+        383,
+        384,
+        385,
+        386,
+        387,
+        531,
+        532,
+        533,
+        534,
+        535
+      ],
+      "hits": [
+        386,
+        387
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "BMRI_2025Q4.yaml",
+      "ticker": "BMRI",
+      "doc_id": "a7ccfea3-30b5-4e2d-b357-fb5648386eb2",
+      "module": "COGS_COMPONENTS",
+      "type": "notes",
+      "gold_pages": [
+        386,
+        387
+      ],
+      "returned_pages": [
+        383,
+        384,
+        385,
+        386,
+        387,
+        531,
+        532,
+        533,
+        534,
+        535
+      ],
+      "hits": [
+        386,
+        387
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "82e20a07-232e-45bc-9a7b-3b160e8c2ece",
+      "module": "BALANCE_SHEET",
+      "type": "core",
+      "gold_pages": [
+        14,
+        15
+      ],
+      "returned_pages": [
+        14,
+        15,
+        16,
+        17,
+        68,
+        69
+      ],
+      "hits": [
+        14,
+        15
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "82e20a07-232e-45bc-9a7b-3b160e8c2ece",
+      "module": "INCOME_STATEMENT",
+      "type": "core",
+      "gold_pages": [
+        16,
+        17
+      ],
+      "returned_pages": [
+        16,
+        17,
+        18,
+        87,
+        88,
+        89,
+        90
+      ],
+      "hits": [
+        16,
+        17
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "82e20a07-232e-45bc-9a7b-3b160e8c2ece",
+      "module": "CASH_FLOW",
+      "type": "core",
+      "gold_pages": [
+        19
+      ],
+      "returned_pages": [
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        33,
+        34,
+        35,
+        36
+      ],
+      "hits": [
+        19
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "82e20a07-232e-45bc-9a7b-3b160e8c2ece",
+      "module": "CASH_BANKS",
+      "type": "notes",
+      "gold_pages": [
+        63,
+        64
+      ],
+      "returned_pages": [
+        62,
+        63,
+        64,
+        65,
+        66,
+        67
+      ],
+      "hits": [
+        63,
+        64
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "82e20a07-232e-45bc-9a7b-3b160e8c2ece",
+      "module": "PLANTATION_AREA",
+      "type": "notes",
+      "gold_pages": [
+        68,
+        69,
+        80
+      ],
+      "returned_pages": [
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        79,
+        80,
+        81,
+        82
+      ],
+      "hits": [
+        68,
+        69,
+        80
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "82e20a07-232e-45bc-9a7b-3b160e8c2ece",
+      "module": "BIOLOGICAL_ASSETS",
+      "type": "notes",
+      "gold_pages": [
+        68,
+        69
+      ],
+      "returned_pages": [
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        79,
+        80,
+        81,
+        82
+      ],
+      "hits": [
+        68,
+        69
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "82e20a07-232e-45bc-9a7b-3b160e8c2ece",
+      "module": "REVENUE_CUSTOMERS",
+      "type": "notes",
+      "gold_pages": [
+        100,
+        101
+      ],
+      "returned_pages": [
+        70,
+        71,
+        72,
+        73,
+        74,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103
+      ],
+      "hits": [
+        100,
+        101
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "82e20a07-232e-45bc-9a7b-3b160e8c2ece",
+      "module": "REVENUE_BREAKDOWN",
+      "type": "notes",
+      "gold_pages": [
+        100,
+        101
+      ],
+      "returned_pages": [
+        99,
+        100,
+        101,
+        102,
+        106,
+        107,
+        108,
+        109,
+        113,
+        114,
+        115,
+        116
+      ],
+      "hits": [
+        100,
+        101
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "82e20a07-232e-45bc-9a7b-3b160e8c2ece",
+      "module": "CUSTOMER_CONCENTRATION",
+      "type": "notes",
+      "gold_pages": [
+        101
+      ],
+      "returned_pages": [
+        100,
+        101,
+        102,
+        106,
+        107,
+        108,
+        114,
+        115,
+        116
+      ],
+      "hits": [
+        101
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "82e20a07-232e-45bc-9a7b-3b160e8c2ece",
+      "module": "COGS_BREAKDOWN",
+      "type": "notes",
+      "gold_pages": [
+        101
+      ],
+      "returned_pages": [
+        79,
+        80,
+        81,
+        82,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106
+      ],
+      "hits": [
+        101
+      ],
+      "recall": 1.0
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "82e20a07-232e-45bc-9a7b-3b160e8c2ece",
+      "module": "COGS_COMPONENTS",
+      "type": "notes",
+      "gold_pages": [
+        101
+      ],
+      "returned_pages": [
+        79,
+        80,
+        81,
+        82,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105
+      ],
+      "hits": [
+        101
+      ],
+      "recall": 1.0
+    }
+  ],
+  "notes": "Generated by eval/router_recall.py"
+}

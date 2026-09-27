@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Any
 
 import numpy as np
 from sqlalchemy import text
@@ -59,14 +58,13 @@ def is_continuation(prev_text: str, next_text: str) -> bool:
     - or same note number in header without introducing a new note heading.
     - returns False if next page introduces a new note or statement heading without '(lanjutan)'.
     """
-    next_header = "\n".join(next_text.splitlines()[:8]).lower()
-    prev_header = "\n".join(prev_text.splitlines()[:8]).lower()
+    next_header = "\n".join(next_text.splitlines()[:25]).lower()
 
     has_cont_marker = "(lanjutan)" in next_header or "(continued)" in next_header
 
-    # Look for note numbers like "12. KREDIT", "Catatan 12", "Note 12", "12."
-    prev_notes = re.findall(r"(?:catatan|note|^|\n)\s*(\d{1,3})\.\s*[a-z]", prev_header)
-    next_notes = re.findall(r"(?:catatan|note|^|\n)\s*(\d{1,3})\.\s*[a-z]", next_header)
+    # Look for note numbers in prev_text and next_header
+    prev_notes = re.findall(r"(?:catatan|note|^|\n)\s*(\d{1,3})\.\s*[A-Za-z]", prev_text)
+    next_notes = re.findall(r"(?:catatan|note|^|\n)\s*(\d{1,3})\.\s*[A-Za-z]", next_header)
 
     if has_cont_marker:
         if prev_notes and next_notes:
@@ -185,6 +183,8 @@ async def route_pages(
         )
         fts_rows = [dict(r) for r in fts_fallback_res.mappings().all()]
 
+    fts_ranked_pages = [int(r["page_index"]) for r in fts_rows]
+
     # Anchor pattern boost: if anchor patterns match, prioritize those pages
     if route_query.anchor_patterns:
         primary_anchors: list[int] = []
@@ -196,83 +196,109 @@ async def route_pages(
             for pat in route_query.anchor_patterns
         )
 
+        excluded_pages: set[int] = set()
         for p_idx, p_text in page_text_map.items():
-            header = p_text[:1000]
+            top_lines = "\n".join(p_text.splitlines()[:15])
+
             # Exclude TOC and auditor report pages
             if re.search(
                 r"daftar\s+isi|table\s+of\s+contents|laporan\s+atas\s+reviu|report\s+on\s+review|auditor\s+independen|independent\s+auditor",
-                header,
+                top_lines,
                 re.I,
             ):
+                excluded_pages.add(p_idx)
                 continue
 
-            if any(re.search(pat, header, re.I) for pat in route_query.anchor_patterns):
-                if re.search(r"\(lanjutan\)|\(continued\)", header, re.I):
-                    cont_anchors.append(p_idx)
-                else:
-                    primary_anchors.append(p_idx)
-            elif not is_core_stmt and any(re.search(pat, p_text, re.I) for pat in route_query.anchor_patterns):
-                body_anchors.append(p_idx)
+            # When querying notes, exclude core statements and Note 2 (Accounting policies)
+            if not is_core_stmt:
+                is_note = bool(re.search(r"catatan\s+atas\s+laporan|notes\s+to\s+(?:the\s+)?(?:consolidated\s+)?financial", top_lines, re.I))
+                is_core = bool(re.search(r"laporan\s+posisi\s+keuangan|statement\s+of\s+financial\s+position|laporan\s+laba\s+rugi|statement\s+of\s+profit\s+or\s+loss|laporan\s+arus\s+kas|statement\s+of\s+cash\s+flows", top_lines, re.I))
+                if not is_note and is_core:
+                    excluded_pages.add(p_idx)
+                    continue
 
-        anchor_matches = primary_anchors + cont_anchors + body_anchors
-        if anchor_matches:
-            boosted_rows: list[dict[str, Any]] = []
-            for am in anchor_matches:
-                boosted_rows.append({"page_index": am, "rank": 10.0})
-            for r in fts_rows:
-                if int(r["page_index"]) not in set(anchor_matches):
-                    boosted_rows.append(r)
-            fts_rows = boosted_rows
+                if re.search(r"kebijakan\s+akuntansi|accounting\s+polic", top_lines, re.I):
+                    excluded_pages.add(p_idx)
+                    continue
 
-    fts_ranked_pages = [int(r["page_index"]) for r in fts_rows]
+        fts_rows = [r for r in fts_rows if int(r["page_index"]) not in excluded_pages]
+
+        for p_idx, p_text in page_text_map.items():
+            if p_idx in excluded_pages:
+                continue
+
+            header_1k = p_text[:1000]
+            for pat in route_query.anchor_patterns:
+                m = re.search(pat, header_1k, re.I)
+                if not m and not is_core_stmt:
+                    m = re.search(r"(?:^|\n)\s*(?:(?:catatan|note)\s*)?\d{1,3}\.\s*" + pat, p_text[:2500], re.I)
+
+                if m:
+                    is_cont = bool(re.search(pat + r"[^\n]*(?:\(lanjutan\)|\(continued\))", p_text[:2500], re.I))
+                    if is_cont:
+                        cont_anchors.append(p_idx)
+                    else:
+                        primary_anchors.append(p_idx)
+                    break
+            else:
+                if not is_core_stmt and any(re.search(pat, p_text, re.I) for pat in route_query.anchor_patterns):
+                    body_anchors.append(p_idx)
+
+        # Prioritize primary anchors, then remaining FTS rows
+        primary_unique = list(dict.fromkeys(primary_anchors))
+        fts_unboosted = [int(r["page_index"]) for r in fts_rows if int(r["page_index"]) not in set(primary_unique)]
+        fts_ranked_pages = primary_unique + fts_unboosted
 
     # 3. ANN Leg (skipped when embeddings are NULL)
     ann_ranked_pages: list[int] = []
     if all_have_emb:
         emb_inst = embedder or Embedder()
-        query_text = " ".join(all_terms)
-        q_vecs = await emb_inst.embed([query_text])
-        q_vec = q_vecs[0] if q_vecs else [0.0] * 1024
-
         has_pgvector = await _check_has_pgvector(conn)
-        if has_pgvector:
-            q_vec_list = [float(v) for v in q_vec]
-            ann_res = await conn.execute(
-                text(
-                    """
-                    SELECT page_index,
-                           (embedding <=> :q_vec::vector) AS dist
-                    FROM document_pages
-                    WHERE doc_id = :doc_id AND embedding IS NOT NULL
-                    ORDER BY dist ASC
-                    LIMIT 40
-                    """
-                ),
-                {"doc_id": doc_id, "q_vec": str(q_vec_list)},
-            )
-            ann_ranked_pages = [int(r["page_index"]) for r in ann_res.mappings().all()]
-        else:
-            # Fallback ANN computation via numpy cosine similarity
-            emb_res = await conn.execute(
-                text(
-                    """
-                    SELECT page_index, embedding
-                    FROM document_pages
-                    WHERE doc_id = :doc_id AND embedding IS NOT NULL
-                    """
-                ),
-                {"doc_id": doc_id},
-            )
-            rows = [dict(r) for r in emb_res.mappings().all()]
-            if rows:
-                q_norm = np.linalg.norm(q_vec) + 1e-9
-                scored: list[tuple[int, float]] = []
-                for r in rows:
-                    p_emb = np.array(r["embedding"], dtype=float)
-                    sim = float(np.dot(p_emb, q_vec) / ((np.linalg.norm(p_emb) + 1e-9) * q_norm))
-                    scored.append((int(r["page_index"]), sim))
-                scored.sort(key=lambda s: -s[1])
-                ann_ranked_pages = [p for p, _ in scored[:40]]
+        has_real_model = emb_inst._get_model() is not None
+
+        if has_pgvector or has_real_model:
+            query_text = " ".join(all_terms)
+            q_vecs = await emb_inst.embed([query_text])
+            q_vec = q_vecs[0] if q_vecs else [0.0] * 1024
+
+            if has_pgvector:
+                q_vec_list = [float(v) for v in q_vec]
+                ann_res = await conn.execute(
+                    text(
+                        """
+                        SELECT page_index,
+                               (embedding <=> :q_vec::vector) AS dist
+                        FROM document_pages
+                        WHERE doc_id = :doc_id AND embedding IS NOT NULL
+                        ORDER BY dist ASC
+                        LIMIT 40
+                        """
+                    ),
+                    {"doc_id": doc_id, "q_vec": str(q_vec_list)},
+                )
+                ann_ranked_pages = [int(r["page_index"]) for r in ann_res.mappings().all()]
+            else:
+                # Fallback ANN computation via numpy cosine similarity
+                emb_res = await conn.execute(
+                    text(
+                        """
+                        SELECT page_index, embedding
+                        FROM document_pages
+                        WHERE doc_id = :doc_id AND embedding IS NOT NULL
+                        """
+                    ),
+                    {"doc_id": doc_id},
+                )
+                rows = [dict(r) for r in emb_res.mappings().all()]
+                if rows:
+                    q_norm = np.linalg.norm(q_vec) + 1e-9
+                    scored: list[tuple[int, float]] = []
+                    for r in rows:
+                        p_emb = np.array(r["embedding"], dtype=float)
+                        sim = float(np.dot(p_emb, q_vec) / ((np.linalg.norm(p_emb) + 1e-9) * q_norm))
+                        scored.append((int(r["page_index"]), sim))
+                    scored.sort(key=lambda s: -s[1])
+                    ann_ranked_pages = [p for p, _ in scored[:40]]
 
     # 4. RRF Fusion
     ranked_lists: list[list[int]] = []
@@ -289,17 +315,31 @@ async def route_pages(
 
     # 5. Span Expansion and Continuation
     raw_spans: list[tuple[int, int, float, int]] = []
+    primary_set = set(primary_anchors) if route_query.anchor_patterns else set()
     for seed_page, seed_score in top_seeds:
-        start = max(1, seed_page - 1)
+        is_seed_primary = seed_page in primary_set
+        start = seed_page if is_seed_primary else max(1, seed_page - 1)
         end = min(total_pages, seed_page + 1)
 
-        curr = end
-        while curr < total_pages and (curr + 1 - start + 1) <= route_query.max_pages:
-            prev_p_text = page_text_map.get(curr, "")
-            next_p_text = page_text_map.get(curr + 1, "")
+        # Forward continuation
+        curr_end = end
+        while curr_end < total_pages and (curr_end + 1 - start + 1) <= route_query.max_pages:
+            prev_p_text = page_text_map.get(curr_end, "")
+            next_p_text = page_text_map.get(curr_end + 1, "")
             if is_continuation(prev_p_text, next_p_text):
-                end = curr + 1
-                curr += 1
+                curr_end += 1
+                end = curr_end
+            else:
+                break
+
+        # Backward continuation
+        curr_start = start
+        while curr_start > 1 and (end - (curr_start - 1) + 1) <= route_query.max_pages:
+            prev_p_text = page_text_map.get(curr_start - 1, "")
+            curr_p_text = page_text_map.get(curr_start, "")
+            if is_continuation(prev_p_text, curr_p_text):
+                curr_start -= 1
+                start = curr_start
             else:
                 break
 

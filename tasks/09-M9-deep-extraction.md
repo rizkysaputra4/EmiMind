@@ -312,7 +312,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
   - Manual smoke test via the MCP client on the indexed BMRI lighthouse doc: `get_routed_pages(<doc_id>, "BALANCE_SHEET")` returns pages whose `page_text` contains `Jumlah aset` or `Total assets`. Record the page numbers in the commit message.
 
 ### M9.3.4 — Router gold set + recall eval
-- [ ] **Files:** `eval/router_gold/BMRI_2025Q4.yaml`, `eval/router_gold/LSIP_2025Q4.yaml` (new), `eval/router_recall.py` (new), `eval/reports/router_recall.json` (generated)
+- [x] **Files:** `eval/router_gold/BMRI_2025Q4.yaml`, `eval/router_gold/LSIP_2025Q4.yaml` (new), `eval/router_recall.py` (new), `eval/reports/router_recall.json` (generated)
 - **Depends on:** M9.3.2, lighthouse docs indexed (Phase 2 exit)
 - **What:**
   - Hand-label, by opening the PDFs, the correct physical page span per module: the 9 modules for each ticker where applicable, about 50 labels total. Format: `{file: <basename>, modules: {BALANCE_SHEET: [6,7], BANK_LOANS_NPL: [228,229,230], ...}}`. Labelling is the builder's job: open the PDF and verify each page. Do not derive labels from the router's own output.

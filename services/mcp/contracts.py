@@ -48,6 +48,7 @@ def get_route_query(module_name: str, sector: str = "ALL") -> RouteQuery | None:
         alias_map = {
             "BANK_LOAN_QUALITY_NPL": "BANK_LOANS_NPL",
             "BIOLOGICAL_ASSETS_DETAIL": "PLANTATION_AREA",
+            "BIOLOGICAL_ASSETS": "PLANTATION_AREA",
             "REVENUE_BREAKDOWN": "REVENUE_CUSTOMERS",
             "CUSTOMER_CONCENTRATION": "REVENUE_CUSTOMERS",
             "COGS_COMPONENTS": "COGS_BREAKDOWN",
@@ -59,7 +60,19 @@ def get_route_query(module_name: str, sector: str = "ALL") -> RouteQuery | None:
     if not mod_data:
         return None
 
-    entry = mod_data.get(sector) or mod_data.get("ALL")
+    sec_keys = [sector]
+    if sector == "CPO":
+        sec_keys.append("PLANTATION")
+    elif sector == "PLANTATION":
+        sec_keys.append("CPO")
+    sec_keys.append("ALL")
+
+    entry = None
+    for k in sec_keys:
+        if k in mod_data:
+            entry = mod_data[k]
+            break
+
     if not entry:
         return None
 
