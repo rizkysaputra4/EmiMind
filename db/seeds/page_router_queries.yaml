@@ -9,13 +9,17 @@
 BALANCE_SHEET:
   ALL:
     terms_id:
+      - "laporan posisi keuangan"
       - "laporan posisi keuangan konsolidasian"
       - "aset lancar"
+      - "jumlah aset"
       - "liabilitas"
       - "ekuitas"
     terms_en:
       - "statement of financial position"
+      - "financial position"
       - "current assets"
+      - "total assets"
       - "liabilities"
       - "equity"
     max_pages: 4
@@ -26,16 +30,20 @@ BALANCE_SHEET:
 INCOME_STATEMENT:
   ALL:
     terms_id:
+      - "laporan laba rugi"
       - "laporan laba rugi dan penghasilan komprehensif lain"
       - "laba rugi"
+      - "laba tahun berjalan"
       - "pendapatan"
       - "beban"
     terms_en:
+      - "statement of profit or loss"
       - "statement of profit or loss and other comprehensive income"
       - "profit or loss"
+      - "profit for the year"
       - "revenue"
       - "expenses"
-    max_pages: 3
+    max_pages: 4
     anchor_patterns:
       - "LAPORAN LABA RUGI"
       - "STATEMENT OF PROFIT OR LOSS"
@@ -43,12 +51,14 @@ INCOME_STATEMENT:
 CASH_FLOW:
   ALL:
     terms_id:
+      - "laporan arus kas"
       - "laporan arus kas konsolidasian"
       - "aktivitas operasi"
       - "aktivitas investasi"
       - "aktivitas pendanaan"
     terms_en:
       - "statement of cash flows"
+      - "cash flows"
       - "operating activities"
       - "investing activities"
       - "financing activities"

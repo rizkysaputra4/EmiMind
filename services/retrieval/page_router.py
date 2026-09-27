@@ -187,19 +187,42 @@ async def route_pages(
 
     # Anchor pattern boost: if anchor patterns match, prioritize those pages
     if route_query.anchor_patterns:
-        anchor_matches: list[int] = []
-        for p_idx, p_text in page_text_map.items():
-            if any(re.search(pat, p_text, re.IGNORECASE) for pat in route_query.anchor_patterns):
-                anchor_matches.append(p_idx)
+        primary_anchors: list[int] = []
+        cont_anchors: list[int] = []
+        body_anchors: list[int] = []
 
-        # Place anchor matches at front of FTS candidates if not already first
-        boosted_rows: list[dict[str, Any]] = []
-        for am in anchor_matches:
-            boosted_rows.append({"page_index": am, "rank": 10.0})
-        for r in fts_rows:
-            if int(r["page_index"]) not in set(anchor_matches):
-                boosted_rows.append(r)
-        fts_rows = boosted_rows
+        is_core_stmt = any(
+            re.search(r"posisi\s+keuangan|laba\s+rugi|arus\s+kas|financial\s+position|profit\s+or\s+loss|cash\s+flows", pat, re.I)
+            for pat in route_query.anchor_patterns
+        )
+
+        for p_idx, p_text in page_text_map.items():
+            header = p_text[:1000]
+            # Exclude TOC and auditor report pages
+            if re.search(
+                r"daftar\s+isi|table\s+of\s+contents|laporan\s+atas\s+reviu|report\s+on\s+review|auditor\s+independen|independent\s+auditor",
+                header,
+                re.I,
+            ):
+                continue
+
+            if any(re.search(pat, header, re.I) for pat in route_query.anchor_patterns):
+                if re.search(r"\(lanjutan\)|\(continued\)", header, re.I):
+                    cont_anchors.append(p_idx)
+                else:
+                    primary_anchors.append(p_idx)
+            elif not is_core_stmt and any(re.search(pat, p_text, re.I) for pat in route_query.anchor_patterns):
+                body_anchors.append(p_idx)
+
+        anchor_matches = primary_anchors + cont_anchors + body_anchors
+        if anchor_matches:
+            boosted_rows: list[dict[str, Any]] = []
+            for am in anchor_matches:
+                boosted_rows.append({"page_index": am, "rank": 10.0})
+            for r in fts_rows:
+                if int(r["page_index"]) not in set(anchor_matches):
+                    boosted_rows.append(r)
+            fts_rows = boosted_rows
 
     fts_ranked_pages = [int(r["page_index"]) for r in fts_rows]
 

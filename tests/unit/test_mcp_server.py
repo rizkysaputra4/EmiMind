@@ -13,6 +13,7 @@ import pytest
 
 from services.mcp.server import (
     commit_verified_report,
+    get_routed_pages,
     inspect_document,
     submit_draft_extraction,
 )
@@ -22,6 +23,7 @@ from services.mcp.types import (
     ExtractedFactItem,
     ExtractedNarrativeItem,
     InspectionStatus,
+    RoutedPages,
 )
 from tests.fixtures.m9.build_fixtures import build_fs_small
 
@@ -567,6 +569,137 @@ async def test_commit_persists_bbox() -> None:
     assert res.status == "COMMITTED"
     assert insert_params is not None
     assert insert_params["source_bbox"] == json.dumps(test_bbox)
+
+
+@pytest.mark.asyncio
+async def test_get_routed_pages_schema_and_tables() -> None:
+    from services.retrieval.page_router import RoutedSpan
+
+    class MockResult:
+        def __init__(self, data: list[dict[str, Any]]) -> None:
+            self._data = data
+
+        def mappings(self) -> MockResult:
+            return self
+
+        def first(self) -> dict[str, Any] | None:
+            return self._data[0] if self._data else None
+
+        def all(self) -> list[dict[str, Any]]:
+            return self._data
+
+    async def mock_execute(sql: Any, params: dict[str, Any] | None = None) -> MockResult:
+        sql_str = str(sql)
+        if "FROM documents WHERE id = :id" in sql_str:
+            return MockResult([{"id": "doc-uuid-1", "ticker": "BMRI", "fiscal_period": "2024Q4", "doc_type": "ANNUAL"}])
+        if "FROM issuer_profile WHERE ticker = :ticker" in sql_str:
+            return MockResult([{"sector": "BANK"}])
+        if "FROM document_pages" in sql_str:
+            return MockResult([
+                {"page_index": 2, "page_label": "2", "text_source": "pdf_text", "page_text": "Jumlah aset Rp 12.345", "image_key": "raw/p2.png"},
+                {"page_index": 3, "page_label": "3", "text_source": "pdf_text", "page_text": "Lanjutan", "image_key": None},
+            ])
+        if "FROM document_page_tables" in sql_str:
+            return MockResult([
+                {
+                    "page_index": 2,
+                    "table_index": 0,
+                    "extraction_method": "pdfplumber",
+                    "confidence": 0.95,
+                    "unit_hint": "jutaan rupiah",
+                    "cells": [
+                        {
+                            "row": 0,
+                            "col": 0,
+                            "text": "Total Assets",
+                            "value": 12345.0,
+                            "bbox": [10.0, 20.0, 30.0, 40.0],
+                            "confidence": 0.95,
+                        }
+                    ],
+                }
+            ])
+        return MockResult([])
+
+    mock_conn = AsyncMock()
+    mock_conn.execute.side_effect = mock_execute
+    mock_conn.commit = AsyncMock()
+
+    class MockConnectCtx:
+        async def __aenter__(self) -> AsyncMock:
+            return mock_conn
+
+        async def __aexit__(self, *args: Any) -> None:
+            pass
+
+    mock_engine = MagicMock()
+    mock_engine.connect.return_value = MockConnectCtx()
+
+    mock_spans = [RoutedSpan(start_page=2, end_page=3, score=0.045, seed_page=2, pages=[2, 3])]
+
+    with (
+        patch("services.mcp.server.get_engine", return_value=mock_engine),
+        patch("services.mcp.server.route_pages", new_callable=AsyncMock, return_value=mock_spans),
+        patch("services.mcp.server.get_minio") as mock_get_minio,
+    ):
+        mock_minio = MagicMock()
+        mock_minio.presigned_get_object.return_value = "https://minio.local/p2.png"
+        mock_get_minio.return_value = mock_minio
+
+        res = await get_routed_pages("doc-uuid-1", "BALANCE_SHEET")
+
+    assert isinstance(res, RoutedPages)
+    assert res.doc_id == "doc-uuid-1"
+    assert res.module == "BALANCE_SHEET"
+    assert res.total_pages_returned == 2
+    assert len(res.pages) == 2
+    assert res.spans == [[2, 3]]
+
+    p2 = res.pages[0]
+    assert p2.page_index == 2
+    assert p2.image_url == "https://minio.local/p2.png"
+    assert len(p2.tables) == 1
+    t0 = p2.tables[0]
+    assert t0.table_index == 0
+    assert len(t0.cells) == 1
+    c0 = t0.cells[0]
+    assert c0.value == 12345.0
+    assert c0.bbox == [10.0, 20.0, 30.0, 40.0]
+
+
+@pytest.mark.asyncio
+async def test_get_routed_pages_unknown_module() -> None:
+    class MockResult:
+        def mappings(self) -> MockResult:
+            return self
+
+        def first(self) -> dict[str, Any] | None:
+            return {"id": "doc-uuid-1", "ticker": "BMRI", "fiscal_period": "2024Q4", "doc_type": "ANNUAL"}
+
+    async def mock_execute(sql: Any, params: dict[str, Any] | None = None) -> MockResult:
+        return MockResult()
+
+    mock_conn = AsyncMock()
+    mock_conn.execute.side_effect = mock_execute
+
+    class MockConnectCtx:
+        async def __aenter__(self) -> AsyncMock:
+            return mock_conn
+
+        async def __aexit__(self, *args: Any) -> None:
+            pass
+
+    mock_engine = MagicMock()
+    mock_engine.connect.return_value = MockConnectCtx()
+
+    with patch("services.mcp.server.get_engine", return_value=mock_engine):
+        with pytest.raises(ValueError) as exc_info:
+            await get_routed_pages("doc-uuid-1", "INVALID_MODULE_XYZ")
+
+    err = str(exc_info.value)
+    assert "Unknown module 'INVALID_MODULE_XYZ'" in err
+    assert "BALANCE_SHEET" in err
+
 
 
 

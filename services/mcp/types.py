@@ -271,3 +271,38 @@ class DiscoveredMetricResult(BaseModel):
     metric_id: str
     message: str
 
+
+class PageTableCell(BaseModel):
+    row: int
+    col: int
+    text: str
+    value: float | None = None
+    bbox: list[float] | None = None
+    confidence: float | None = None
+
+
+class PageTable(BaseModel):
+    table_index: int
+    extraction_method: str = "pdfplumber"
+    confidence: float = 1.0
+    unit_hint: str | None = None
+    cells: list[PageTableCell] = Field(default_factory=list)
+
+
+class RoutedPage(BaseModel):
+    page_index: int
+    page_label: str | None = None
+    text_source: str = "pdf_text"
+    score: float = 0.0
+    page_text: str = ""
+    image_url: str | None = None
+    tables: list[PageTable] = Field(default_factory=list)
+
+
+class RoutedPages(BaseModel):
+    doc_id: str
+    module: str
+    total_pages_returned: int
+    pages: list[RoutedPage] = Field(default_factory=list)
+    spans: list[list[int]] = Field(default_factory=list)
+

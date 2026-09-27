@@ -297,7 +297,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
   - Integration, on `bilingual.pdf`: an English-only query finds p1.
 
 ### M9.3.3 — `get_routed_pages` MCP tool
-- [ ] **Files:** `services/mcp/server.py` (new tool), `services/mcp/types.py` (`RoutedPages`, `RoutedPage`, `PageTable`), `tests/unit/test_mcp_server.py`
+- [x] **Files:** `services/mcp/server.py` (new tool), `services/mcp/types.py` (`RoutedPages`, `RoutedPage`, `PageTable`), `tests/unit/test_mcp_server.py`
 - **Depends on:** M9.3.2
 - **What:**
   - Signature: `get_routed_pages(doc_id: str, module: str, top_k: int = 3) -> RoutedPages`.

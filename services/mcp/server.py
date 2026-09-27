@@ -6,19 +6,24 @@ import hashlib
 import json
 import shutil
 import uuid
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
 import pymupdf
 from mcp.server.mcpserver import MCPServer
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from services.derive.engine import compute_for_document
 from services.derive.valuation import calculate_valuation
 from services.ingest.tasks.refresh_profile import refresh_profile_task
-from services.mcp.contracts import build_extraction_contract
+from services.mcp.contracts import (
+    build_extraction_contract,
+    get_route_query,
+    load_page_router_queries,
+)
 from services.mcp.periods import period_end_for, resolve_fiscal_period
 from services.mcp.types import (
     CommitReport,
@@ -31,11 +36,17 @@ from services.mcp.types import (
     InspectionStatus,
     MetricOntologyDefinition,
     MetricOntologyQueryResult,
+    PageTable,
+    PageTableCell,
+    RoutedPage,
+    RoutedPages,
     ValidationReport,
 )
 from services.mcp.validator import CONCEPT_ALIASES, validate_draft_submission
+from services.retrieval.page_router import route_pages
 from services.shared.config import get_settings
 from services.shared.logging import get_logger
+from services.shared.minio_client import get_minio
 
 log = get_logger("mcp.server")
 
@@ -51,7 +62,8 @@ def _read_sidecar_meta(pdf_path: Path) -> dict[str, Any] | None:
     if not sidecar.exists():
         return None
     try:
-        return json.loads(sidecar.read_text(encoding="utf-8"))
+        data = json.loads(sidecar.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else None
     except (OSError, json.JSONDecodeError):
         return None
 
@@ -138,7 +150,7 @@ async def _log_processing_event(
         )
 
 
-def get_engine():
+def get_engine() -> AsyncEngine:
     settings = get_settings()
     return create_async_engine(
         settings.postgres_dsn,
@@ -598,6 +610,173 @@ async def get_extraction_contract(doc_id: str) -> ExtractionContract:
             sector=sector_name,
             fiscal_period=fiscal_period,
             doc_type=doc_type_val,
+        )
+
+
+@mcp.tool()
+async def get_routed_pages(doc_id: str, module: str, top_k: int = 3) -> RoutedPages:
+    """Return ranked page_index hits (+ expanded neighbours, text, image URL, and tables) for a contract module.
+
+    Parameters:
+      doc_id: UUID of the document returned by inspect_document.
+      module: Module name from the contract (e.g. 'BALANCE_SHEET', 'INCOME_STATEMENT',
+              'CASH_FLOW', 'MDA', 'BANK_LOANS_NPL', 'PLANTATION_AREA', 'CASH_BANKS',
+              'REVENUE_CUSTOMERS', 'COGS_BREAKDOWN', 'DEBT_FACILITIES').
+      top_k:  Number of seed pages to rank and expand (default: 3).
+    """
+    engine = get_engine()
+    async with engine.connect() as conn:
+        res = await conn.execute(
+            text("SELECT id, ticker, fiscal_period, doc_type, minio_key, doc_hash FROM documents WHERE id = :id"),
+            {"id": doc_id},
+        )
+        doc = res.mappings().first()
+        if not doc:
+            raise ValueError(f"Document with ID {doc_id} not found in database.")
+
+        ticker = doc["ticker"]
+        prof_res = await conn.execute(
+            text("SELECT sector FROM issuer_profile WHERE ticker = :ticker"),
+            {"ticker": ticker},
+        )
+        prof_row = prof_res.mappings().first()
+        sector = prof_row["sector"] if prof_row and prof_row.get("sector") else "GENERIC"
+
+        route_query = get_route_query(module.upper(), sector)
+        if not route_query:
+            valid_modules = sorted(load_page_router_queries().keys())
+            raise ValueError(
+                f"Unknown module '{module}'. Valid modules are: {', '.join(valid_modules)}"
+            )
+
+        routed_spans = await route_pages(conn, str(doc_id), route_query, top_k=top_k)
+
+        # Unique page numbers across all spans
+        page_score_map: dict[int, float] = {}
+        for s in routed_spans:
+            for p in s.pages:
+                if p not in page_score_map or s.score > page_score_map[p]:
+                    page_score_map[p] = s.score
+
+        unique_pages = sorted(page_score_map.keys())
+
+        if not unique_pages:
+            return RoutedPages(
+                doc_id=str(doc_id),
+                module=module.upper(),
+                total_pages_returned=0,
+                pages=[],
+                spans=[s.pages for s in routed_spans],
+            )
+
+        # Fetch page text and metadata
+        pages_res = await conn.execute(
+            text(
+                """
+                SELECT page_index, page_label, text_source, page_text, image_key
+                FROM document_pages
+                WHERE doc_id = :doc_id AND page_index = ANY(:pages)
+                ORDER BY page_index ASC
+                """
+            ),
+            {"doc_id": doc_id, "pages": unique_pages},
+        )
+        page_records = {int(r["page_index"]): dict(r) for r in pages_res.mappings().all()}
+
+        # Fetch page table grids
+        tables_res = await conn.execute(
+            text(
+                """
+                SELECT page_index, table_index, extraction_method, confidence, unit_hint, cells
+                FROM document_page_tables
+                WHERE doc_id = :doc_id AND page_index = ANY(:pages)
+                ORDER BY page_index ASC, table_index ASC
+                """
+            ),
+            {"doc_id": doc_id, "pages": unique_pages},
+        )
+        tables_by_page: dict[int, list[PageTable]] = {}
+        for tr in tables_res.mappings().all():
+            p_idx = int(tr["page_index"])
+            raw_cells = tr["cells"] if isinstance(tr["cells"], list) else json.loads(tr["cells"])
+            cells_objs = [
+                PageTableCell(
+                    row=int(c.get("row", 0)),
+                    col=int(c.get("col", 0)),
+                    text=str(c.get("text", "")),
+                    value=float(c["value"]) if c.get("value") is not None else None,
+                    bbox=c.get("bbox"),
+                    confidence=float(c["confidence"]) if c.get("confidence") is not None else None,
+                )
+                for c in raw_cells
+            ]
+            tbl = PageTable(
+                table_index=int(tr["table_index"]),
+                extraction_method=str(tr["extraction_method"]),
+                confidence=float(tr["confidence"]),
+                unit_hint=tr.get("unit_hint"),
+                cells=cells_objs,
+            )
+            tables_by_page.setdefault(p_idx, []).append(tbl)
+
+        # MinIO Presigned URLs for thumbnails
+        settings = get_settings()
+        page_image_urls: dict[int, str | None] = {}
+        try:
+            minio_client = get_minio(settings)
+            for p_idx in unique_pages:
+                prec = page_records.get(p_idx, {})
+                img_key = prec.get("image_key")
+                if img_key:
+                    try:
+                        url = minio_client.presigned_get_object(
+                            settings.minio_bucket_raw, img_key, expires=timedelta(hours=1)
+                        )
+                        page_image_urls[p_idx] = url
+                    except Exception:
+                        page_image_urls[p_idx] = None
+        except Exception:
+            pass
+
+        # Log event
+        file_name = Path(doc.get("minio_key") or "").name or f"{ticker}_{doc_id}.pdf"
+        await _log_processing_event(
+            conn,
+            action="ROUTED",
+            source="get_routed_pages",
+            file_name=file_name,
+            ticker=ticker,
+            doc_id=str(doc_id),
+            doc_hash=doc.get("doc_hash"),
+            metadata={
+                "module": module.upper(),
+                "pages": unique_pages,
+                "span_count": len(routed_spans),
+            },
+        )
+        await conn.commit()
+
+        routed_pages_list: list[RoutedPage] = []
+        for p_idx in unique_pages:
+            prec = page_records.get(p_idx, {})
+            routed_pages_list.append(
+                RoutedPage(
+                    page_index=p_idx,
+                    page_label=prec.get("page_label"),
+                    text_source=prec.get("text_source", "pdf_text"),
+                    score=page_score_map.get(p_idx, 0.0),
+                    page_text=prec.get("page_text", ""),
+                    image_url=page_image_urls.get(p_idx),
+                    tables=tables_by_page.get(p_idx, []),
+                )
+            )
+
+        return RoutedPages(
+            doc_id=str(doc_id),
+            module=module.upper(),
+            total_pages_returned=len(routed_pages_list),
+            pages=routed_pages_list,
+            spans=[s.pages for s in routed_spans],
         )
 
 
