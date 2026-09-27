@@ -191,7 +191,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
 ## Phase 2 — Page index
 
 ### M9.2.1 — Migration 023: `document_pages` + `document_page_tables`
-- [ ] **Files:** `db/schema/023_document_pages.sql` (new, verbatim from design doc §Phase 2, guarded on the `vector` extension exactly like `007`/`009`)
+- [x] **Files:** `db/schema/023_document_pages.sql` (new, verbatim from design doc §Phase 2, guarded on the `vector` extension exactly like `007`/`009`)
 - **Depends on:** M9.1.3
 - **Done when:**
   - `make migrate` succeeds on a fresh DB and is re-runnable (idempotent `IF NOT EXISTS`).
