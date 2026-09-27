@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -97,8 +97,9 @@ class ExtractedFactItem(BaseModel):
     concept_id: str
     value_numeric: Decimal
     unit: str = "IDR"
-    period_type: str = "instant"  # 'instant', 'duration_ytd', 'duration_q'
+    period_type: str | None = None  # 'instant', 'duration_qtd', 'duration_ytd', 'duration_q', 'duration_12m', 'duration'
     source_page: int
+    statement: Literal["BS", "IS", "CF", "EQ", "NOTE"] | None = None
     source_label_original: str | None = None
     segment: dict[str, Any] | None = None
     bbox: list[float] | None = None

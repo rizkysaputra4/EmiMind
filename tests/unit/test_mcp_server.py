@@ -51,44 +51,46 @@ async def test_mcp_submit_draft_extraction_and_commit() -> None:
     doc_id = insp.doc_id
 
     facts = [
-        ExtractedFactItem(concept_id="ifrs:Assets", value_numeric=Decimal("2000000000000"), source_page=1),
-        ExtractedFactItem(concept_id="ifrs:CurrentAssets", value_numeric=Decimal("800000000000"), source_page=1),
-        ExtractedFactItem(concept_id="ifrs:NonCurrentAssets", value_numeric=Decimal("1200000000000"), source_page=1),
-        ExtractedFactItem(concept_id="ifrs:Liabilities", value_numeric=Decimal("1500000000000"), source_page=2),
-        ExtractedFactItem(concept_id="ifrs:CurrentLiabilities", value_numeric=Decimal("500000000000"), source_page=2),
-        ExtractedFactItem(concept_id="ifrs:NonCurrentLiabilities", value_numeric=Decimal("1000000000000"), source_page=2),
-        ExtractedFactItem(concept_id="ifrs:Equity", value_numeric=Decimal("500000000000"), source_page=2),
-        ExtractedFactItem(concept_id="ifrs:CashAndCashEquivalents", value_numeric=Decimal("300000000000"), source_page=1),
-        ExtractedFactItem(concept_id="ifrs:Revenue", value_numeric=Decimal("600000000000"), source_page=3),
-        ExtractedFactItem(concept_id="ifrs:OperatingProfit", value_numeric=Decimal("200000000000"), source_page=3),
-        ExtractedFactItem(concept_id="ifrs:ProfitLoss", value_numeric=Decimal("150000000000"), source_page=3),
-        ExtractedFactItem(concept_id="ifrs:CashFlowsFromUsedInOperatingActivities", value_numeric=Decimal("180000000000"), source_page=4),
-        ExtractedFactItem(concept_id="ifrs:EquityAttributableToOwnersOfParent", value_numeric=Decimal("480000000000"), source_page=2),
-        ExtractedFactItem(concept_id="ifrs:ProfitLossAttributableToOwnersOfParent", value_numeric=Decimal("145000000000"), source_page=3),
-        ExtractedFactItem(concept_id="idx:Capex", value_numeric=Decimal("40000000000"), source_page=4),
-        ExtractedFactItem(concept_id="idx:LoansAndAdvances", value_numeric=Decimal("1400000000000"), source_page=1),
-        ExtractedFactItem(concept_id="idx:CustomerDeposits", value_numeric=Decimal("1300000000000"), source_page=2),
-        ExtractedFactItem(concept_id="idx:CASA", value_numeric=Decimal("950000000000"), source_page=2),
-        ExtractedFactItem(concept_id="idx:NetInterestIncome", value_numeric=Decimal("250000000000"), source_page=3),
-        ExtractedFactItem(concept_id="idx:NetInterestMargin", value_numeric=Decimal("5.35"), source_page=20),
-        ExtractedFactItem(concept_id="idx:NonPerformingLoansGross", value_numeric=Decimal("15000000000"), source_page=22),
-        ExtractedFactItem(concept_id="idx:CapitalAdequacyRatio", value_numeric=Decimal("21.5"), source_page=25),
-        ExtractedFactItem(concept_id="idx:BOPO", value_numeric=Decimal("58.2"), source_page=26),
-        ExtractedFactItem(concept_id="idx:CostOfCredit", value_numeric=Decimal("0.95"), source_page=26),
-        ExtractedFactItem(concept_id="idx:LoanToDepositRatio", value_numeric=Decimal("84.2"), source_page=27),
-        ExtractedFactItem(concept_id="idx:NPLCoverageRatio", value_numeric=Decimal("310.5"), source_page=28),
-        ExtractedFactItem(concept_id="idx:ReturnOnAssetsBank", value_numeric=Decimal("3.15"), source_page=25),
+        ExtractedFactItem(concept_id="ifrs:Assets", value_numeric=Decimal("2000000000000"), source_page=1, statement="BS"),
+        ExtractedFactItem(concept_id="ifrs:CurrentAssets", value_numeric=Decimal("800000000000"), source_page=1, statement="BS"),
+        ExtractedFactItem(concept_id="ifrs:NonCurrentAssets", value_numeric=Decimal("1200000000000"), source_page=1, statement="BS"),
+        ExtractedFactItem(concept_id="ifrs:Liabilities", value_numeric=Decimal("1500000000000"), source_page=2, statement="BS"),
+        ExtractedFactItem(concept_id="ifrs:CurrentLiabilities", value_numeric=Decimal("500000000000"), source_page=2, statement="BS"),
+        ExtractedFactItem(concept_id="ifrs:NonCurrentLiabilities", value_numeric=Decimal("1000000000000"), source_page=2, statement="BS"),
+        ExtractedFactItem(concept_id="ifrs:Equity", value_numeric=Decimal("500000000000"), source_page=2, statement="BS"),
+        ExtractedFactItem(concept_id="ifrs:CashAndCashEquivalents", value_numeric=Decimal("300000000000"), source_page=1, statement="BS"),
+        ExtractedFactItem(concept_id="ifrs:Revenue", value_numeric=Decimal("600000000000"), source_page=3, statement="IS"),
+        ExtractedFactItem(concept_id="ifrs:OperatingProfit", value_numeric=Decimal("200000000000"), source_page=3, statement="IS"),
+        ExtractedFactItem(concept_id="ifrs:ProfitLoss", value_numeric=Decimal("150000000000"), source_page=3, statement="IS"),
+        ExtractedFactItem(concept_id="ifrs:CashFlowsFromUsedInOperatingActivities", value_numeric=Decimal("180000000000"), source_page=4, statement="CF"),
+        ExtractedFactItem(concept_id="ifrs:EquityAttributableToOwnersOfParent", value_numeric=Decimal("480000000000"), source_page=2, statement="BS"),
+        ExtractedFactItem(concept_id="ifrs:ProfitLossAttributableToOwnersOfParent", value_numeric=Decimal("145000000000"), source_page=3, statement="IS"),
+        ExtractedFactItem(concept_id="idx:Capex", value_numeric=Decimal("40000000000"), source_page=4, statement="CF"),
+        ExtractedFactItem(concept_id="idx:LoansAndAdvances", value_numeric=Decimal("1400000000000"), source_page=1, statement="BS"),
+        ExtractedFactItem(concept_id="idx:CustomerDeposits", value_numeric=Decimal("1300000000000"), source_page=2, statement="BS"),
+        ExtractedFactItem(concept_id="idx:CASA", value_numeric=Decimal("950000000000"), source_page=2, statement="BS"),
+        ExtractedFactItem(concept_id="idx:NetInterestIncome", value_numeric=Decimal("250000000000"), source_page=3, statement="IS"),
+        ExtractedFactItem(concept_id="idx:NetInterestMargin", value_numeric=Decimal("5.35"), source_page=20, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:NonPerformingLoansGross", value_numeric=Decimal("15000000000"), source_page=22, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:CapitalAdequacyRatio", value_numeric=Decimal("21.5"), source_page=25, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:BOPO", value_numeric=Decimal("58.2"), source_page=26, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:CostOfCredit", value_numeric=Decimal("0.95"), source_page=26, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:LoanToDepositRatio", value_numeric=Decimal("84.2"), source_page=27, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:NPLCoverageRatio", value_numeric=Decimal("310.5"), source_page=28, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:ReturnOnAssetsBank", value_numeric=Decimal("3.15"), source_page=25, statement="NOTE"),
         # Granular Segmented Fact Items
         ExtractedFactItem(
             concept_id="ifrs:Revenue",
             value_numeric=Decimal("400000000000"),
             source_page=15,
+            statement="IS",
             segment={"segment": "Kredit Korporasi / Wholesale", "type": "product_segment", "pct_total": 66.7},
         ),
         ExtractedFactItem(
             concept_id="ifrs:Revenue",
             value_numeric=Decimal("200000000000"),
             source_page=15,
+            statement="IS",
             segment={"segment": "Kredit Ritel & Konsumer", "type": "product_segment", "pct_total": 33.3},
         ),
     ]
@@ -139,7 +141,7 @@ async def test_mcp_submit_draft_extraction_and_commit() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_metric_ontology():
+async def test_get_metric_ontology() -> None:
     from services.mcp.server import get_metric_ontology
 
     # Query banking metrics
@@ -155,7 +157,7 @@ async def test_get_metric_ontology():
 
 
 @pytest.mark.asyncio
-async def test_submit_discovered_metric():
+async def test_submit_discovered_metric() -> None:
     from services.mcp.server import submit_discovered_metric
     from services.mcp.types import DiscoveredMetricCandidate
 
@@ -179,7 +181,7 @@ async def test_submit_discovered_metric():
 
 
 @pytest.mark.asyncio
-async def test_segmented_facts_order_and_alias_validation():
+async def test_segmented_facts_order_and_alias_validation() -> None:
     """Verify that segmented facts before or after unsegmented facts do not break math equations."""
     from services.mcp.types import DraftSubmissionPayload, ExtractedFactItem
     from services.mcp.validator import validate_draft_submission
@@ -198,37 +200,39 @@ async def test_segmented_facts_order_and_alias_validation():
             concept_id="ifrs:Revenue",
             value_numeric=Decimal("4000000000"),
             source_page=10,
+            statement="IS",
             segment={"segment": "CPO", "type": "product"},
         ),
         ExtractedFactItem(
             concept_id="ifrs:Revenue",
             value_numeric=Decimal("1000000000"),
             source_page=10,
+            statement="IS",
             segment={"segment": "PK", "type": "product"},
         ),
         # Unsegmented Core Facts
-        ExtractedFactItem(concept_id="ifrs:Assets", value_numeric=Decimal("10000000000"), source_page=1),
-        ExtractedFactItem(concept_id="ifrs:CurrentAssets", value_numeric=Decimal("4000000000"), source_page=1),
-        ExtractedFactItem(concept_id="ifrs:NonCurrentAssets", value_numeric=Decimal("6000000000"), source_page=1),
-        ExtractedFactItem(concept_id="ifrs:Liabilities", value_numeric=Decimal("3000000000"), source_page=2),
-        ExtractedFactItem(concept_id="ifrs:CurrentLiabilities", value_numeric=Decimal("1000000000"), source_page=2),
-        ExtractedFactItem(concept_id="ifrs:NonCurrentLiabilities", value_numeric=Decimal("2000000000"), source_page=2),
-        ExtractedFactItem(concept_id="ifrs:Equity", value_numeric=Decimal("7000000000"), source_page=2),
-        ExtractedFactItem(concept_id="ifrs:CashAndCashEquivalents", value_numeric=Decimal("2000000000"), source_page=1),
+        ExtractedFactItem(concept_id="ifrs:Assets", value_numeric=Decimal("10000000000"), source_page=1, statement="BS"),
+        ExtractedFactItem(concept_id="ifrs:CurrentAssets", value_numeric=Decimal("4000000000"), source_page=1, statement="BS"),
+        ExtractedFactItem(concept_id="ifrs:NonCurrentAssets", value_numeric=Decimal("6000000000"), source_page=1, statement="BS"),
+        ExtractedFactItem(concept_id="ifrs:Liabilities", value_numeric=Decimal("3000000000"), source_page=2, statement="BS"),
+        ExtractedFactItem(concept_id="ifrs:CurrentLiabilities", value_numeric=Decimal("1000000000"), source_page=2, statement="BS"),
+        ExtractedFactItem(concept_id="ifrs:NonCurrentLiabilities", value_numeric=Decimal("2000000000"), source_page=2, statement="BS"),
+        ExtractedFactItem(concept_id="ifrs:Equity", value_numeric=Decimal("7000000000"), source_page=2, statement="BS"),
+        ExtractedFactItem(concept_id="ifrs:CashAndCashEquivalents", value_numeric=Decimal("2000000000"), source_page=1, statement="BS"),
         # Total Revenue (5,000,000,000)
-        ExtractedFactItem(concept_id="ifrs:Revenue", value_numeric=Decimal("5000000000"), source_page=3),
-        ExtractedFactItem(concept_id="ifrs:CostOfSales", value_numeric=Decimal("3000000000"), source_page=3),
-        ExtractedFactItem(concept_id="ifrs:GrossProfit", value_numeric=Decimal("2000000000"), source_page=3),
-        ExtractedFactItem(concept_id="ifrs:OperatingProfit", value_numeric=Decimal("1500000000"), source_page=3),
-        ExtractedFactItem(concept_id="ifrs:ProfitLoss", value_numeric=Decimal("1200000000"), source_page=3),
-        ExtractedFactItem(concept_id="ifrs:CashFlowsFromUsedInOperatingActivities", value_numeric=Decimal("1800000000"), source_page=4),
+        ExtractedFactItem(concept_id="ifrs:Revenue", value_numeric=Decimal("5000000000"), source_page=3, statement="IS"),
+        ExtractedFactItem(concept_id="ifrs:CostOfSales", value_numeric=Decimal("3000000000"), source_page=3, statement="IS"),
+        ExtractedFactItem(concept_id="ifrs:GrossProfit", value_numeric=Decimal("2000000000"), source_page=3, statement="IS"),
+        ExtractedFactItem(concept_id="ifrs:OperatingProfit", value_numeric=Decimal("1500000000"), source_page=3, statement="IS"),
+        ExtractedFactItem(concept_id="ifrs:ProfitLoss", value_numeric=Decimal("1200000000"), source_page=3, statement="IS"),
+        ExtractedFactItem(concept_id="ifrs:CashFlowsFromUsedInOperatingActivities", value_numeric=Decimal("1800000000"), source_page=4, statement="CF"),
         # CPO specific facts (testing alias idx:CpoProduction vs idx:CPOProductionVolume)
-        ExtractedFactItem(concept_id="idx:MaturePlantedArea", value_numeric=Decimal("90000"), unit="HECTARES", source_page=5),
-        ExtractedFactItem(concept_id="idx:FfbProduction", value_numeric=Decimal("1000000"), unit="TONNES", source_page=5),
-        ExtractedFactItem(concept_id="idx:CpoProduction", value_numeric=Decimal("250000"), unit="TONNES", source_page=5),
-        ExtractedFactItem(concept_id="idx:OilExtractionRate", value_numeric=Decimal("22.5"), unit="PERCENT", source_page=5),
-        ExtractedFactItem(concept_id="idx:CPOAveragePriceASP", value_numeric=Decimal("12500"), unit="IDR_PER_KG", source_page=5),
-        ExtractedFactItem(concept_id="idx:CPOCashCostPerKg", value_numeric=Decimal("6500"), unit="IDR_PER_KG", source_page=5),
+        ExtractedFactItem(concept_id="idx:MaturePlantedArea", value_numeric=Decimal("90000"), unit="HECTARES", source_page=5, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:FfbProduction", value_numeric=Decimal("1000000"), unit="TONNES", source_page=5, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:CpoProduction", value_numeric=Decimal("250000"), unit="TONNES", source_page=5, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:OilExtractionRate", value_numeric=Decimal("22.5"), unit="PERCENT", source_page=5, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:CPOAveragePriceASP", value_numeric=Decimal("12500"), unit="IDR_PER_KG", source_page=5, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:CPOCashCostPerKg", value_numeric=Decimal("6500"), unit="IDR_PER_KG", source_page=5, statement="NOTE"),
     ]
 
     payload = DraftSubmissionPayload(
@@ -339,13 +343,231 @@ async def test_inspect_document_needs_metadata(tmp_path: Path) -> None:
 
     with (
         patch("services.mcp.server.get_engine", return_value=mock_engine),
-        patch("services.extraction.metadata_extractor.propose_metadata", return_value=None),
+        patch("services.extraction.metadata_extractor.propose_metadata", new=AsyncMock(return_value=None)),
     ):
         res = await inspect_document(str(pdf_path))
 
     assert res.status == InspectionStatus.NEEDS_METADATA
     assert insert_executed is False
     assert "Please call inspect_document again passing fiscal_period explicitly" in res.message
+
+
+@pytest.mark.asyncio
+async def test_commit_no_invented_segment() -> None:
+    insert_params = None
+
+    class MockResult:
+        def mappings(self) -> MockResult:
+            return self
+
+        def first(self) -> dict[str, Any] | None:
+            return None
+
+        def fetchall(self) -> list[Any]:
+            return []
+
+    async def mock_execute(sql: Any, params: dict[str, Any] | None = None) -> MockResult:
+        nonlocal insert_params
+        if "INSERT INTO financial_facts" in str(sql):
+            insert_params = params
+        return MockResult()
+
+    mock_conn = AsyncMock()
+    mock_conn.execute.side_effect = mock_execute
+    mock_conn.commit = AsyncMock()
+
+    class MockConnectCtx:
+        async def __aenter__(self) -> AsyncMock:
+            return mock_conn
+
+        async def __aexit__(self, *args: Any) -> None:
+            pass
+
+    mock_engine = MagicMock()
+    mock_engine.connect.return_value = MockConnectCtx()
+
+    payload = DraftSubmissionPayload(
+        doc_id="doc_test_1",
+        ticker="LSIP",
+        fiscal_period="2024Q4",
+        facts=[
+            ExtractedFactItem(
+                concept_id="idx:CostOfGoodsSoldComponent",
+                value_numeric=Decimal("123000000"),
+                source_page=15,
+                statement="IS",
+                source_label_original="Beban pupuk",
+                segment=None,
+            )
+        ],
+    )
+    with (
+        patch("services.mcp.server.get_engine", return_value=mock_engine),
+        patch("services.mcp.server.compute_for_document", return_value=MagicMock(computed=0)),
+        patch("services.mcp.server.refresh_profile_task", return_value=None),
+        patch("services.mcp.server.calculate_valuation", return_value={}),
+    ):
+        res = await commit_verified_report(payload.model_dump_json())
+
+    assert res.status == "COMMITTED"
+    assert insert_params is not None
+    assert insert_params["seg"] is None
+
+
+@pytest.mark.asyncio
+async def test_commit_cashflow_statement_and_period_type() -> None:
+    insert_params = None
+
+    class MockResult:
+        def mappings(self) -> MockResult:
+            return self
+
+        def first(self) -> dict[str, Any] | None:
+            return None
+
+        def fetchall(self) -> list[Any]:
+            return [("ifrs:CashFlowsFromUsedInOperatingActivities", "FLOW_PERIOD")]
+
+    async def mock_execute(sql: Any, params: dict[str, Any] | None = None) -> MockResult:
+        nonlocal insert_params
+        if "INSERT INTO financial_facts" in str(sql):
+            insert_params = params
+        return MockResult()
+
+    mock_conn = AsyncMock()
+    mock_conn.execute.side_effect = mock_execute
+    mock_conn.commit = AsyncMock()
+
+    class MockConnectCtx:
+        async def __aenter__(self) -> AsyncMock:
+            return mock_conn
+
+        async def __aexit__(self, *args: Any) -> None:
+            pass
+
+    mock_engine = MagicMock()
+    mock_engine.connect.return_value = MockConnectCtx()
+
+    payload = DraftSubmissionPayload(
+        doc_id="doc_test_2",
+        ticker="BMRI",
+        fiscal_period="2024Q4",
+        facts=[
+            ExtractedFactItem(
+                concept_id="ifrs:CashFlowsFromOperatingActivities",
+                value_numeric=Decimal("500000000"),
+                source_page=4,
+                statement="CF",
+            )
+        ],
+    )
+    with (
+        patch("services.mcp.server.get_engine", return_value=mock_engine),
+        patch("services.mcp.server.compute_for_document", return_value=MagicMock(computed=0)),
+        patch("services.mcp.server.refresh_profile_task", return_value=None),
+        patch("services.mcp.server.calculate_valuation", return_value={}),
+    ):
+        res = await commit_verified_report(payload.model_dump_json())
+
+    assert res.status == "COMMITTED"
+    assert insert_params is not None
+    assert insert_params["statement"] == "CF"
+    assert insert_params["period_type"] == "duration_ytd"
+
+
+@pytest.mark.asyncio
+async def test_commit_invalid_fiscal_period_rejects() -> None:
+    insert_executed = False
+
+    async def mock_execute(sql: Any, params: dict[str, Any] | None = None) -> Any:
+        nonlocal insert_executed
+        if "INSERT INTO" in str(sql):
+            insert_executed = True
+        return MagicMock()
+
+    mock_conn = AsyncMock()
+    mock_conn.execute.side_effect = mock_execute
+
+    payload = DraftSubmissionPayload(
+        doc_id="doc_test_3",
+        ticker="BMRI",
+        fiscal_period="XXXX",
+        facts=[
+            ExtractedFactItem(
+                concept_id="ifrs:Assets",
+                value_numeric=Decimal("100"),
+                source_page=1,
+                statement="BS",
+            )
+        ],
+    )
+    res = await commit_verified_report(payload.model_dump_json())
+    assert res.status == "ERROR"
+    assert res.facts_committed == 0
+    assert insert_executed is False
+
+
+@pytest.mark.asyncio
+async def test_commit_persists_bbox() -> None:
+    insert_params = None
+
+    class MockResult:
+        def mappings(self) -> MockResult:
+            return self
+
+        def first(self) -> dict[str, Any] | None:
+            return None
+
+        def fetchall(self) -> list[Any]:
+            return []
+
+    async def mock_execute(sql: Any, params: dict[str, Any] | None = None) -> MockResult:
+        nonlocal insert_params
+        if "INSERT INTO financial_facts" in str(sql):
+            insert_params = params
+        return MockResult()
+
+    mock_conn = AsyncMock()
+    mock_conn.execute.side_effect = mock_execute
+    mock_conn.commit = AsyncMock()
+
+    class MockConnectCtx:
+        async def __aenter__(self) -> AsyncMock:
+            return mock_conn
+
+        async def __aexit__(self, *args: Any) -> None:
+            pass
+
+    mock_engine = MagicMock()
+    mock_engine.connect.return_value = MockConnectCtx()
+
+    test_bbox = [10.5, 20.0, 100.2, 50.8]
+    payload = DraftSubmissionPayload(
+        doc_id="doc_test_4",
+        ticker="BMRI",
+        fiscal_period="2024Q4",
+        facts=[
+            ExtractedFactItem(
+                concept_id="ifrs:Assets",
+                value_numeric=Decimal("2000000000000"),
+                source_page=1,
+                statement="BS",
+                bbox=test_bbox,
+            )
+        ],
+    )
+    with (
+        patch("services.mcp.server.get_engine", return_value=mock_engine),
+        patch("services.mcp.server.compute_for_document", return_value=MagicMock(computed=0)),
+        patch("services.mcp.server.refresh_profile_task", return_value=None),
+        patch("services.mcp.server.calculate_valuation", return_value={}),
+    ):
+        res = await commit_verified_report(payload.model_dump_json())
+
+    assert res.status == "COMMITTED"
+    assert insert_params is not None
+    assert insert_params["source_bbox"] == json.dumps(test_bbox)
+
 
 
 

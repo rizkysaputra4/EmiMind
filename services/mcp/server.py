@@ -4,17 +4,22 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import uuid
 from pathlib import Path
 from typing import Any
 
+import pymupdf
 from mcp.server.mcpserver import MCPServer
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.pool import NullPool
 
 from services.derive.engine import compute_for_document
 from services.derive.valuation import calculate_valuation
 from services.ingest.tasks.refresh_profile import refresh_profile_task
 from services.mcp.contracts import build_extraction_contract
+from services.mcp.periods import period_end_for, resolve_fiscal_period
 from services.mcp.types import (
     CommitReport,
     DiscoveredMetricCandidate,
@@ -28,16 +33,7 @@ from services.mcp.types import (
     MetricOntologyQueryResult,
     ValidationReport,
 )
-from services.mcp.validator import validate_draft_submission
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.pool import NullPool
-
-import shutil
-
-import pymupdf
-
-from services.mcp.periods import resolve_fiscal_period
-
+from services.mcp.validator import CONCEPT_ALIASES, validate_draft_submission
 from services.shared.config import get_settings
 from services.shared.logging import get_logger
 
@@ -300,7 +296,7 @@ async def inspect_document(
             try:
                 from services.extraction.metadata_extractor import propose_metadata
 
-                meta = propose_metadata(p.read_bytes())
+                meta = await propose_metadata(p.read_bytes())
                 if meta and meta.fiscal_period:
                     resolved_period = resolve_fiscal_period(p.name, meta.fiscal_period)
             except Exception as exc:
@@ -731,71 +727,86 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
     ticker = payload.ticker.upper()
     fiscal_period = payload.fiscal_period.upper()
 
-    # Derive period_end date object
-    from datetime import date
-
-    year_int = int(fiscal_period[:4]) if len(fiscal_period) >= 4 and fiscal_period[:4].isdigit() else 2024
-    if "Q1" in fiscal_period:
-        period_end_dt = date(year_int, 3, 31)
-    elif "Q2" in fiscal_period:
-        period_end_dt = date(year_int, 6, 30)
-    elif "Q3" in fiscal_period:
-        period_end_dt = date(year_int, 9, 30)
-    else:
-        period_end_dt = date(year_int, 12, 31)
+    try:
+        period_end_dt = period_end_for(fiscal_period)
+        _ = int(fiscal_period[:4])
+    except ValueError as err:
+        return CommitReport(
+            status="ERROR",
+            doc_id=doc_id,
+            ticker=ticker,
+            fiscal_period=fiscal_period,
+            facts_committed=0,
+            narratives_committed=0,
+            guidance_committed=0,
+            omissions_recorded=0,
+            derived_metrics_computed=0,
+            profile_refreshed=False,
+            live_valuation_computed=False,
+            message=f"Invalid fiscal period '{fiscal_period}': {err}",
+        )
 
     async with engine.connect() as conn:
+        # Look up metric_definitions.flow_stock_type for all fact concepts
+        cids = list({f.concept_id for f in payload.facts})
+        norm_map = {cid: CONCEPT_ALIASES.get(cid.lower(), cid) for cid in cids}
+        all_query_ids = list(set(cids) | set(norm_map.values()))
+        flow_stock_map: dict[str, str] = {}
+        if all_query_ids:
+            try:
+                res = await conn.execute(
+                    text("SELECT metric_id, flow_stock_type FROM metric_definitions WHERE metric_id = ANY(:cids)"),
+                    {"cids": all_query_ids},
+                )
+                db_flows = {row[0]: row[1] for row in res.fetchall()}
+                for cid in cids:
+                    norm = norm_map.get(cid, cid)
+                    if cid in db_flows:
+                        flow_stock_map[cid] = db_flows[cid]
+                    elif norm in db_flows:
+                        flow_stock_map[cid] = db_flows[norm]
+            except Exception:
+                pass
+
         # 1. Insert/update financial_facts
         facts_count = 0
         for f in payload.facts:
             cid = f.concept_id
-            if any(k in cid for k in ("Assets", "Liabilities", "Equity", "Cash", "Loans", "Deposits", "Inventories", "Receivables", "Borrowings")):
-                stmt_type = "BS"
-                p_type = "instant"
-            elif any(k in cid for k in ("Revenue", "CostOfSales", "GrossProfit", "OperatingProfit", "ProfitLoss", "InterestIncome", "FinanceCosts")):
-                stmt_type = "IS"
-                p_type = "duration_ytd"
-            elif "CashFlows" in cid or "PaymentsToAcquire" in cid:
-                stmt_type = "CF"
-                p_type = "duration_ytd"
-            else:
-                stmt_type = "NOTE"
-                p_type = f.period_type or "instant"
+            stmt_type = f.statement or "NOTE"
 
-            # Auto-infer structured segment if f.segment is missing but source_label_original has granular info
+            # Determine period_type:
+            # 1. Look up metric_definitions.flow_stock_type for concept_id (STOCK_* -> instant, FLOW_* -> duration_ytd)
+            # 2. Otherwise use submitted value
+            # 3. Default based on statement type
+            flow_stock = flow_stock_map.get(cid)
+            if flow_stock and flow_stock.startswith("STOCK"):
+                p_type = "instant"
+            elif flow_stock and flow_stock.startswith("FLOW"):
+                p_type = "duration_ytd"
+            elif f.period_type:
+                p_type = f.period_type
+            else:
+                p_type = "duration_ytd" if stmt_type in ("IS", "CF") else "instant"
+
+            if p_type == "duration_q":
+                p_type = "duration_qtd"
+            elif p_type not in ("instant", "duration_qtd", "duration_ytd"):
+                p_type = "duration_ytd" if stmt_type in ("IS", "CF") else "instant"
+
             seg_dict = f.segment
-            if not seg_dict and f.source_label_original:
-                lbl_lower = f.source_label_original.strip().lower()
-                generic_labels = {
-                    "jumlah aset", "total aset", "total assets", "jumlah liabilitas", "total liabilitas",
-                    "total liabilities", "jumlah ekuitas", "total ekuitas", "total equity", "penjualan",
-                    "pendapatan", "revenue", "net sales", "beban pokok penjualan", "cost of sales",
-                    "laba usaha", "operating profit", "laba tahun berjalan", "laba bersih", "net profit",
-                    "kas dan setara kas", "cash and cash equivalents", "arus kas bersih",
-                }
-                if lbl_lower not in generic_labels:
-                    seg_type = "note_segment"
-                    if "customer" in cid.lower() or "pelanggan" in lbl_lower:
-                        seg_type = "customer_concentration"
-                    elif "cogs" in cid.lower() or "cost" in cid.lower() or "pupuk" in lbl_lower or "upah" in lbl_lower:
-                        seg_type = "cogs_component"
-                    elif "planted" in cid.lower() or "hektar" in lbl_lower or "sawit" in lbl_lower:
-                        seg_type = "biological_asset_maturity"
-                    elif "borrowing" in cid.lower() or "bank" in lbl_lower or "kredit" in lbl_lower:
-                        seg_type = "debt_facility"
-                    elif cid == "ifrs:Revenue":
-                        seg_type = "product_segment"
-                    seg_dict = {"segment": f.source_label_original.strip(), "type": seg_type}
+            source_bbox_json = json.dumps(f.bbox) if f.bbox else None
 
             await conn.execute(
                 text(
                     """
                     INSERT INTO financial_facts (
                         source_doc_id, ticker, period_end, fiscal_period, statement, concept_id, concept_local,
-                        value_numeric, unit, segment, period_type, accounting_std, source_page, extraction_conf, extraction_method
+                        value_numeric, unit, segment, period_type, accounting_std, source_page, source_bbox,
+                        extraction_conf, extraction_method
                     ) VALUES (
                         :doc_id, :ticker, :period_end, :period, :statement, :concept_id, :label,
-                        :val, :unit, CAST(:seg AS jsonb), :period_type, :std, :page, 0.95, 'llm_extract'
+                        :val, :unit, CAST(:seg AS jsonb), :period_type, :std, :page, CAST(:source_bbox AS jsonb),
+                        0.75, 'llm_extract'
                     )
                     ON CONFLICT (ticker, fiscal_period, concept_id, (coalesce(segment, '{}'::jsonb)))
                     WHERE is_restated = false
@@ -803,10 +814,13 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
                         value_numeric = EXCLUDED.value_numeric,
                         unit = EXCLUDED.unit,
                         segment = EXCLUDED.segment,
+                        statement = EXCLUDED.statement,
+                        period_type = EXCLUDED.period_type,
                         source_page = EXCLUDED.source_page,
+                        source_bbox = EXCLUDED.source_bbox,
                         source_doc_id = EXCLUDED.source_doc_id,
                         extraction_method = 'llm_extract',
-                        extraction_conf = 0.95;
+                        extraction_conf = 0.75;
                     """
                 ),
                 {
@@ -823,6 +837,7 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
                     "period_type": p_type,
                     "std": payload.accounting_standard,
                     "page": f.source_page,
+                    "source_bbox": source_bbox_json,
                 },
             )
             facts_count += 1
@@ -873,6 +888,7 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
                 if cand.exists() and cand.is_file():
                     try:
                         import pymupdf
+
                         from services.narrative.chunker import chunk_pages
                         from services.shared.types import PageContent
 
@@ -1335,7 +1351,6 @@ async def list_processed_documents(
 
 def main() -> None:
     """Entry point for running the EMIMIND MCP Server via stdio."""
-    import asyncio
     mcp.run()
 
 

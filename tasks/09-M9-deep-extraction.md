@@ -147,7 +147,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
   - The integration test inserts two facts with the same concept and segments `{"collectibility":"Lancar","segment":"Korporasi"}` and `{"collectibility":"Lancar","segment":"UMKM"}` → 2 rows. Re-inserting the first with a new value → still 2 rows, value updated.
 
 ### M9.1.4 — Commit path: no invented segments, explicit statement/period type, honest provenance
-- [ ] **Files:** `services/mcp/types.py` (`ExtractedFactItem`: add `statement: Literal['BS','IS','CF','EQ','NOTE']`, keep `bbox`), `services/mcp/server.py` (`commit_verified_report`), `services/mcp/validator.py` (reject a missing or invalid `statement`), `tests/unit/test_mcp_server.py`, `tests/unit/test_mcp_validator.py`
+- [x] **Files:** `services/mcp/types.py` (`ExtractedFactItem`: add `statement: Literal['BS','IS','CF','EQ','NOTE']`, keep `bbox`), `services/mcp/server.py` (`commit_verified_report`), `services/mcp/validator.py` (reject a missing or invalid `statement`), `tests/unit/test_mcp_server.py`, `tests/unit/test_mcp_validator.py`
 - **Depends on:** M9.1.1, M9.1.3
 - **What:**
   1. **Delete** the label-keyword segment inference block (the `generic_labels` and `seg_type` heuristics). `segment` is stored exactly as submitted, or `NULL`.
