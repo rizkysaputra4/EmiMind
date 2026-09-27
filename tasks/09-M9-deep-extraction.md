@@ -241,7 +241,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
   - Integration: `SELECT count(*) FROM document_page_tables WHERE doc_id=:id AND page_index=2` ≥ 1, and `cells` is a JSON array whose elements all have the keys `row, col, text, value, bbox`.
 
 ### M9.2.4 — Embedding backfill worker
-- [ ] **Files:** `services/ingest/tasks/embed_pages.py` (new, `WORKER_VERSION="1.0"`), `scripts/backfill_page_embeddings.py` (new: `--tickers`, `--limit`, `--priority lighthouse,lq45,all`), `tests/integration/test_m9_embed_pages.py`
+- [x] **Files:** `services/ingest/tasks/embed_pages.py` (new, `WORKER_VERSION="1.0"`), `scripts/backfill_page_embeddings.py` (new: `--tickers`, `--limit`, `--priority lighthouse,lq45,all`), `tests/integration/test_m9_embed_pages.py`
 - **Depends on:** M9.2.2
 - **What:**
   - Batch (default 32 pages) through `services.narrative.embedder.Embedder`, writing `embedding` only where it is NULL.

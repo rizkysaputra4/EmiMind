@@ -7,6 +7,7 @@ from typing import Any, ClassVar
 from services.ingest.tasks.chunk_narrative import chunk_narrative_task
 from services.ingest.tasks.derive_metrics import derive_metrics_task
 from services.ingest.tasks.embed_narrative import embed_narrative_task
+from services.ingest.tasks.embed_pages import embed_pages_task
 from services.ingest.tasks.extract_tables import extract_tables_task
 from services.ingest.tasks.index_pages import index_pages_task
 from services.ingest.tasks.ingest_document import ingest_document
@@ -67,6 +68,7 @@ class WorkerSettings:
         normalize_facts_task,
         chunk_narrative_task,
         embed_narrative_task,
+        embed_pages_task,
         derive_metrics_task,
         refresh_profile_task,
         mine_guidance_task,
