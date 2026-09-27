@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from decimal import Decimal
+from pathlib import Path
 
 from services.mcp.types import (
     CellRef,
@@ -412,5 +414,171 @@ def test_validator_source_page_exceeds_page_count_fails_provenance() -> None:
     prov_issue = next(i for i in report.issues if i.category == "PROVENANCE")
     assert "PROVENANCE" == prov_issue.category
     assert 11 in prov_issue.target_pages
+
+
+def test_validator_aali_synthetic_fixture_fails_synthetic_label_and_split() -> None:
+    fixture_path = Path(__file__).resolve().parents[1] / "fixtures" / "m9" / "aali_synthetic_payload.json"
+    with open(fixture_path, encoding="utf-8") as f:
+        data = json.load(f)
+
+    payload = DraftSubmissionPayload.model_validate(data)
+    # Page 3 evidence has only top-level revenue, not the 700/300 split or placeholder labels
+    evidence = {
+        3: PageEvidence(
+            page_index=3,
+            text_source="pdf_text",
+            page_text="Laporan Laba Rugi Komprehensif PT Astra Agro Lestari Tbk\nPendapatan Bersih: 1.000\nBeban: 800",
+            tables=[],
+        )
+    }
+
+    contract = make_test_contract("GENERIC")
+    report = validate_draft_submission(payload, contract=contract, evidence=evidence, page_count=50)
+
+    assert report.status == "INVALID"
+    categories = [i.category for i in report.issues]
+    assert "SYNTHETIC_LABEL" in categories
+    assert "SYNTHETIC_SPLIT" in categories
+
+
+def test_validator_genuine_grounded_split_50_50_passes() -> None:
+    contract = make_test_contract("GENERIC")
+    facts = [
+        ExtractedFactItem(
+            concept_id="ifrs:Revenue",
+            value_numeric=Decimal("1000"),
+            source_page=28,
+            statement="NOTE",
+            source_label_original="Total Pendapatan",
+        ),
+        ExtractedFactItem(
+            concept_id="ifrs:Revenue",
+            value_numeric=Decimal("500"),
+            source_page=28,
+            statement="NOTE",
+            source_label_original="Minyak Kelapa Sawit",
+            segment={"segment": "Minyak Kelapa Sawit", "type": "product"},
+        ),
+        ExtractedFactItem(
+            concept_id="ifrs:Revenue",
+            value_numeric=Decimal("500"),
+            source_page=28,
+            statement="NOTE",
+            source_label_original="Inti Sawit",
+            segment={"segment": "Inti Sawit", "type": "product"},
+        ),
+    ]
+
+    payload = DraftSubmissionPayload(doc_id="doc_grounded_split", ticker="AALI", fiscal_period="2025Q4", facts=facts)
+    evidence = {
+        28: PageEvidence(
+            page_index=28,
+            text_source="pdf_text",
+            page_text="Catatan 28. Rincian Pendapatan:\nMinyak Kelapa Sawit: 500\nInti Sawit: 500\nTotal: 1.000",
+            tables=[],
+        )
+    }
+
+    report = validate_draft_submission(payload, contract=contract, evidence=evidence, page_count=50)
+
+    categories = [i.category for i in report.issues]
+    assert "SYNTHETIC_LABEL" not in categories
+    assert "SYNTHETIC_SPLIT" not in categories
+
+
+def test_validator_placeholder_label_verbatim_on_page_passes_synthetic_label() -> None:
+    contract = make_test_contract("GENERIC")
+    facts = [
+        ExtractedFactItem(
+            concept_id="ifrs:Revenue",
+            value_numeric=Decimal("1000"),
+            source_page=15,
+            statement="NOTE",
+        ),
+        ExtractedFactItem(
+            concept_id="ifrs:Revenue",
+            value_numeric=Decimal("700"),
+            source_page=15,
+            statement="NOTE",
+            source_label_original="Primary Operations",
+            segment={"segment": "Primary Operations", "type": "product"},
+        ),
+        ExtractedFactItem(
+            concept_id="ifrs:Revenue",
+            value_numeric=Decimal("300"),
+            source_page=15,
+            statement="NOTE",
+            source_label_original="Other Operations",
+            segment={"segment": "Other Operations", "type": "product"},
+        ),
+    ]
+
+    payload = DraftSubmissionPayload(doc_id="doc_verbatim_label", ticker="AALI", fiscal_period="2025Q4", facts=facts)
+    # The text literally has "Primary Operations" and "Other Operations" and the numbers
+    evidence = {
+        15: PageEvidence(
+            page_index=15,
+            text_source="pdf_text",
+            page_text="Segment Breakdown:\nPrimary Operations: 700\nOther Operations: 300\nTotal: 1.000",
+            tables=[],
+        )
+    }
+
+    report = validate_draft_submission(payload, contract=contract, evidence=evidence, page_count=50)
+
+    categories = [i.category for i in report.issues]
+    assert "SYNTHETIC_LABEL" not in categories
+    assert "SYNTHETIC_SPLIT" not in categories
+
+
+def test_validator_only_child_lainnya_without_verbatim_fails_synthetic_label() -> None:
+    contract = make_test_contract("GENERIC")
+    facts = [
+        ExtractedFactItem(
+            concept_id="ifrs:Revenue",
+            value_numeric=Decimal("1000"),
+            source_page=10,
+            statement="NOTE",
+            source_label_original="Lainnya",
+            segment={"segment": "Lainnya", "type": "product"},
+        ),
+    ]
+
+    payload = DraftSubmissionPayload(doc_id="doc_only_child_lainnya", ticker="AALI", fiscal_period="2025Q4", facts=facts)
+    evidence = {
+        10: PageEvidence(
+            page_index=10,
+            text_source="pdf_text",
+            page_text="Pendapatan jasa dan perdagangan: 1.000",
+            tables=[],
+        )
+    }
+
+    report = validate_draft_submission(payload, contract=contract, evidence=evidence, page_count=50)
+
+    assert report.status == "INVALID"
+    label_issue = next(i for i in report.issues if i.category == "SYNTHETIC_LABEL")
+    assert label_issue.concept_id == "ifrs:Revenue"
+
+
+def test_validator_segmented_fact_without_source_page_fails_segment_provenance() -> None:
+    contract = make_test_contract("GENERIC")
+    facts = [
+        ExtractedFactItem(
+            concept_id="ifrs:Revenue",
+            value_numeric=Decimal("500"),
+            source_page=None,
+            statement="NOTE",
+            segment={"segment": "CPO", "type": "product"},
+        ),
+    ]
+
+    payload = DraftSubmissionPayload(doc_id="doc_seg_no_page", ticker="AALI", fiscal_period="2025Q4", facts=facts)
+    report = validate_draft_submission(payload, contract=contract, page_count=50)
+
+    assert report.status == "INVALID"
+    seg_prov = next(i for i in report.issues if i.category == "SEGMENT_PROVENANCE")
+    assert seg_prov.concept_id == "ifrs:Revenue"
+
 
 

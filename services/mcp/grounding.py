@@ -214,7 +214,7 @@ def check_text_grounding(
 
     for s in scales:
         unscaled = fact.value_numeric / s
-        tol = Decimal("1")
+        tol = min(Decimal("1"), abs(unscaled) * Decimal("0.01")) if unscaled != 0 else Decimal("0")
         for cand in candidates:
             if abs(cand - unscaled) <= tol:
                 return True, None

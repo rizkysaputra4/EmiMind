@@ -364,7 +364,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
 - **Done when:** unit tests assert the INSERT params for each of the three cases, and assert that a payload which fails grounding at commit time is rejected with no INSERT.
 
 ### M9.4.4 — Anti-synthetic rules
-- [ ] **Files:** `services/mcp/validator.py`, `tests/unit/test_mcp_validator.py`, `tests/fixtures/m9/aali_synthetic_payload.json` (new regression fixture)
+- [x] **Files:** `services/mcp/validator.py`, `tests/unit/test_mcp_validator.py`, `tests/fixtures/m9/aali_synthetic_payload.json` (new regression fixture)
 - **Depends on:** M9.4.2
 - **What** (design doc §Phase 5, rule 5):
   - ERROR `SYNTHETIC_LABEL` for placeholder segment labels (`Primary Operations`, `Other Operations`, `Operasi Utama`, `Operasi Lainnya`, or `Lainnya`/`Others` as the only child) unless the label is found verbatim in the cited page text.

@@ -40,6 +40,56 @@ CONCEPT_ALIASES: dict[str, str] = {
     "ifrs:cashflowsfromusedinoperatingactivities": "ifrs:CashFlowsFromUsedInOperatingActivities",
 }
 
+PLACEHOLDER_SEGMENT_LABELS: set[str] = {
+    "primary operations",
+    "other operations",
+    "operasi utama",
+    "operasi lainnya",
+}
+
+ONLY_CHILD_PLACEHOLDER_LABELS: set[str] = {
+    "lainnya",
+    "others",
+    "other",
+    "lain-lain",
+}
+
+
+def _extract_segment_label(f: ExtractedFactItem) -> str:
+    if f.segment and isinstance(f.segment, dict):
+        for key in ("segment", "label", "name"):
+            val = f.segment.get(key)
+            if isinstance(val, str) and val.strip():
+                return val.strip()
+    if f.source_label_original and f.source_label_original.strip():
+        return f.source_label_original.strip()
+    return ""
+
+
+def _is_round_fraction(child_val: Decimal, parent_val: Decimal) -> bool:
+    if parent_val == 0:
+        return False
+    pct = (child_val / parent_val) * Decimal(100)
+    rounded_pct = round(pct)
+    if abs(pct - rounded_pct) < Decimal("1e-4") and int(rounded_pct) % 5 == 0 and 0 < int(rounded_pct) < 100:
+        return True
+    return False
+
+
+def _is_child_grounded(
+    c: ExtractedFactItem,
+    evidence: dict[int, PageEvidence] | None,
+    default_scale: Decimal,
+) -> bool:
+    if evidence is None or c.source_page is None or c.source_page not in evidence:
+        return False
+    page_ev = evidence[c.source_page]
+    if c.cell_ref is not None:
+        is_g, _, _, _ = check_cell_grounding(c, page_ev, default_scale=default_scale)
+        return is_g
+    is_g, _ = check_text_grounding(c, page_ev, default_scale=default_scale)
+    return is_g
+
 
 def _normalize_concept(cid: str) -> str:
     """Returns canonical concept ID if alias exists, otherwise returns original."""
@@ -288,7 +338,21 @@ def validate_draft_submission(
     default_contract_scale = resolve_scale(None, getattr(contract, "scaling_rules", None))
 
     for f in payload.facts:
-        if f.source_page < 1 or (page_count is not None and f.source_page > page_count):
+        if f.segment and (f.source_page is None or f.source_page <= 0):
+            issues.append(
+                ValidationIssue(
+                    severity=IssueSeverity.ERROR,
+                    category="SEGMENT_PROVENANCE",
+                    concept_id=f.concept_id,
+                    feedback_message=(
+                        f"Segmented fact '{f.concept_id}' must cite its own disclosure note source_page (got {f.source_page})."
+                    ),
+                    target_pages=[],
+                )
+            )
+            continue
+
+        if f.source_page is None or f.source_page < 1 or (page_count is not None and f.source_page > page_count):
             issues.append(
                 ValidationIssue(
                     severity=IssueSeverity.ERROR,
@@ -298,7 +362,7 @@ def validate_draft_submission(
                         f"Fact '{f.concept_id}' source_page {f.source_page} is out of document bounds "
                         f"(valid: 1..{page_count or 'N/A'})."
                     ),
-                    target_pages=[f.source_page],
+                    target_pages=[f.source_page] if f.source_page else [],
                 )
             )
             continue
@@ -365,6 +429,74 @@ def validate_draft_submission(
                             target_pages=[f.source_page],
                         )
                     )
+
+    # Anti-synthetic rules: SYNTHETIC_LABEL and SYNTHETIC_SPLIT
+    if evidence is not None:
+        facts_by_concept_grouped: dict[str, list[ExtractedFactItem]] = {}
+        for f in payload.facts:
+            facts_by_concept_grouped.setdefault(f.concept_id, []).append(f)
+
+        for cid, c_facts in facts_by_concept_grouped.items():
+            children = [f for f in c_facts if f.segment]
+            unsegmented = [f for f in c_facts if not f.segment]
+
+            # 1. SYNTHETIC_LABEL
+            for child in children:
+                seg_label = _extract_segment_label(child)
+                norm_label = seg_label.lower().strip()
+                is_placeholder = norm_label in PLACEHOLDER_SEGMENT_LABELS
+                if not is_placeholder and len(children) == 1 and norm_label in ONLY_CHILD_PLACEHOLDER_LABELS:
+                    is_placeholder = True
+
+                if is_placeholder:
+                    verbatim_found = False
+                    if child.source_page is not None and child.source_page in evidence:
+                        page_text = evidence[child.source_page].page_text
+                        if norm_label in page_text.lower():
+                            verbatim_found = True
+
+                    if not verbatim_found:
+                        issues.append(
+                            ValidationIssue(
+                                severity=IssueSeverity.ERROR,
+                                category="SYNTHETIC_LABEL",
+                                concept_id=cid,
+                                feedback_message=(
+                                    f"Placeholder segment label '{seg_label}' on '{cid}' is rejected "
+                                    f"unless found verbatim on source page {child.source_page}."
+                                ),
+                                target_pages=[child.source_page] if child.source_page else [],
+                            )
+                        )
+
+            # 2. SYNTHETIC_SPLIT
+            if len(children) >= 2:
+                parent_val = (
+                    unsegmented[0].value_numeric
+                    if unsegmented
+                    else sum((c.value_numeric for c in children), Decimal(0))
+                )
+                if parent_val != 0:
+                    all_round = all(_is_round_fraction(c.value_numeric, parent_val) for c in children)
+                    if all_round:
+                        any_grounded = any(
+                            _is_child_grounded(c, evidence, default_contract_scale)
+                            for c in children
+                        )
+                        if not any_grounded:
+                            issues.append(
+                                ValidationIssue(
+                                    severity=IssueSeverity.ERROR,
+                                    category="SYNTHETIC_SPLIT",
+                                    concept_id=cid,
+                                    feedback_message=(
+                                        f"Breakdown for concept '{cid}' rejected as synthetic split: "
+                                        f"all {len(children)} children are exact round multiples of 5% of total ({parent_val:,.0f}) "
+                                        f"and none is grounded in page evidence."
+                                    ),
+                                    target_pages=list({c.source_page for c in children if c.source_page}),
+                                )
+                            )
 
     for n in payload.narratives:
         if n.source_page < 1 or (page_count is not None and n.source_page > page_count):

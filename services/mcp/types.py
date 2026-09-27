@@ -113,7 +113,7 @@ class ExtractedFactItem(BaseModel):
     value_numeric: Decimal
     unit: str = "IDR"
     period_type: str | None = None  # 'instant', 'duration_qtd', 'duration_ytd', 'duration_q', 'duration_12m', 'duration'
-    source_page: int
+    source_page: int | None = None
     statement: Literal["BS", "IS", "CF", "EQ", "NOTE"] | None = None
     source_label_original: str | None = None
     segment: dict[str, Any] | None = None

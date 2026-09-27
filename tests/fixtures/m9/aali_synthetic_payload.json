@@ -1,0 +1,37 @@
+{
+  "doc_id": "doc_aali_synthetic",
+  "ticker": "AALI",
+  "fiscal_period": "2025Q4",
+  "accounting_standard": "SAK",
+  "facts": [
+    {
+      "concept_id": "ifrs:Revenue",
+      "value_numeric": 1000,
+      "source_page": 3,
+      "statement": "IS",
+      "source_label_original": "Pendapatan Bersih"
+    },
+    {
+      "concept_id": "ifrs:Revenue",
+      "value_numeric": 700,
+      "source_page": 3,
+      "statement": "NOTE",
+      "source_label_original": "Primary Operations",
+      "segment": {
+        "segment": "Primary Operations",
+        "type": "product"
+      }
+    },
+    {
+      "concept_id": "ifrs:Revenue",
+      "value_numeric": 300,
+      "source_page": 3,
+      "statement": "NOTE",
+      "source_label_original": "Other Operations",
+      "segment": {
+        "segment": "Other Operations",
+        "type": "product"
+      }
+    }
+  ]
+}

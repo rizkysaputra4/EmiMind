@@ -851,7 +851,8 @@ async def submit_draft_extraction(payload_json: str, retry_attempt: int = 1) -> 
         # Load evidence for every cited source_page
         cited_pages: set[int] = set()
         for f in payload.facts:
-            cited_pages.add(f.source_page)
+            if f.source_page is not None:
+                cited_pages.add(f.source_page)
         for n in payload.narratives:
             cited_pages.add(n.source_page)
         for c in payload.causal_links:
@@ -1052,7 +1053,8 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
         # Load evidence for every cited source_page
         cited_pages: set[int] = set()
         for f in payload.facts:
-            cited_pages.add(f.source_page)
+            if f.source_page is not None:
+                cited_pages.add(f.source_page)
         for n in payload.narratives:
             cited_pages.add(n.source_page)
         for c in payload.causal_links:
