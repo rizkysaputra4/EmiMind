@@ -158,6 +158,12 @@ class OmittedMetricItem(BaseModel):
     search_pages_checked: list[int] = Field(default_factory=list)
 
 
+class ProcessingUsage(BaseModel):
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    pages_read: int | None = None
+
+
 class DraftSubmissionPayload(BaseModel):
     doc_id: str
     ticker: str
@@ -168,6 +174,7 @@ class DraftSubmissionPayload(BaseModel):
     causal_links: list[ExtractedCausalLink] = Field(default_factory=list)
     guidance: list[ExtractedGuidanceItem] = Field(default_factory=list)
     omitted_kpis: list[OmittedMetricItem] = Field(default_factory=list)
+    usage: ProcessingUsage | dict[str, Any] | None = None
 
 
 class IssueSeverity(str, Enum):

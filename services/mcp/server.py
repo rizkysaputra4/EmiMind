@@ -799,7 +799,11 @@ async def _load_cross_issuer_narrative_hashes(conn: Any, ticker: str) -> dict[st
 
 
 @mcp.tool()
-async def submit_draft_extraction(payload_json: str, retry_attempt: int = 1) -> ValidationReport:
+async def submit_draft_extraction(
+    payload_json: str,
+    retry_attempt: int = 1,
+    usage: dict[str, Any] | None = None,
+) -> ValidationReport:
     """Validates a draft extraction payload against schema, accounting math equations, and unit scaling."""
     try:
         data = json.loads(payload_json) if isinstance(payload_json, str) else payload_json
@@ -824,6 +828,14 @@ async def submit_draft_extraction(payload_json: str, retry_attempt: int = 1) -> 
                     "target_pages": [],
                 }
             ],
+        )
+
+    effective_usage: dict[str, Any] | None = usage
+    if effective_usage is None and payload.usage is not None:
+        effective_usage = (
+            payload.usage.model_dump(exclude_none=True)
+            if hasattr(payload.usage, "model_dump")
+            else dict(payload.usage)
         )
 
     engine = get_engine()
@@ -970,6 +982,9 @@ async def submit_draft_extraction(payload_json: str, retry_attempt: int = 1) -> 
                     "draft": json.dumps(payload.model_dump(mode="json")),
                 },
             )
+            err_meta = {"status": report.status, "retry_attempt": retry_attempt}
+            if effective_usage:
+                err_meta.update(effective_usage)
             await _log_processing_event(
                 conn,
                 action="ERROR",
@@ -978,13 +993,20 @@ async def submit_draft_extraction(payload_json: str, retry_attempt: int = 1) -> 
                 ticker=payload.ticker.upper(),
                 doc_id=payload.doc_id,
                 reason=f"Validation failed after {retry_attempt} retries; sent to review queue.",
-                metadata={"status": report.status, "retry_attempt": retry_attempt},
+                metadata=err_meta,
             )
             await conn.commit()
     else:
         # Log every draft submission attempt (success or validation feedback)
         # so the operator can see per-file extraction history.
         try:
+            extracted_meta = {
+                "status": report.status,
+                "retry_attempt": retry_attempt,
+                "facts_count": len(payload.facts),
+            }
+            if effective_usage:
+                extracted_meta.update(effective_usage)
             async with engine.connect() as conn:
                 await _log_processing_event(
                     conn,
@@ -994,7 +1016,7 @@ async def submit_draft_extraction(payload_json: str, retry_attempt: int = 1) -> 
                     ticker=payload.ticker.upper(),
                     doc_id=payload.doc_id,
                     reason=f"Draft submitted (validation={report.status}, attempt={retry_attempt}).",
-                    metadata={"status": report.status, "retry_attempt": retry_attempt, "facts_count": len(payload.financial_facts) if hasattr(payload, 'financial_facts') else 0},
+                    metadata=extracted_meta,
                 )
                 await conn.commit()
         except Exception as exc:
@@ -1004,10 +1026,21 @@ async def submit_draft_extraction(payload_json: str, retry_attempt: int = 1) -> 
 
 
 @mcp.tool()
-async def commit_verified_report(payload_json: str) -> CommitReport:
+async def commit_verified_report(
+    payload_json: str,
+    usage: dict[str, Any] | None = None,
+) -> CommitReport:
     """Commits verified financial facts, narrative chunks, and guidance to the database and runs the derive engine."""
     data = json.loads(payload_json) if isinstance(payload_json, str) else payload_json
     payload = DraftSubmissionPayload.model_validate(data)
+
+    effective_usage: dict[str, Any] | None = usage
+    if effective_usage is None and payload.usage is not None:
+        effective_usage = (
+            payload.usage.model_dump(exclude_none=True)
+            if hasattr(payload.usage, "model_dump")
+            else dict(payload.usage)
+        )
 
     engine = get_engine()
     doc_id = payload.doc_id
@@ -1516,6 +1549,18 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
         val = await calculate_valuation(conn, ticker, is_live=True)
         live_val_ok = val.get("price") is not None
 
+        meta_committed: dict[str, Any] = {
+            "facts_committed": facts_count,
+            "narratives_committed": narratives_count,
+            "guidance_committed": len(payload.guidance),
+            "omissions_recorded": omissions_count,
+            "derived_metrics_computed": compute_rep.computed,
+            "profile_refreshed": profile_refreshed,
+            "live_valuation_computed": live_val_ok,
+        }
+        if effective_usage:
+            meta_committed.update(effective_usage)
+
         await _log_processing_event(
             conn,
             action="COMMITTED",
@@ -1524,15 +1569,7 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
             ticker=ticker,
             doc_id=doc_id,
             reason=f"Committed {facts_count} facts, {narratives_count} narratives, {len(payload.guidance)} guidance items. Derived {compute_rep.computed} metrics.",
-            metadata={
-                "facts_committed": facts_count,
-                "narratives_committed": narratives_count,
-                "guidance_committed": len(payload.guidance),
-                "omissions_recorded": omissions_count,
-                "derived_metrics_computed": compute_rep.computed,
-                "profile_refreshed": profile_refreshed,
-                "live_valuation_computed": live_val_ok,
-            },
+            metadata=meta_committed,
         )
         await conn.commit()
 

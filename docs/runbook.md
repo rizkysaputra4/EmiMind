@@ -106,3 +106,63 @@ To add a new sector (e.g., `PROPERTY` or `HEALTHCARE`):
    Add unit test in `tests/unit/test_sector_recipes.py`.
 5. **Verify Suite:**
    Run `uv run pytest -v` and `uv run python -m eval.runner --suite=all`.
+
+---
+
+## 6. Agent Targeted Deep Extraction Protocol
+
+When extracting from financial statement PDFs in `incoming_reports/`:
+
+### Core Rules
+1. **NEVER read the entire 150+ page PDF from start to end.**
+2. `source_page` must **always** be the **1-based physical PDF page index** (`page_index`), **never** the printed folio label.
+3. Numeric values must come from table cell parser (`tables[].cells`), citing `cell_ref: {"table_index": T, "row": R, "col": C}` and bounding box `bbox`. Use page images only for visual confirmation.
+4. Scale detection: Check table `unit_hint` (e.g. "dalam jutaan rupiah" vs "dalam ribuan rupiah") and expand values to full integer IDR in the JSON payload.
+5. Provide token/page usage telemetry in `usage: {"input_tokens": N, "output_tokens": N, "pages_read": N}`.
+
+### 7-Step Extraction Loop
+
+1. **Inspect Document (`inspect_document`):**
+   - Call `inspect_document(file_path, ticker, fiscal_period)`.
+   - If status is `ALREADY_PROCESSED`, terminate immediately with 0 tokens spent.
+   - If status is `NEEDS_METADATA`, resolve `fiscal_period` (e.g. `"2025Q4"`) and re-call `inspect_document`.
+   - Note the returned `doc_id`.
+
+2. **Retrieve Extraction Contract (`get_extraction_contract`):**
+   - Call `get_extraction_contract(doc_id)`.
+   - Inspect the returned `sector`, `required_facts`, `granular_note_modules`, and `scaling_rules`.
+
+3. **Retrieve Targeted Spans per Module (`get_routed_pages`):**
+   - For core statements: `get_routed_pages(doc_id, "BALANCE_SHEET")`, `get_routed_pages(doc_id, "INCOME_STATEMENT")`, `get_routed_pages(doc_id, "CASH_FLOW")`.
+   - For sector note modules: call `get_routed_pages(doc_id, module.name)` for each applicable module in `contract.granular_note_modules` (e.g. `BANK_LOANS_NPL`, `DEPOSITS_FUNDING`, `PLANTATION_AREA`, `REVENUE_BREAKDOWN`, `MDA`).
+
+4. **Parse Grid Cells & Ground Facts:**
+   - Extract facts from `tables[].cells`:
+     - Match cell numeric values multiplied by scale.
+     - Attach `cell_ref={"table_index": table.table_index, "row": cell.row, "col": cell.col}` and `bbox=cell.bbox`.
+     - Assign `statement`: `"BS"` for Balance Sheet, `"IS"` for Income Statement, `"CF"` for Cash Flow, `"NOTE"` for disclosure notes.
+   - For breakdown items (segments, bank placements, loan matrices): provide `segment` dict (e.g. `{"segment": "Kredit Modal Kerja", "type": "loan_facility"}`) and cite the specific physical note `source_page`.
+
+5. **Mandatory Operational KPIs & Omission Handling:**
+   - Extract required metrics specified in the contract.
+   - If a mandatory metric is genuinely absent from this PDF, explicitly declare it in `omitted_kpis`:
+     ```json
+     {
+       "metric_id": "idx:CostOfCredit",
+       "reason": "NOT_DISCLOSED_IN_REPORT",
+       "explanation": "No cost of credit disclosure provided in annual audited notes",
+       "search_pages_checked": [12, 13, 14]
+     }
+     ```
+
+6. **Submit Draft Validation (`submit_draft_extraction`):**
+   - Submit per-module or consolidated micro-payloads to `submit_draft_extraction`.
+   - Include `usage: {"input_tokens": ..., "output_tokens": ..., "pages_read": ...}`.
+   - If validation status is `INVALID`, inspect `report.issues`:
+     - Examine ONLY the `target_pages` indicated in the feedback issues.
+     - Correct column offsets, scale errors, or sum discrepancies.
+     - Retry (up to 3 attempts).
+
+7. **Commit Verified Extraction (`commit_verified_report`):**
+   - When report status is `VALID`, call `commit_verified_report(payload_json, usage=...)`.
+   - Confirm returned status is `COMMITTED`.

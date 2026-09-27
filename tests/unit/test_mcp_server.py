@@ -24,7 +24,9 @@ from services.mcp.types import (
     ExtractedFactItem,
     ExtractedNarrativeItem,
     InspectionStatus,
+    ProcessingUsage,
     RoutedPages,
+    ValidationReport,
 )
 from tests.fixtures.m9.build_fixtures import build_fs_small
 from tests.unit._mcp_contract_fixtures import make_test_contract
@@ -947,6 +949,84 @@ async def test_commit_fails_grounding_rejected_no_insert() -> None:
         assert bad_rep.status == "REJECTED_VALIDATION_FAILED"
         assert bad_rep.facts_committed == 0
         assert len(executed_inserts) == 0
+
+
+@pytest.mark.asyncio
+async def test_mcp_usage_logging_in_processing_log() -> None:
+    usage_data = {"input_tokens": 12500, "output_tokens": 850, "pages_read": 12}
+    payload = DraftSubmissionPayload(
+        doc_id="doc_usage_test_123",
+        ticker="BMRI",
+        fiscal_period="2024Q4",
+        facts=[],
+        usage=ProcessingUsage(**usage_data),
+    )
+    payload_json = json.dumps(payload.model_dump(mode="json"))
+
+    logged_events: list[dict[str, Any]] = []
+
+    async def mock_log(conn: Any, **kwargs: Any) -> None:
+        logged_events.append(kwargs)
+
+    mock_engine = MagicMock()
+    mock_conn = AsyncMock()
+    mock_conn.execute.return_value = MagicMock(
+        mappings=lambda: MagicMock(first=lambda: {"sector": "BANK", "name": "PT Bank Mandiri (Persero) Tbk", "page_count": 50}),
+        first=lambda: None,
+        scalar=lambda: 0,
+    )
+    mock_engine.connect.return_value.__aenter__.return_value = mock_conn
+
+    contract = make_test_contract("BANK")
+
+    with (
+        patch("services.mcp.server.get_engine", return_value=mock_engine),
+        patch("services.mcp.server.build_extraction_contract", new_callable=AsyncMock, return_value=contract),
+        patch("services.mcp.server._log_processing_event", side_effect=mock_log),
+    ):
+        await submit_draft_extraction(payload_json, retry_attempt=1)
+
+    extracted_events = [e for e in logged_events if e.get("action") == "EXTRACTED"]
+    assert len(extracted_events) >= 1
+    meta = extracted_events[0].get("metadata") or {}
+    assert meta.get("input_tokens") == 12500
+    assert meta.get("output_tokens") == 850
+    assert meta.get("pages_read") == 12
+
+    logged_events.clear()
+    with (
+        patch("services.mcp.server.get_engine", return_value=mock_engine),
+        patch("services.mcp.server.build_extraction_contract", new_callable=AsyncMock, return_value=contract),
+        patch(
+            "services.mcp.server.validate_draft_submission",
+            return_value=ValidationReport(
+                status="VALID",
+                submission_id="sub_1",
+                doc_id="doc_usage_test_123",
+                ticker="BMRI",
+                fiscal_period="2024Q4",
+                errors_count=0,
+                warnings_count=0,
+                can_retry=False,
+                retry_attempt=1,
+                max_retries=3,
+                issues=[],
+            ),
+        ),
+        patch("services.mcp.server._log_processing_event", side_effect=mock_log),
+        patch("services.mcp.server.compute_for_document", new_callable=AsyncMock, return_value=MagicMock(computed=3)),
+        patch("services.mcp.server.refresh_profile_task"),
+        patch("services.mcp.server.calculate_valuation", return_value={}),
+    ):
+        await commit_verified_report(payload_json, usage={"input_tokens": 15000, "output_tokens": 900, "pages_read": 14})
+
+    committed_events = [e for e in logged_events if e.get("action") == "COMMITTED"]
+    assert len(committed_events) >= 1
+    c_meta = committed_events[0].get("metadata") or {}
+    assert c_meta.get("input_tokens") == 15000
+    assert c_meta.get("output_tokens") == 900
+    assert c_meta.get("pages_read") == 14
+
 
 
 

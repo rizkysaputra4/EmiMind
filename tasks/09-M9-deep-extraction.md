@@ -404,7 +404,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
 ## Phase 5 — Agent workflow & observability
 
 ### M9.5.1 — Agent runbook update
-- [ ] **Files:** `../EmiMind-Extraction/AGENTS.md`, `docs/runbook.md`
+- [x] **Files:** `../EmiMind-Extraction/AGENTS.md`, `docs/runbook.md`
 - **Depends on:** M9.3.3, M9.4.2
 - **What:** Document the loop from design doc §Phase 4:
   1. `inspect_document`
@@ -423,7 +423,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
   Clean up with the reset afterwards.
 
 ### M9.5.2 — Token and cost logging
-- [ ] **Files:** `services/mcp/server.py` (`submit_draft_extraction` and `commit_verified_report` accept optional `usage: {input_tokens, output_tokens, pages_read}` and log it to `document_processing_log.metadata`), `../EmiMind-Extraction/AGENTS.md` (the agent reports its usage)
+- [x] **Files:** `services/mcp/server.py` (`submit_draft_extraction` and `commit_verified_report` accept optional `usage: {input_tokens, output_tokens, pages_read}` and log it to `document_processing_log.metadata`), `../EmiMind-Extraction/AGENTS.md` (the agent reports its usage)
 - **Depends on:** M9.5.1
 - **Done when:**
   - Unit: submitting with `usage` writes a log row whose metadata has all three keys.
