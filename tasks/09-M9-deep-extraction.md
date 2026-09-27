@@ -273,7 +273,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
   - Unit: every module in the YAML has both term lists non-empty (schema test).
 
 ### M9.3.2 — `page_router.py` with RRF
-- [ ] **Files:** `services/retrieval/page_router.py` (new), `tests/unit/test_page_router.py` (new, pure RRF/expansion logic), `tests/integration/test_m9_page_router.py`
+- [x] **Files:** `services/retrieval/page_router.py` (new), `tests/unit/test_page_router.py` (new, pure RRF/expansion logic), `tests/integration/test_m9_page_router.py`
 - **Depends on:** M9.2.2, M9.2.3, M9.3.1
 - **What:** `route_pages(conn, doc_id, route_query, top_k) -> list[RoutedSpan]`:
   - FTS leg: `ts_rank_cd(tsv, websearch_to_tsquery('simple', ...))` over the ID+EN terms, top 40.
