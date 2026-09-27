@@ -262,7 +262,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
 ## Phase 3 — Router
 
 ### M9.3.1 — Module query table in the contract
-- [ ] **Files:** `db/seeds/page_router_queries.yaml` (new), `services/mcp/contracts.py` (load it; attach `route_query` per module), `services/mcp/types.py` (`GranularNoteModule.route_query: RouteQuery | None`, plus core modules `BALANCE_SHEET`, `INCOME_STATEMENT`, `CASH_FLOW`, `MDA`), `tests/unit/test_mcp_contracts.py`
+- [x] **Files:** `db/seeds/page_router_queries.yaml` (new), `services/mcp/contracts.py` (load it; attach `route_query` per module), `services/mcp/types.py` (`GranularNoteModule.route_query: RouteQuery | None`, plus core modules `BALANCE_SHEET`, `INCOME_STATEMENT`, `CASH_FLOW`, `MDA`), `tests/unit/test_mcp_contracts.py`
 - **Depends on:** none. **Parallel-safe with:** Phase 2
 - **What:**
   - YAML keyed by module name, then sector (`ALL` default, overridable per sector). Fields: `terms_id`, `terms_en`, `max_pages` (default 6), `anchor_patterns` (optional note-heading regexes such as `KREDIT YANG DIBERIKAN`, used only as an FTS boost, never as the sole mechanism).

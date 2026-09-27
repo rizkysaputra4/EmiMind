@@ -69,6 +69,13 @@ class ExtractionNarrativeRule(BaseModel):
     guideline: str
 
 
+class RouteQuery(BaseModel):
+    terms_id: list[str] = Field(default_factory=list)
+    terms_en: list[str] = Field(default_factory=list)
+    max_pages: int = 6
+    anchor_patterns: list[str] = Field(default_factory=list)
+
+
 class GranularNoteModule(BaseModel):
     name: str  # e.g. 'REVENUE_BREAKDOWN', 'COGS_COMPONENTS', 'SUBSIDIARIES', 'DEBT_BY_LENDER', 'BIOLOGICAL_ASSETS'
     description: str
@@ -76,6 +83,7 @@ class GranularNoteModule(BaseModel):
     target_concepts: list[str] = Field(default_factory=list)
     expected_segment_fields: list[str] = Field(default_factory=list)
     guideline: str
+    route_query: RouteQuery | None = None
 
 
 class ExtractionContract(BaseModel):
@@ -89,6 +97,7 @@ class ExtractionContract(BaseModel):
     required_facts: list[ExtractionFactRule]
     required_narratives: list[ExtractionNarrativeRule] = Field(default_factory=list)
     granular_note_modules: list[GranularNoteModule] = Field(default_factory=list)
+    core_modules: dict[str, RouteQuery] = Field(default_factory=dict)
     sector_specific_guidelines: list[str] = Field(default_factory=list)
     do_not_extract: list[str] = Field(default_factory=list)
 

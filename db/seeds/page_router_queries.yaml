@@ -1,0 +1,318 @@
+# Seed query dictionary for page router (M9 Phase 3).
+# Keyed by module name, then sector ('ALL' default, overridable per sector).
+# Fields:
+#   terms_id: Indonesian search terms for FTS / semantic matching
+#   terms_en: English search terms for FTS / semantic matching
+#   max_pages: maximum page span to retrieve
+#   anchor_patterns: note-heading regexes used as FTS anchors
+
+BALANCE_SHEET:
+  ALL:
+    terms_id:
+      - "laporan posisi keuangan konsolidasian"
+      - "aset lancar"
+      - "liabilitas"
+      - "ekuitas"
+    terms_en:
+      - "statement of financial position"
+      - "current assets"
+      - "liabilities"
+      - "equity"
+    max_pages: 4
+    anchor_patterns:
+      - "LAPORAN POSISI KEUANGAN"
+      - "STATEMENT OF FINANCIAL POSITION"
+
+INCOME_STATEMENT:
+  ALL:
+    terms_id:
+      - "laporan laba rugi dan penghasilan komprehensif lain"
+      - "laba rugi"
+      - "pendapatan"
+      - "beban"
+    terms_en:
+      - "statement of profit or loss and other comprehensive income"
+      - "profit or loss"
+      - "revenue"
+      - "expenses"
+    max_pages: 3
+    anchor_patterns:
+      - "LAPORAN LABA RUGI"
+      - "STATEMENT OF PROFIT OR LOSS"
+
+CASH_FLOW:
+  ALL:
+    terms_id:
+      - "laporan arus kas konsolidasian"
+      - "aktivitas operasi"
+      - "aktivitas investasi"
+      - "aktivitas pendanaan"
+    terms_en:
+      - "statement of cash flows"
+      - "operating activities"
+      - "investing activities"
+      - "financing activities"
+    max_pages: 4
+    anchor_patterns:
+      - "LAPORAN ARUS KAS"
+      - "STATEMENT OF CASH FLOWS"
+
+MDA:
+  ALL:
+    terms_id:
+      - "analisis dan pembahasan manajemen"
+      - "tinjauan operasional"
+      - "kinerja keuangan"
+    terms_en:
+      - "management discussion and analysis"
+      - "operational review"
+      - "financial performance"
+    max_pages: 10
+    anchor_patterns:
+      - "ANALISIS DAN PEMBAHASAN MANAJEMEN"
+      - "MANAGEMENT DISCUSSION AND ANALYSIS"
+
+CASH_BANKS:
+  ALL:
+    terms_id:
+      - "kas dan setara kas"
+      - "giro pada bank"
+      - "deposito berjangka"
+      - "pihak ketiga"
+    terms_en:
+      - "cash and cash equivalents"
+      - "current accounts in banks"
+      - "time deposits"
+      - "third parties"
+    max_pages: 3
+    anchor_patterns:
+      - "KAS DAN SETARA KAS"
+      - "CASH AND CASH EQUIVALENTS"
+
+REVENUE_CUSTOMERS:
+  ALL:
+    terms_id:
+      - "pendapatan usaha"
+      - "rincian pelanggan"
+      - "penjualan melebihi 10%"
+      - "pelanggan utama"
+    terms_en:
+      - "operating revenues"
+      - "revenue by product"
+      - "customers exceeding 10%"
+      - "major customers"
+    max_pages: 4
+    anchor_patterns:
+      - "PENDAPATAN"
+      - "REVENUE"
+      - "PENJUALAN"
+
+COGS_BREAKDOWN:
+  ALL:
+    terms_id:
+      - "beban pokok penjualan"
+      - "beban pokok pendapatan"
+      - "bahan baku"
+      - "upah tenaga kerja"
+      - "penyusutan"
+    terms_en:
+      - "cost of goods sold"
+      - "cost of revenue"
+      - "raw materials"
+      - "direct labour"
+      - "depreciation"
+    max_pages: 4
+    anchor_patterns:
+      - "BEBAN POKOK PENJUALAN"
+      - "BEBAN POKOK PENDAPATAN"
+      - "COST OF GOODS SOLD"
+      - "COST OF REVENUES"
+
+DEBT_FACILITIES:
+  ALL:
+    terms_id:
+      - "utang bank"
+      - "pinjaman jangka panjang"
+      - "fasilitas kredit"
+      - "suku bunga"
+      - "jatuh tempo"
+    terms_en:
+      - "bank loans"
+      - "long-term borrowings"
+      - "credit facilities"
+      - "interest rate"
+      - "maturity"
+    max_pages: 5
+    anchor_patterns:
+      - "UTANG BANK"
+      - "PINJAMAN JANGKA PANJANG"
+      - "BANK LOANS"
+      - "BORROWINGS"
+
+BANK_LOANS_NPL:
+  ALL:
+    terms_id:
+      - "kredit yang diberikan"
+      - "kolektibilitas"
+      - "lancar"
+      - "kurang lancar"
+      - "diragukan"
+      - "macet"
+      - "cadangan kerugian penurunan nilai"
+      - "CKPN"
+    terms_en:
+      - "loans and advances"
+      - "collectibility"
+      - "current"
+      - "substandard"
+      - "doubtful"
+      - "loss"
+      - "allowance for impairment losses"
+    max_pages: 6
+    anchor_patterns:
+      - "KREDIT YANG DIBERIKAN"
+      - "KUALITAS ASET"
+      - "LOANS AND ADVANCES"
+
+PLANTATION_AREA:
+  ALL:
+    terms_id:
+      - "aset biologis"
+      - "tanaman menghasilkan"
+      - "tanaman belum menghasilkan"
+      - "luas areal perkebunan"
+      - "hektar"
+    terms_en:
+      - "biological assets"
+      - "mature plantations"
+      - "immature plantations"
+      - "planted area"
+      - "hectares"
+    max_pages: 4
+    anchor_patterns:
+      - "ASET BIOLOGIS"
+      - "TANAMAN PERKEBUNAN"
+      - "BIOLOGICAL ASSETS"
+
+# Granular Module Synonyms / Aliases
+REVENUE_BREAKDOWN:
+  ALL:
+    terms_id:
+      - "pendapatan usaha"
+      - "rincian penjualan"
+      - "penjualan per produk"
+    terms_en:
+      - "operating revenue"
+      - "revenue breakdown"
+      - "sales by product"
+    max_pages: 4
+    anchor_patterns:
+      - "PENDAPATAN"
+      - "REVENUE"
+
+CUSTOMER_CONCENTRATION:
+  ALL:
+    terms_id:
+      - "pelanggan utama"
+      - "transaksi penjualan melebihi 10%"
+      - "konsentrasi pelanggan"
+    terms_en:
+      - "major customers"
+      - "sales exceeding 10%"
+      - "customer concentration"
+    max_pages: 3
+    anchor_patterns:
+      - "PELANGGAN"
+      - "CUSTOMERS"
+
+COGS_COMPONENTS:
+  ALL:
+    terms_id:
+      - "beban pokok penjualan"
+      - "bahan baku"
+      - "upah langsung"
+      - "beban pabrikasi"
+    terms_en:
+      - "cost of goods sold"
+      - "raw materials"
+      - "direct labor"
+      - "manufacturing overhead"
+    max_pages: 4
+    anchor_patterns:
+      - "BEBAN POKOK PENJUALAN"
+      - "COST OF GOODS SOLD"
+
+DEBT_BY_LENDER:
+  ALL:
+    terms_id:
+      - "utang bank"
+      - "pinjaman bank"
+      - "kreditur"
+      - "suku bunga"
+    terms_en:
+      - "bank borrowings"
+      - "bank loans"
+      - "creditor"
+      - "interest rate"
+    max_pages: 5
+    anchor_patterns:
+      - "UTANG BANK"
+      - "PINJAMAN JANGKA PANJANG"
+
+BANK_LOAN_QUALITY_NPL:
+  ALL:
+    terms_id:
+      - "kualitas aset produktif"
+      - "kolektibilitas kredit"
+      - "kredit lancar"
+      - "kredit macet"
+      - "CKPN"
+    terms_en:
+      - "asset quality"
+      - "loan collectibility"
+      - "performing loans"
+      - "non-performing loans"
+      - "allowance for credit losses"
+    max_pages: 6
+    anchor_patterns:
+      - "KREDIT YANG DIBERIKAN"
+      - "KUALITAS ASET"
+
+BANK_LOANS_BY_SEGMENT:
+  ALL:
+    terms_id:
+      - "kredit berdasarkan segmen"
+      - "korporasi"
+      - "komersial"
+      - "konsumer"
+      - "mikro"
+      - "ritel"
+    terms_en:
+      - "loans by segment"
+      - "corporate"
+      - "commercial"
+      - "consumer"
+      - "micro"
+      - "retail"
+    max_pages: 5
+    anchor_patterns:
+      - "KREDIT YANG DIBERIKAN"
+
+BIOLOGICAL_ASSETS_DETAIL:
+  ALL:
+    terms_id:
+      - "tanaman produktif"
+      - "aset biologis"
+      - "tanaman menghasilkan"
+      - "tanaman belum menghasilkan"
+      - "luas areal"
+    terms_en:
+      - "productive plants"
+      - "biological assets"
+      - "mature area"
+      - "immature area"
+      - "planted hectares"
+    max_pages: 4
+    anchor_patterns:
+      - "ASET BIOLOGIS"
+      - "BIOLOGICAL ASSETS"
