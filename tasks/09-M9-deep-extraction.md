@@ -386,7 +386,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
   - a note total equal to the prior-year BS value → `TIE_OUT` ERROR mentioning the column hint
 
 ### M9.4.6 — Narrative quality rules
-- [ ] **Files:** `services/mcp/validator.py`, `db/seeds/narrative_boilerplate.txt` (new: normalized hashes or strings, seeded from the 28,679-duplicate sentence captured in M9.0.1 if available), `services/mcp/server.py` (load cross-issuer hashes of committed chunks for the evidence), `tests/unit/test_mcp_validator.py`
+- [x] **Files:** `services/mcp/validator.py`, `db/seeds/narrative_boilerplate.txt` (new: normalized hashes or strings, seeded from the 28,679-duplicate sentence captured in M9.0.1 if available), `services/mcp/server.py` (load cross-issuer hashes of committed chunks for the evidence), `tests/unit/test_mcp_validator.py`
 - **Depends on:** M9.4.2
 - **What** (design doc §Phase 5, rule 7):
   - ERROR `NARRATIVE_BOILERPLATE` when a normalized md5 (lowercased, whitespace-collapsed, digits kept) is in the boilerplate list.

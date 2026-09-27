@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import re
 import uuid
 from decimal import Decimal
 from pathlib import Path
@@ -114,6 +116,42 @@ def load_tie_out_rules() -> list[dict[str, Any]]:
     return _TIE_OUT_RULES
 
 
+def normalize_narrative_text(text: str) -> str:
+    """Normalizes narrative text: lowercase, whitespace-collapsed, digits kept."""
+    return re.sub(r"\s+", " ", text.lower()).strip()
+
+
+def narrative_md5(text: str) -> str:
+    """Computes MD5 hash of normalized narrative text."""
+    norm = normalize_narrative_text(text)
+    return hashlib.md5(norm.encode("utf-8"), usedforsecurity=False).hexdigest()
+
+
+_BOILERPLATE_HASHES: set[str] | None = None
+
+
+def load_narrative_boilerplate_hashes() -> set[str]:
+    """Loads and caches boilerplate narrative MD5 hashes from db/seeds/narrative_boilerplate.txt."""
+    global _BOILERPLATE_HASHES
+    if _BOILERPLATE_HASHES is None:
+        hashes: set[str] = set()
+        txt_path = Path(__file__).resolve().parents[2] / "db" / "seeds" / "narrative_boilerplate.txt"
+        if not txt_path.is_file():
+            txt_path = Path("db/seeds/narrative_boilerplate.txt").resolve()
+        if txt_path.is_file():
+            with open(txt_path, encoding="utf-8") as f:
+                for line in f:
+                    line_s = line.strip()
+                    if not line_s or line_s.startswith("#"):
+                        continue
+                    if len(line_s) == 32 and all(c in "0123456789abcdefABCDEF" for c in line_s):
+                        hashes.add(line_s.lower())
+                    else:
+                        hashes.add(narrative_md5(line_s))
+        _BOILERPLATE_HASHES = hashes
+    return _BOILERPLATE_HASHES
+
+
 def _normalize_concept(cid: str) -> str:
     """Returns canonical concept ID if alias exists, otherwise returns original."""
     return CONCEPT_ALIASES.get(cid.lower(), cid)
@@ -146,6 +184,7 @@ def validate_draft_submission(
     page_count: int | None = None,
     retry_attempt: int = 1,
     previous_attempt_misses: list[str] | None = None,
+    cross_issuer_narrative_hashes: dict[str, str] | None = None,
 ) -> ValidationReport:
     """Performs rigorous multi-tier accounting validation on draft financial extraction payload.
 
@@ -522,6 +561,31 @@ def validate_draft_submission(
                                 )
                             )
 
+    boilerplate_hashes = load_narrative_boilerplate_hashes()
+
+    # Pre-extract anchors for MDA generic checks
+    product_anchors: set[str] = set()
+    for f in payload.facts:
+        if f.segment and isinstance(f.segment, dict):
+            for v in f.segment.values():
+                if isinstance(v, str) and len(v.strip()) >= 2:
+                    v_clean = v.strip().lower()
+                    product_anchors.add(v_clean)
+                    for word in re.split(r"[/\-, ]+", v_clean):
+                        if len(word) >= 4 and word not in ("type", "segment", "item"):
+                            product_anchors.add(word)
+        if f.source_label_original and len(f.source_label_original.strip()) >= 2:
+            s_clean = f.source_label_original.strip().lower()
+            product_anchors.add(s_clean)
+            for word in re.split(r"[/\-, ]+", s_clean):
+                if len(word) >= 4:
+                    product_anchors.add(word)
+
+    period_pattern = re.compile(
+        r"\b(20\d\d|19\d\d|q[1-4]|tw[1-4]|fy|1h|2h|semester|triwulan|tahunan|annual)\b",
+        re.IGNORECASE,
+    )
+
     for n in payload.narratives:
         if n.source_page < 1 or (page_count is not None and n.source_page > page_count):
             issues.append(
@@ -541,6 +605,70 @@ def validate_draft_submission(
                     target_pages=[n.source_page],
                 )
             )
+
+        n_hash = narrative_md5(n.text_original)
+
+        # 1. NARRATIVE_BOILERPLATE
+        if n_hash in boilerplate_hashes:
+            issues.append(
+                ValidationIssue(
+                    severity=IssueSeverity.ERROR,
+                    category="NARRATIVE_BOILERPLATE",
+                    feedback_message=(
+                        f"Narrative chunk on page {n.source_page} matches known boilerplate / disclaimer text: "
+                        f"'{n.text_original[:80]}...'."
+                    ),
+                    target_pages=[n.source_page] if n.source_page else [],
+                )
+            )
+
+        # 2. NARRATIVE_DUPLICATE (cross-issuer)
+        if cross_issuer_narrative_hashes and n_hash in cross_issuer_narrative_hashes:
+            committed_ticker = cross_issuer_narrative_hashes[n_hash]
+            if committed_ticker != payload.ticker:
+                issues.append(
+                    ValidationIssue(
+                        severity=IssueSeverity.ERROR,
+                        category="NARRATIVE_DUPLICATE",
+                        feedback_message=(
+                            f"Narrative chunk on page {n.source_page} duplicates committed narrative from "
+                            f"different issuer '{committed_ticker}'."
+                        ),
+                        target_pages=[n.source_page] if n.source_page else [],
+                    )
+                )
+
+        # 3. NARRATIVE_GENERIC (for MDA chunks)
+        if n.section.upper() == "MDA":
+            has_digit = bool(re.search(r"\d", n.text_original))
+            has_period = bool(period_pattern.search(n.text_original))
+            if payload.fiscal_period and payload.fiscal_period.lower() in n.text_original.lower():
+                has_period = True
+            has_product = any(anchor in n.text_original.lower() for anchor in product_anchors)
+            has_ticker = payload.ticker.lower() in n.text_original.lower()
+            has_company = False
+            if contract and getattr(contract, "company_name", None):
+                clean_name = re.sub(r"[^\w\s]", " ", contract.company_name.lower())
+                clean_name = re.sub(r"\b(pt|tbk|persero)\b", "", clean_name)
+                clean_name = re.sub(r"\s+", " ", clean_name).strip()
+                clean_text = re.sub(r"[^\w\s]", " ", n.text_original.lower())
+                clean_text = re.sub(r"\s+", " ", clean_text).strip()
+                if len(clean_name) >= 3 and clean_name in clean_text:
+                    has_company = True
+
+            if not (has_digit or has_period or has_product or has_ticker or has_company):
+                issues.append(
+                    ValidationIssue(
+                        severity=IssueSeverity.ERROR,
+                        category="NARRATIVE_GENERIC",
+                        feedback_message=(
+                            f"MD&A narrative chunk on page {n.source_page} lacks any issuer anchor "
+                            f"(no numbers, no named products/segments, and no period references): "
+                            f"'{n.text_original[:80]}...'."
+                        ),
+                        target_pages=[n.source_page] if n.source_page else [],
+                    )
+                )
 
     # -------------------------------------------------------------
     # LEVEL 2: Accounting Math Equations & Tie-Outs

@@ -10,12 +10,13 @@ from services.mcp.types import (
     CellRef,
     DraftSubmissionPayload,
     ExtractedFactItem,
+    ExtractedNarrativeItem,
     OmittedMetricItem,
     PageEvidence,
     PageTable,
     PageTableCell,
 )
-from services.mcp.validator import validate_draft_submission
+from services.mcp.validator import narrative_md5, validate_draft_submission
 from tests.unit._mcp_contract_fixtures import make_test_contract
 
 
@@ -707,6 +708,142 @@ def test_validator_note_total_equal_prior_year_bs_fails_tie_out_with_column_hint
     tie_issue = next(i for i in report.issues if i.category == "TIE_OUT")
     assert tie_issue.concept_id == "idx:LoansGross"
     assert "check you used the current-period column" in tie_issue.feedback_message.lower()
+
+
+def test_validator_narrative_boilerplate_fails() -> None:
+    contract = make_test_contract("GENERIC")
+    narratives = [
+        ExtractedNarrativeItem(
+            section="NOTE",
+            text_original="Catatan atas laporan keuangan terlampir merupakan bagian integral dari laporan keuangan konsolidasian ini.",
+            source_page=5,
+            topic="INTEGRAL_PART",
+        )
+    ]
+    payload = DraftSubmissionPayload(
+        doc_id="doc_boiler",
+        ticker="BMRI",
+        fiscal_period="2025Q4",
+        facts=[],
+        narratives=narratives,
+    )
+    report = validate_draft_submission(payload, contract=contract, sector="GENERIC", page_count=50)
+
+    assert report.status == "INVALID"
+    issue = next((i for i in report.issues if i.category == "NARRATIVE_BOILERPLATE"), None)
+    assert issue is not None
+    assert "boilerplate" in issue.feedback_message.lower()
+
+
+def test_validator_narrative_cross_issuer_duplicate_fails() -> None:
+    contract = make_test_contract("GENERIC")
+    text_dup = "Direksi berpendapat bahwa cadangan kerugian penurunan nilai telah memadai."
+    narratives = [
+        ExtractedNarrativeItem(
+            section="NOTE",
+            text_original=text_dup,
+            source_page=12,
+            topic="PROVISION",
+        )
+    ]
+    payload = DraftSubmissionPayload(
+        doc_id="doc_cross_dup",
+        ticker="BMRI",
+        fiscal_period="2025Q4",
+        facts=[],
+        narratives=narratives,
+    )
+    cross_hashes = {narrative_md5(text_dup): "BBCA"}
+    report = validate_draft_submission(
+        payload,
+        contract=contract,
+        sector="GENERIC",
+        page_count=50,
+        cross_issuer_narrative_hashes=cross_hashes,
+    )
+
+    assert report.status == "INVALID"
+    issue = next((i for i in report.issues if i.category == "NARRATIVE_DUPLICATE"), None)
+    assert issue is not None
+    assert "BBCA" in issue.feedback_message
+
+
+def test_validator_narrative_same_issuer_prior_period_passes() -> None:
+    contract = make_test_contract("GENERIC")
+    text_same_issuer = "Direksi berpendapat bahwa cadangan kerugian penurunan nilai telah memadai."
+    narratives = [
+        ExtractedNarrativeItem(
+            section="NOTE",
+            text_original=text_same_issuer,
+            source_page=12,
+            topic="PROVISION",
+        )
+    ]
+    payload = DraftSubmissionPayload(
+        doc_id="doc_same_issuer",
+        ticker="BMRI",
+        fiscal_period="2025Q4",
+        facts=[],
+        narratives=narratives,
+    )
+    cross_hashes = {narrative_md5(text_same_issuer): "BMRI"}
+    report = validate_draft_submission(
+        payload,
+        contract=contract,
+        sector="GENERIC",
+        page_count=50,
+        cross_issuer_narrative_hashes=cross_hashes,
+    )
+
+    categories = [i.category for i in report.issues]
+    assert "NARRATIVE_DUPLICATE" not in categories
+
+
+def test_validator_narrative_anchored_mda_passes() -> None:
+    contract = make_test_contract("PLANTATION")
+    anchored_text = "Pendapatan naik 12% menjadi Rp4,2 triliun didorong volume CPO"
+    narratives = [
+        ExtractedNarrativeItem(
+            section="MDA",
+            text_original=anchored_text,
+            source_page=15,
+            topic="REVENUE_ANALYSIS",
+        )
+    ]
+    payload = DraftSubmissionPayload(
+        doc_id="doc_mda_anchored",
+        ticker="LSIP",
+        fiscal_period="2025Q4",
+        facts=[],
+        narratives=narratives,
+    )
+    report = validate_draft_submission(payload, contract=contract, sector="PLANTATION", page_count=50)
+
+    categories = [i.category for i in report.issues]
+    assert "NARRATIVE_GENERIC" not in categories
+    assert "NARRATIVE_BOILERPLATE" not in categories
+
+    # Also verify unanchored generic MDA fails NARRATIVE_GENERIC
+    generic_text = "Perusahaan terus berkomitmen untuk memberikan kinerja terbaik bagi seluruh pemangku kepentingan."
+    generic_payload = DraftSubmissionPayload(
+        doc_id="doc_mda_generic",
+        ticker="LSIP",
+        fiscal_period="2025Q4",
+        facts=[],
+        narratives=[
+            ExtractedNarrativeItem(
+                section="MDA",
+                text_original=generic_text,
+                source_page=15,
+                topic="COMMISSIONER_STATEMENT",
+            )
+        ],
+    )
+    generic_report = validate_draft_submission(generic_payload, contract=contract, sector="PLANTATION", page_count=50)
+    assert generic_report.status == "INVALID"
+    issue = next((i for i in generic_report.issues if i.category == "NARRATIVE_GENERIC"), None)
+    assert issue is not None
+
 
 
 

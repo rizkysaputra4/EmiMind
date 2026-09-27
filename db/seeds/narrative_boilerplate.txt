@@ -1,0 +1,23 @@
+# Financial statement narrative boilerplate strings and hashes
+# One entry per line. Empty lines and lines starting with # are ignored.
+
+# Standard IDX integral part disclaimers (ID and EN)
+Lihat catatan atas laporan keuangan yang merupakan bagian integral dari laporan keuangan konsolidasian.
+Catatan atas laporan keuangan terlampir merupakan bagian integral dari laporan keuangan konsolidasian ini.
+Catatan atas laporan keuangan merupakan bagian integral dari laporan keuangan ini.
+The accompanying notes form an integral part of these consolidated financial statements.
+The accompanying notes form an integral part of these financial statements.
+See accompanying notes to consolidated financial statements.
+See notes to consolidated financial statements which form an integral part of these financial statements.
+
+# Language disclaimers
+The original financial statements included herein are in the Indonesian language.
+Laporan keuangan konsolidasian terlampir disusun dalam bahasa Indonesia.
+Laporan keuangan ini disusun dalam bahasa Indonesia.
+The financial statements are originally issued in the Indonesian language.
+
+# General audit formality boilerplate
+Laporan auditor independen terlampir menyatakan bahwa laporan keuangan menyajikan secara wajar.
+The accompanying independent auditors report states that the financial statements present fairly.
+Laporan keuangan konsolidasian telah diaudit oleh kantor akuntan publik independen.
+These consolidated financial statements have been audited by independent registered public accountants.

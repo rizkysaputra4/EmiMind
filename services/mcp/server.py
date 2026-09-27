@@ -44,7 +44,7 @@ from services.mcp.types import (
     RoutedPages,
     ValidationReport,
 )
-from services.mcp.validator import CONCEPT_ALIASES, validate_draft_submission
+from services.mcp.validator import CONCEPT_ALIASES, narrative_md5, validate_draft_submission
 from services.retrieval.page_router import route_pages
 from services.shared.config import get_settings
 from services.shared.logging import get_logger
@@ -782,6 +782,22 @@ async def get_routed_pages(doc_id: str, module: str, top_k: int = 3) -> RoutedPa
         )
 
 
+async def _load_cross_issuer_narrative_hashes(conn: Any, ticker: str) -> dict[str, str]:
+    """Loads MD5 hashes of committed narrative chunks for issuers other than ticker."""
+    cross_hashes: dict[str, str] = {}
+    try:
+        narr_res = await conn.execute(
+            text("SELECT ticker, text_original FROM narrative_chunks WHERE ticker != :ticker LIMIT 5000"),
+            {"ticker": ticker.upper()},
+        )
+        for nr in narr_res.mappings().all():
+            nh = narrative_md5(nr["text_original"])
+            cross_hashes[nh] = nr["ticker"]
+    except Exception as e:
+        log.warning("Failed to load cross-issuer narrative hashes: %s", e)
+    return cross_hashes
+
+
 @mcp.tool()
 async def submit_draft_extraction(payload_json: str, retry_attempt: int = 1) -> ValidationReport:
     """Validates a draft extraction payload against schema, accounting math equations, and unit scaling."""
@@ -918,12 +934,17 @@ async def submit_draft_extraction(payload_json: str, retry_attempt: int = 1) -> 
             log.warning("Failed to load page evidence for doc %s: %s", payload.doc_id, e)
             evidence = None
 
+        cross_issuer_hashes: dict[str, str] | None = None
+        if payload.narratives:
+            cross_issuer_hashes = await _load_cross_issuer_narrative_hashes(conn, payload.ticker)
+
     report = validate_draft_submission(
         payload,
         contract=contract,
         sector=sector,
         evidence=evidence,
         page_count=doc_page_count,
+        cross_issuer_narrative_hashes=cross_issuer_hashes,
         retry_attempt=retry_attempt,
     )
 
@@ -1120,6 +1141,10 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
             log.warning("Failed to load page evidence for doc %s in commit: %s", doc_id, e)
             evidence = None
 
+        cross_issuer_hashes: dict[str, str] | None = None
+        if payload.narratives:
+            cross_issuer_hashes = await _load_cross_issuer_narrative_hashes(conn, ticker)
+
         # Re-run validation with evidence at commit time; never trust the draft blindly
         val_rep = validate_draft_submission(
             payload,
@@ -1127,6 +1152,7 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
             sector=sector,
             evidence=evidence,
             page_count=doc_page_count,
+            cross_issuer_narrative_hashes=cross_issuer_hashes,
         )
         if val_rep.status != "VALID":
             err_msg = val_rep.issues[0].feedback_message if val_rep.issues else "Validation failed"
