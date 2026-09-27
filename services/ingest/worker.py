@@ -8,6 +8,7 @@ from services.ingest.tasks.chunk_narrative import chunk_narrative_task
 from services.ingest.tasks.derive_metrics import derive_metrics_task
 from services.ingest.tasks.embed_narrative import embed_narrative_task
 from services.ingest.tasks.extract_tables import extract_tables_task
+from services.ingest.tasks.index_pages import index_pages_task
 from services.ingest.tasks.ingest_document import ingest_document
 from services.ingest.tasks.link_causes import link_causes_task
 from services.ingest.tasks.match_actuals import match_actuals_task
@@ -60,6 +61,7 @@ class WorkerSettings:
     functions: ClassVar[list[Any]] = [
         ingest_document,
         parse_layout,
+        index_pages_task,
         extract_tables_task,
         xbrl_sidecar,
         normalize_facts_task,

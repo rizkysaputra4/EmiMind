@@ -200,7 +200,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
   - Deleting a `documents` row cascades to both tables (integration test `tests/integration/test_m9_pages_schema.py`).
 
 ### M9.2.2 — Page indexer: text, OCR fallback, images
-- [ ] **Files:** `services/ingest/tasks/index_pages.py` (new, `WORKER_VERSION = "1.0"`), `services/extraction/page_quality.py` (new: `needs_ocr(text) -> bool`), `tests/unit/test_page_quality.py`, `tests/integration/test_m9_index_pages.py`
+- [x] **Files:** `services/ingest/tasks/index_pages.py` (new, `WORKER_VERSION = "1.0"`), `services/extraction/page_quality.py` (new: `needs_ocr(text) -> bool`), `tests/unit/test_page_quality.py`, `tests/integration/test_m9_index_pages.py`
 - **Depends on:** M9.2.1, M9.0.2
 - **What:** `index_pages_task(ctx, doc_id)`:
   1. Check `worker_runs` for `(doc_hash, 'index_pages', WORKER_VERSION)`; skip if `ok`.

@@ -438,6 +438,18 @@ async def inspect_document(
         )
         await conn.commit()
 
+        # Enqueue page indexing worker for authorized document
+        try:
+            from services.shared.redis_client import enqueue_job, get_redis_pool
+
+            r_pool = await get_redis_pool()
+            try:
+                await enqueue_job(r_pool, "index_pages_task", d_id)
+            finally:
+                await r_pool.aclose()
+        except Exception as exc:
+            log.warning("Failed to enqueue index_pages_task", doc_id=d_id, error=str(exc))
+
         return DocumentInspectionResult(
             status=InspectionStatus.AUTHORIZED,
             doc_hash=doc_hash,
