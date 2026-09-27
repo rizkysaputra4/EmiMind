@@ -86,7 +86,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
 ## Phase 1 — Period, metadata, commit-path fixes, reset
 
 ### M9.1.1 — `resolve_fiscal_period` pure function
-- [ ] **Files:** `services/mcp/periods.py` (new), `tests/unit/test_periods.py` (new)
+- [x] **Files:** `services/mcp/periods.py` (new), `tests/unit/test_periods.py` (new)
 - **Depends on:** none
 - **What:** `resolve_fiscal_period(filename: str, hint: str | None = None) -> ResolvedPeriod | None`, where `ResolvedPeriod` is a Pydantic model with `fiscal_period` (e.g. `2025Q2`), `period_end: date` and `source: Literal['hint','downloader_prefix','filename_tokens']`.
   - **Precedence:**
