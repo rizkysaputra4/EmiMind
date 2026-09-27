@@ -20,6 +20,7 @@ from services.mcp.types import (
     DiscoveredMetricCandidate,
     DiscoveredMetricResult,
     DocumentInspectionResult,
+    DocumentSkipResult,
     DraftSubmissionPayload,
     ExtractionContract,
     InspectionStatus,
@@ -33,16 +34,48 @@ from sqlalchemy.pool import NullPool
 
 import shutil
 
+import pymupdf
+
+from services.mcp.periods import resolve_fiscal_period
+
 from services.shared.config import get_settings
 from services.shared.logging import get_logger
 
 log = get_logger("mcp.server")
 
 
+def _read_sidecar_meta(pdf_path: Path) -> dict[str, Any] | None:
+    """Read the .meta.json sidecar written by the downloader for announcement PDFs.
+
+    Sidecar convention: {pdf_path}.meta.json — see design doc §9 and the downloader
+    at ../EmiMind-Extraction/scripts/download_idx_reports.py::_write_sidecar.
+    Returns None when the file is missing or malformed (never raises).
+    """
+    sidecar = pdf_path.with_suffix(pdf_path.suffix + ".meta.json")
+    if not sidecar.exists():
+        return None
+    try:
+        return json.loads(sidecar.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
 def _archive_processed_file(file_path_str: str) -> str | None:
     """Moves a processed file to a 'processed/' subfolder if located in incoming_reports/."""
     try:
         p = Path(file_path_str).resolve()
+        if not p.exists():
+            # Try finding it relative to project root or incoming_reports
+            alt_candidates = [
+                Path("incoming_reports") / p.name,
+                Path(".") / p.name,
+                Path("incoming_reports") / Path(file_path_str).name,
+            ]
+            for alt in alt_candidates:
+                if alt.resolve().exists():
+                    p = alt.resolve()
+                    break
+
         if p.exists() and p.is_file() and "incoming_reports" in p.parts and "processed" not in p.parts:
             processed_dir = p.parent / "processed"
             processed_dir.mkdir(parents=True, exist_ok=True)
@@ -53,6 +86,60 @@ def _archive_processed_file(file_path_str: str) -> str | None:
     except Exception as e:
         log.warning("Failed to move processed file to archive", error=str(e))
     return None
+
+
+async def _log_processing_event(
+    conn: Any,
+    *,
+    action: str,
+    source: str,
+    file_name: str,
+    ticker: str | None = None,
+    file_path: str | None = None,
+    doc_hash: str | None = None,
+    doc_id: str | None = None,
+    reason: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    """Append one row to document_processing_log — a durable audit trail of every
+    ingest decision (authorized, skipped, extracted, committed, errored).
+
+    Never raises: logging failures must not break the ingest path. On any DB
+    error we log locally and swallow. The connection is not committed here —
+    the caller is expected to be inside a transaction that will commit as
+    part of its normal work.
+    """
+    try:
+        await conn.execute(
+            text(
+                """
+                INSERT INTO document_processing_log
+                    (ticker, file_name, file_path, doc_hash, doc_id, action, reason, source, metadata)
+                VALUES
+                    (:ticker, :file_name, :file_path, :doc_hash, :doc_id, :action, :reason, :source, CAST(:metadata AS jsonb))
+                """
+            ),
+            {
+                "ticker": (ticker or None),
+                "file_name": file_name,
+                "file_path": file_path,
+                "doc_hash": doc_hash,
+                "doc_id": doc_id,
+                "action": action,
+                "reason": reason,
+                "source": source,
+                "metadata": json.dumps(metadata or {}),
+            },
+        )
+    except Exception as exc:
+        # Never let logging failure break ingest — log locally and continue.
+        log.warning(
+            "Failed to write document_processing_log",
+            action=action,
+            source=source,
+            file_name=file_name,
+            error=str(exc),
+        )
 
 
 def get_engine():
@@ -83,7 +170,49 @@ async def inspect_document(
 ) -> DocumentInspectionResult:
     """Inspects a PDF document by computing its SHA-256 fingerprint and checking processing status in EMIMIND."""
     p = Path(file_path)
+    if not p.is_absolute() and not p.exists():
+        repo_root = Path(__file__).resolve().parents[2]
+        base_name = Path(file_path).name
+        # `{TICKER}` prefix in downloader filenames like NCKL_2025_TW3_RDF_*.pdf
+        # → also probe the per-ticker subfolder created by the IDX bulk downloader.
+        ticker_prefix = base_name.split("_", 1)[0].upper() if "_" in base_name else None
+        candidates = [
+            (repo_root / file_path).resolve(),
+            (repo_root / "incoming_reports" / base_name).resolve(),
+            (repo_root / "incoming_reports" / "processed" / base_name).resolve(),
+            (Path.cwd() / file_path).resolve(),
+            (Path.cwd() / "incoming_reports" / base_name).resolve(),
+            (Path.cwd() / "incoming_reports" / "processed" / base_name).resolve(),
+        ]
+        if ticker_prefix:
+            candidates.extend([
+                (repo_root / "incoming_reports" / ticker_prefix / base_name).resolve(),
+                (repo_root / "incoming_reports" / ticker_prefix / "processed" / base_name).resolve(),
+                (Path.cwd() / "incoming_reports" / ticker_prefix / base_name).resolve(),
+                (Path.cwd() / "incoming_reports" / ticker_prefix / "processed" / base_name).resolve(),
+            ])
+        for cand in candidates:
+            if cand.exists() and cand.is_file():
+                p = cand
+                break
+
     if not p.exists() or not p.is_file():
+        # Best-effort log write for file-not-found; opens its own transaction.
+        try:
+            engine = get_engine()
+            async with engine.connect() as conn:
+                await _log_processing_event(
+                    conn,
+                    action="SKIPPED_NOT_FOUND",
+                    source="inspect_document",
+                    file_name=Path(file_path).name,
+                    ticker=(ticker or "").upper() or None,
+                    file_path=file_path,
+                    reason=f"File not resolvable to disk from path: {file_path}",
+                )
+                await conn.commit()
+        except Exception as exc:
+            log.warning("Failed to log SKIPPED_NOT_FOUND", error=str(exc))
         return DocumentInspectionResult(
             status=InspectionStatus.ERROR,
             doc_hash="",
@@ -96,6 +225,20 @@ async def inspect_document(
         while chunk := f.read(65536):
             hasher.update(chunk)
     doc_hash = hasher.hexdigest()
+
+    # Sidecar-driven doc_type: if the downloader dropped a .meta.json alongside this
+    # PDF, prefer the doc_class_hint over the caller-supplied doc_type. Design §9.
+    sidecar_meta = _read_sidecar_meta(p)
+    if sidecar_meta:
+        hint = (sidecar_meta.get("doc_class_hint") or "").upper()
+        if hint:
+            doc_type = hint
+        if not ticker and sidecar_meta.get("ticker"):
+            ticker = str(sidecar_meta["ticker"]).upper()
+        # Announcements don't have a fiscal_period in the FS sense — synthesise one
+        # from the announcement date so the downstream partition key stays stable.
+        if not fiscal_period and sidecar_meta.get("announcement_date"):
+            fiscal_period = str(sidecar_meta["announcement_date"])[:10]
 
     engine = get_engine()
     async with engine.connect() as conn:
@@ -121,6 +264,24 @@ async def inspect_document(
             if facts_count > 0 and doc["status"] in ("parsed", "facts_extracted"):
                 # Archive to processed subfolder if located in incoming_reports
                 new_path = _archive_processed_file(str(p))
+                if new_path:
+                    await conn.execute(
+                        text("UPDATE documents SET source_url = :url WHERE id = :d_id"),
+                        {"url": new_path, "d_id": d_id},
+                    )
+                await _log_processing_event(
+                    conn,
+                    action="SKIPPED_DUPLICATE",
+                    source="inspect_document",
+                    file_name=p.name,
+                    ticker=t,
+                    file_path=str(p),
+                    doc_hash=doc_hash,
+                    doc_id=d_id,
+                    reason=f"Hash already committed with {facts_count} facts (status={doc['status']}). Archived to processed/.",
+                    metadata={"existing_facts_count": facts_count, "archived_to": new_path},
+                )
+                await conn.commit()
                 return DocumentInspectionResult(
                     status=InspectionStatus.ALREADY_PROCESSED,
                     doc_hash=doc_hash,
@@ -134,27 +295,96 @@ async def inspect_document(
 
         # Resolve ticker and fiscal period from metadata or filename if not provided
         t_clean = (ticker or (p.stem.split("_")[0] if "_" in p.stem else "UNKNOWN")).upper()
-        fp_clean = (fiscal_period or ("2024Q4" if "Q" not in p.stem else p.stem.split("_")[1])).upper()
+        resolved_period = resolve_fiscal_period(p.name, fiscal_period)
+        if not resolved_period:
+            try:
+                from services.extraction.metadata_extractor import propose_metadata
 
-        # Fetch sector and company name
-        sec_res = await conn.execute(
-            text("SELECT name, sector, sub_sector FROM peer_groups WHERE :ticker = ANY(tickers) LIMIT 1"),
+                meta = propose_metadata(p.read_bytes())
+                if meta and meta.fiscal_period:
+                    resolved_period = resolve_fiscal_period(p.name, meta.fiscal_period)
+            except Exception as exc:
+                log.warning("Metadata extractor fallback failed", error=str(exc))
+
+        if not resolved_period:
+            await _log_processing_event(
+                conn,
+                action="NEEDS_METADATA",
+                source="inspect_document",
+                file_name=p.name,
+                ticker=t_clean if t_clean != "UNKNOWN" else None,
+                file_path=str(p),
+                doc_hash=doc_hash,
+                reason="Cannot resolve fiscal period from filename or cover page; fiscal_period required from agent.",
+            )
+            await conn.commit()
+            return DocumentInspectionResult(
+                status=InspectionStatus.NEEDS_METADATA,
+                doc_hash=doc_hash,
+                ticker=t_clean if t_clean != "UNKNOWN" else None,
+                fiscal_period=None,
+                doc_type=doc_type,
+                message="Cannot determine fiscal period from filename or cover page. Please call inspect_document again passing fiscal_period explicitly (e.g. '2025Q2').",
+            )
+
+        fp_clean = resolved_period.fiscal_period
+        period_end_dt = resolved_period.period_end
+
+        # ---- SCOPE GATE ----
+        # issuer_profile is the authoritative allowlist. A ticker is in-scope only
+        # if it has been seeded via scripts/seed_idx_tickers.py with a non-NULL
+        # sector. This keeps the extraction agent from wasting compute on tickers
+        # for which we have no sector-specific KPI pack yet. See
+        # docs/SECTOR_COVERAGE_HANDOFF.md for how to expand coverage.
+        gate_res = await conn.execute(
+            text("SELECT name, sector, sub_sector FROM issuer_profile WHERE ticker = :ticker"),
             {"ticker": t_clean},
         )
-        sec_row = sec_res.mappings().first()
-        company_name = sec_row["name"] if sec_row and sec_row.get("name") else f"PT {t_clean} Tbk"
-        sector_name = sec_row["sector"] if sec_row and sec_row.get("sector") else "GENERIC"
+        gate_row = gate_res.mappings().first()
+        if not gate_row or not gate_row.get("sector"):
+            await _log_processing_event(
+                conn,
+                action="SKIPPED_OUT_OF_SCOPE",
+                source="inspect_document",
+                file_name=p.name,
+                ticker=t_clean,
+                file_path=str(p),
+                doc_hash=doc_hash,
+                reason=f"Ticker '{t_clean}' has no sector mapping in issuer_profile.",
+            )
+            await conn.commit()
+            return DocumentInspectionResult(
+                status=InspectionStatus.OUT_OF_SCOPE,
+                doc_hash=doc_hash,
+                ticker=t_clean,
+                fiscal_period=fp_clean,
+                doc_type=doc_type,
+                message=(
+                    f"Ticker '{t_clean}' is not in the current extraction scope "
+                    f"(no sector mapping in issuer_profile). Skipping to avoid "
+                    f"seeding the database with unclassified data. To include this "
+                    f"ticker, add it to scripts/seed_idx_tickers.py IDX_TICKERS "
+                    f"with an appropriate sector code and re-run the seed script."
+                ),
+            )
+        company_name = gate_row["name"] or f"PT {t_clean} Tbk"
+        sector_name = gate_row["sector"]
 
         # Register document if new
         if not doc:
             doc_uuid = uuid.uuid4()
             d_id = str(doc_uuid)
             minio_key = f"raw/{doc_type}/{t_clean}/{fp_clean}/{p.name}"
+            try:
+                real_page_count = pymupdf.open(str(p)).page_count
+            except Exception:
+                real_page_count = 1
+
             await conn.execute(
                 text(
                     """
                     INSERT INTO documents (id, ticker, doc_type, period_end, fiscal_period, language, source_url, minio_key, doc_hash, page_count, status)
-                    VALUES (:id, :ticker, :doc_type, '2024-12-31', :fiscal_period, 'id', :url, :minio_key, :doc_hash, 1, 'raw')
+                    VALUES (:id, :ticker, :doc_type, :period_end, :fiscal_period, 'id', :url, :minio_key, :doc_hash, :page_count, 'raw')
                     ON CONFLICT (doc_hash) DO NOTHING;
                     """
                 ),
@@ -162,15 +392,55 @@ async def inspect_document(
                     "id": d_id,
                     "ticker": t_clean,
                     "doc_type": doc_type,
+                    "period_end": period_end_dt,
                     "fiscal_period": fp_clean,
                     "url": str(p),
                     "minio_key": minio_key,
                     "doc_hash": doc_hash,
+                    "page_count": real_page_count,
                 },
             )
+            # Announcement metadata: write only when doc_type is an announcement class
+            # and we actually have a sidecar to source title/date from.
+            if sidecar_meta and (sidecar_meta.get("kind") == "announcement"
+                                  or (sidecar_meta.get("doc_class_hint") or "").upper() != ""):
+                await conn.execute(
+                    text(
+                        """
+                        INSERT INTO announcement_metadata
+                            (doc_id, announcement_title, announcement_date, doc_class,
+                             classifier_source, classifier_confidence, source_url, idx_file_id)
+                        VALUES (:doc_id, :title, :date, :doc_class,
+                                'sidecar', 1.00, :src_url, :file_id)
+                        ON CONFLICT (doc_id) DO NOTHING;
+                        """
+                    ),
+                    {
+                        "doc_id": d_id,
+                        "title": sidecar_meta.get("announcement_title") or "",
+                        "date": (sidecar_meta.get("announcement_date") or "1970-01-01")[:10],
+                        "doc_class": (sidecar_meta.get("doc_class_hint") or "GENERIC_DISCLOSURE").upper(),
+                        "src_url": sidecar_meta.get("source_url"),
+                        "file_id": sidecar_meta.get("idx_file_id"),
+                    },
+                )
             await conn.commit()
         else:
             d_id = str(doc["id"])
+
+        await _log_processing_event(
+            conn,
+            action="INSPECTED_AUTHORIZED",
+            source="inspect_document",
+            file_name=p.name,
+            ticker=t_clean,
+            file_path=str(p),
+            doc_hash=doc_hash,
+            doc_id=d_id,
+            reason=f"Document authorized for extraction (sector={sector_name}, doc_type={doc_type}).",
+            metadata={"sector": sector_name, "sub_sector": gate_row.get("sub_sector"), "fiscal_period": fp_clean, "doc_type": doc_type},
+        )
+        await conn.commit()
 
         return DocumentInspectionResult(
             status=InspectionStatus.AUTHORIZED,
@@ -181,9 +451,99 @@ async def inspect_document(
             doc_type=doc_type,
             company_name=company_name,
             sector=sector_name,
-            message="Document authorized for extraction. Call get_extraction_contract(doc_id) to receive extraction schema and sector guidelines.",
+            message=(
+                "Document authorized for extraction. IMPORTANT: First, read the "
+                "first 2 pages of the PDF to verify it contains financial or "
+                "narrative business content. If it is administrative (cover "
+                "letter, OJK compliance checklist, transmittal, board statement "
+                "of responsibility, newspaper ad), call "
+                "mark_document_skipped(doc_id, reason='NOT_FINANCIAL_CONTENT', "
+                "notes='...') to log the skip and archive the file. Otherwise "
+                "call get_extraction_contract(doc_id) to receive the extraction schema."
+            ),
             existing_facts_count=0,
         )
+
+
+@mcp.tool()
+async def mark_document_skipped(
+    doc_id: str,
+    reason: str,
+    notes: str | None = None,
+) -> DocumentSkipResult:
+    """Record that the extraction agent decided a document is not worth extracting.
+
+    Call this after inspect_document if — on peeking at the PDF's first pages —
+    the agent judged the file to be administrative (cover letter, OJK checklist,
+    Surat Pernyataan Direksi, transmittal, newspaper ad, etc.), a duplicate
+    representation of the same FS, or otherwise carries no extractable financial
+    or narrative content. This is the design intent: LLM decides relevance on
+    the fly rather than relying on brittle filename regexes.
+
+    Effects:
+      1. Appends a SKIPPED_BY_LLM row to document_processing_log (audit trail).
+      2. Updates documents.status = 'skipped_by_llm' so re-ingest won't retry.
+      3. Archives the source file to processed/ so it clears the ingest queue.
+
+    Parameters:
+      doc_id: UUID returned by inspect_document.
+      reason: A short machine-friendly tag. Suggested values:
+              NOT_FINANCIAL_CONTENT | COVER_LETTER | OJK_CHECKLIST |
+              BOD_STATEMENT_OF_RESPONSIBILITY | DUPLICATE_OF_OTHER_FS |
+              NEWSPAPER_AD | INTERNAL_CORRESPONDENCE | OTHER
+      notes:  Optional 1-2 sentence explanation the operator can read later.
+    """
+    engine = get_engine()
+    async with engine.connect() as conn:
+        res = await conn.execute(
+            text("SELECT ticker, source_url, doc_hash FROM documents WHERE id = :id"),
+            {"id": doc_id},
+        )
+        row = res.mappings().first()
+        if not row:
+            raise ValueError(f"Document with ID {doc_id} not found in database.")
+
+        # Mark documents.status so downstream tools know not to re-attempt
+        # extraction. Distinct from 'raw' (never processed) and 'facts_extracted'.
+        await conn.execute(
+            text("UPDATE documents SET status = 'skipped_by_llm' WHERE id = :id"),
+            {"id": doc_id},
+        )
+
+        # Archive the source file out of the ingest queue.
+        archived_to = _archive_processed_file(row["source_url"]) if row.get("source_url") else None
+        if archived_to:
+            await conn.execute(
+                text("UPDATE documents SET source_url = :url WHERE id = :id"),
+                {"url": archived_to, "id": doc_id},
+            )
+
+        await _log_processing_event(
+            conn,
+            action="SKIPPED_BY_LLM",
+            source="mark_document_skipped",
+            file_name=Path(row["source_url"] or "").name if row.get("source_url") else "",
+            ticker=row.get("ticker"),
+            file_path=row.get("source_url"),
+            doc_hash=row.get("doc_hash"),
+            doc_id=doc_id,
+            reason=reason,
+            metadata={"notes": notes, "archived_to": archived_to},
+        )
+        await conn.commit()
+
+    return DocumentSkipResult(
+        doc_id=doc_id,
+        ticker=row.get("ticker"),
+        reason=reason,
+        notes=notes,
+        archived_to=archived_to,
+        message=(
+            f"Document marked as SKIPPED_BY_LLM (reason={reason}). "
+            f"documents.status is now 'skipped_by_llm'; file archived to "
+            f"{archived_to or '(no archive — file was outside incoming_reports)'}."
+        ),
+    )
 
 
 @mcp.tool()
@@ -201,21 +561,35 @@ async def get_extraction_contract(doc_id: str) -> ExtractionContract:
 
         ticker = doc["ticker"]
         fiscal_period = doc["fiscal_period"]
+        doc_type_val = doc["doc_type"]
 
-        sec_res = await conn.execute(
-            text("SELECT name, sector, sub_sector FROM peer_groups WHERE :ticker = ANY(tickers) LIMIT 1"),
+        # Prefer issuer_profile (the extraction-scope allowlist); fall back to
+        # peer_groups only if a stale doc_id exists for an unmapped ticker.
+        prof_res = await conn.execute(
+            text("SELECT name, sector, sub_sector FROM issuer_profile WHERE ticker = :ticker"),
             {"ticker": ticker},
         )
-        sec_row = sec_res.mappings().first()
-        company_name = sec_row["name"] if sec_row and sec_row.get("name") else f"PT {ticker} Tbk"
-        sector_name = sec_row["sector"] if sec_row and sec_row.get("sector") else "GENERIC"
+        prof_row = prof_res.mappings().first()
+        if prof_row and prof_row.get("sector"):
+            company_name = prof_row["name"] or f"PT {ticker} Tbk"
+            sector_name = prof_row["sector"]
+        else:
+            sec_res = await conn.execute(
+                text("SELECT name, sector, sub_sector FROM peer_groups WHERE :ticker = ANY(tickers) LIMIT 1"),
+                {"ticker": ticker},
+            )
+            sec_row = sec_res.mappings().first()
+            company_name = sec_row["name"] if sec_row and sec_row.get("name") else f"PT {ticker} Tbk"
+            sector_name = sec_row["sector"] if sec_row and sec_row.get("sector") else "GENERIC"
 
-        return build_extraction_contract(
+        return await build_extraction_contract(
+            conn,
             doc_id=str(doc_id),
             ticker=ticker,
             company_name=company_name,
             sector=sector_name,
             fiscal_period=fiscal_period,
+            doc_type=doc_type_val,
         )
 
 
@@ -249,18 +623,49 @@ async def submit_draft_extraction(payload_json: str, retry_attempt: int = 1) -> 
 
     engine = get_engine()
     sector = "GENERIC"
+    company_name = f"PT {payload.ticker.upper()} Tbk"
+    doc_type_val: str | None = None
     async with engine.connect() as conn:
         sec_res = await conn.execute(
-            text("SELECT sector FROM peer_groups WHERE :ticker = ANY(tickers) LIMIT 1"),
+            text("SELECT name, sector FROM peer_groups WHERE :ticker = ANY(tickers) LIMIT 1"),
             {"ticker": payload.ticker.upper()},
         )
         sec_row = sec_res.mappings().first()
-        if sec_row and sec_row.get("sector"):
-            sector = sec_row["sector"]
+        if sec_row:
+            sector = sec_row.get("sector") or "GENERIC"
+            if sec_row.get("name"):
+                company_name = sec_row["name"]
 
-    report = validate_draft_submission(payload, sector=sector, retry_attempt=retry_attempt)
+        # Look up doc_type so announcement submissions route to the right contract.
+        try:
+            dt_res = await conn.execute(
+                text("SELECT doc_type FROM documents WHERE id = :id"),
+                {"id": payload.doc_id},
+            )
+            dt_row = dt_res.mappings().first()
+            if dt_row:
+                doc_type_val = dt_row["doc_type"]
+        except Exception:
+            doc_type_val = None
 
-    # If invalid after 3 attempts, log to review_queue
+        contract = await build_extraction_contract(
+            conn,
+            doc_id=payload.doc_id,
+            ticker=payload.ticker,
+            company_name=company_name,
+            sector=sector,
+            fiscal_period=payload.fiscal_period,
+            doc_type=doc_type_val,
+        )
+
+    report = validate_draft_submission(
+        payload,
+        contract=contract,
+        sector=sector,
+        retry_attempt=retry_attempt,
+    )
+
+    # If invalid after 3 attempts, log to review_queue with the coverage block
     if report.status == "INVALID" and retry_attempt >= 3:
         async with engine.connect() as conn:
             await conn.execute(
@@ -282,7 +687,35 @@ async def submit_draft_extraction(payload_json: str, retry_attempt: int = 1) -> 
                     "draft": json.dumps(payload.model_dump(mode="json")),
                 },
             )
+            await _log_processing_event(
+                conn,
+                action="ERROR",
+                source="submit_draft_extraction",
+                file_name="",
+                ticker=payload.ticker.upper(),
+                doc_id=payload.doc_id,
+                reason=f"Validation failed after {retry_attempt} retries; sent to review queue.",
+                metadata={"status": report.status, "retry_attempt": retry_attempt},
+            )
             await conn.commit()
+    else:
+        # Log every draft submission attempt (success or validation feedback)
+        # so the operator can see per-file extraction history.
+        try:
+            async with engine.connect() as conn:
+                await _log_processing_event(
+                    conn,
+                    action="EXTRACTED",
+                    source="submit_draft_extraction",
+                    file_name="",
+                    ticker=payload.ticker.upper(),
+                    doc_id=payload.doc_id,
+                    reason=f"Draft submitted (validation={report.status}, attempt={retry_attempt}).",
+                    metadata={"status": report.status, "retry_attempt": retry_attempt, "facts_count": len(payload.financial_facts) if hasattr(payload, 'financial_facts') else 0},
+                )
+                await conn.commit()
+        except Exception as exc:
+            log.warning("Failed to log EXTRACTED event", error=str(exc))
 
     return report
 
@@ -571,13 +1004,26 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
         # 3. Update document status and archive local file if in incoming folder
         doc_res = await conn.execute(text("SELECT source_url FROM documents WHERE id = :id"), {"id": doc_id})
         doc_row = doc_res.mappings().first()
+        archived_url = None
         if doc_row and doc_row.get("source_url"):
-            _archive_processed_file(doc_row["source_url"])
+            archived_url = _archive_processed_file(doc_row["source_url"])
 
-        await conn.execute(
-            text("UPDATE documents SET status = 'facts_extracted', ingested_at = now() WHERE id = :id"),
-            {"id": doc_id},
-        )
+        if not archived_url:
+            for cand in Path("incoming_reports").glob(f"*{ticker}*.pdf"):
+                archived_url = _archive_processed_file(str(cand))
+                if archived_url:
+                    break
+
+        if archived_url:
+            await conn.execute(
+                text("UPDATE documents SET source_url = :url, status = 'facts_extracted', ingested_at = now() WHERE id = :id"),
+                {"url": archived_url, "id": doc_id},
+            )
+        else:
+            await conn.execute(
+                text("UPDATE documents SET status = 'facts_extracted', ingested_at = now() WHERE id = :id"),
+                {"id": doc_id},
+            )
         await conn.commit()
 
     # 4. Trigger derive metrics engine
@@ -595,6 +1041,26 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
     async with engine.connect() as conn:
         val = await calculate_valuation(conn, ticker, is_live=True)
         live_val_ok = val.get("price") is not None
+
+        await _log_processing_event(
+            conn,
+            action="COMMITTED",
+            source="commit_verified_report",
+            file_name="",
+            ticker=ticker,
+            doc_id=doc_id,
+            reason=f"Committed {facts_count} facts, {narratives_count} narratives, {len(payload.guidance)} guidance items. Derived {compute_rep.computed} metrics.",
+            metadata={
+                "facts_committed": facts_count,
+                "narratives_committed": narratives_count,
+                "guidance_committed": len(payload.guidance),
+                "omissions_recorded": omissions_count,
+                "derived_metrics_computed": compute_rep.computed,
+                "profile_refreshed": profile_refreshed,
+                "live_valuation_computed": live_val_ok,
+            },
+        )
+        await conn.commit()
 
     return CommitReport(
         status="COMMITTED",
@@ -823,6 +1289,48 @@ async def get_review_queue() -> list[dict[str, Any]]:
             )
         )
         return [dict(r) for r in res.mappings()]
+
+
+@mcp.tool()
+async def list_processed_documents(
+    tickers: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    """List documents already ingested and extracted, so downloaders can skip re-fetching.
+
+    Returns rows for documents whose `status` is `parsed` or `facts_extracted`
+    (i.e. their financial facts are already committed). The returned filename fields
+    are derived from `source_url` / `minio_key` for stable local-file matching.
+
+    Optional `tickers` filter narrows the result to a subset — useful when the caller
+    only cares about a specific universe (LQ45, a client watchlist, etc.).
+    """
+    engine = get_engine()
+    async with engine.connect() as conn:
+        sql = (
+            "SELECT ticker, fiscal_period, doc_type, doc_hash, source_url, minio_key, status "
+            "FROM documents WHERE status IN ('parsed','facts_extracted')"
+        )
+        params: dict[str, Any] = {}
+        if tickers:
+            sql += " AND ticker = ANY(:tickers)"
+            params["tickers"] = [t.upper() for t in tickers]
+        res = await conn.execute(text(sql), params)
+        out: list[dict[str, Any]] = []
+        for row in res.mappings():
+            src = row.get("source_url") or ""
+            mk = row.get("minio_key") or ""
+            file_name = Path(src).name if src else (Path(mk).name if mk else "")
+            out.append(
+                {
+                    "ticker": row["ticker"],
+                    "fiscal_period": row["fiscal_period"],
+                    "doc_type": row["doc_type"],
+                    "doc_hash": row["doc_hash"],
+                    "file_name": file_name,
+                    "status": row["status"],
+                }
+            )
+        return out
 
 
 def main() -> None:

@@ -13,7 +13,10 @@ class InspectionStatus(str, Enum):
     ALREADY_PROCESSED = "ALREADY_PROCESSED"
     AUTHORIZED = "AUTHORIZED"
     RESTATEMENT = "RESTATEMENT"
+    OUT_OF_SCOPE = "OUT_OF_SCOPE"
+    SKIPPED_ADMINISTRATIVE = "SKIPPED_ADMINISTRATIVE"
     ERROR = "ERROR"
+    NEEDS_METADATA = "NEEDS_METADATA"
 
 
 class DocumentInspectionResult(BaseModel):
@@ -29,12 +32,34 @@ class DocumentInspectionResult(BaseModel):
     existing_facts_count: int = 0
 
 
+class DocumentSkipResult(BaseModel):
+    """Return type of mark_document_skipped — confirms the skip was logged and
+    the file archived out of the ingest queue."""
+    doc_id: str
+    ticker: str | None = None
+    reason: str
+    notes: str | None = None
+    archived_to: str | None = None
+    message: str
+
+
 class ExtractionFactRule(BaseModel):
     concept_id: str
     label: str
-    statement_type: str  # 'BALANCE_SHEET', 'INCOME_STATEMENT', 'CASH_FLOW', 'PER_SHARE', 'NOTES'
+    statement_type: str  # 'BALANCE_SHEET', 'INCOME_STATEMENT', 'CASH_FLOW', 'PER_SHARE', 'NOTE', 'OPERATIONAL_KPI'
     required: bool = True
     description: str | None = None
+    importance: str = "HIGH"  # 'CRITICAL' | 'HIGH' | 'OPTIONAL'
+    extraction_mode: str = "EXTRACTED_RAW"  # 'EXTRACTED_RAW' | 'CALCULATED_DETERMINISTIC'
+    synonyms_id: list[str] = Field(default_factory=list)
+    synonyms_en: list[str] = Field(default_factory=list)
+    search_hints: list[str] = Field(default_factory=list)
+    extraction_guideline: str | None = None
+    expected_segment_fields: list[str] = Field(default_factory=list)
+    calculation_formula: str | None = None
+    dependencies: list[str] = Field(default_factory=list)
+    unit: str = "IDR"
+    value_type: str = "MONETARY"
 
 
 class ExtractionNarrativeRule(BaseModel):
@@ -144,6 +169,19 @@ class ValidationIssue(BaseModel):
     target_pages: list[int] = Field(default_factory=list)
 
 
+class CoverageBucket(BaseModel):
+    found: int = 0
+    expected: int = 0
+    omitted_with_justification: int = 0
+    missing: list[str] = Field(default_factory=list)
+
+
+class ExtractionCoverage(BaseModel):
+    critical: CoverageBucket = Field(default_factory=CoverageBucket)
+    high: CoverageBucket = Field(default_factory=CoverageBucket)
+    optional: CoverageBucket = Field(default_factory=CoverageBucket)
+
+
 class ValidationReport(BaseModel):
     status: str  # 'VALID' or 'INVALID'
     submission_id: str
@@ -156,6 +194,8 @@ class ValidationReport(BaseModel):
     retry_attempt: int = 1
     max_retries: int = 3
     issues: list[ValidationIssue] = Field(default_factory=list)
+    coverage: ExtractionCoverage = Field(default_factory=ExtractionCoverage)
+    previous_attempt_misses: list[str] = Field(default_factory=list)
 
 
 class CommitReport(BaseModel):

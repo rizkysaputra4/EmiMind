@@ -119,7 +119,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
   Also: `grep -n "2024Q4\|2024-12-31" services/mcp/periods.py` returns nothing.
 
 ### M9.1.2 — Real metadata in `inspect_document`
-- [ ] **Files:** `services/mcp/server.py` (`inspect_document`), `services/mcp/types.py` (add `InspectionStatus.NEEDS_METADATA`), `tests/unit/test_mcp_server.py`
+- [x] **Files:** `services/mcp/server.py` (`inspect_document`), `services/mcp/types.py` (add `InspectionStatus.NEEDS_METADATA`), `tests/unit/test_mcp_server.py`
 - **Depends on:** M9.1.1, M9.0.2
 - **What:**
   - Replace the `fp_clean` expression at `server.py:294` with `resolve_fiscal_period(p.name, fiscal_period)`.
