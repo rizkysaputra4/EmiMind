@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import json
-import re
-from typing import Any, Literal
+from typing import Any
 
 from services.llm.factory import get_llm
 from services.llm.types import Message, TextBlock
 from services.narrative.chunker import (
     chunk_pages as heuristic_chunk_pages,
+)
+from services.narrative.chunker import (
     is_cover_or_title_page,
     is_digit_heavy,
     is_table_of_contents_page,
@@ -166,11 +167,11 @@ async def _extract_page_narrative(
         chunks.append(
             NarrativeChunkDraft(
                 source_page=page.page_num,
-                section=sec,  # type: ignore[arg-type]
+                section=sec,
                 language=page.language,
                 text_original=text_orig,
                 speaker=item.get("speaker"),
-                claim_type=claim,  # type: ignore[arg-type]
+                claim_type=claim,
                 mentioned_concepts=[str(c) for c in concepts if c],
                 mentioned_periods=[fiscal_period],
             )

@@ -41,7 +41,7 @@ class ScreenerDSL(BaseModel):
 
     universe: Universe = Field(default_factory=Universe)
     filters: list[Filter] = Field(default_factory=list, max_length=20)
-    as_of: FiscalPeriod = Field(default_factory=lambda: FiscalPeriod("2024Q4"))
+    as_of: FiscalPeriod = Field(default_factory=lambda: FiscalPeriod('2024Q4'))
     sort: Sort | None = None
     limit: int = Field(default=25, ge=1, le=100)
 

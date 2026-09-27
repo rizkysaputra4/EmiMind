@@ -22,7 +22,7 @@ class ScreenerAPIRequest(BaseModel):
 
     query: str | None = None
     dsl: ScreenerDSL | None = None
-    default_period: str = "2024Q4"
+    default_period: str = '2024Q4'
 
 
 class ScreenerAPIResponse(BaseModel):

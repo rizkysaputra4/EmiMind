@@ -434,7 +434,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
 ## Phase 6 — Lighthouse & gate
 
 ### M9.6.1 — Lighthouse extraction run
-- [ ] **Files:** none (operation); results in `eval/reports/m9_lighthouse.md`
+- [x] **Files:** none (operation); results in `eval/reports/m9_lighthouse.md`
 - **Depends on:** Phases 1–5
 - **Documents** (from `EMI_REPORTS_DIR`):
   - `BMRI/processed/BMRI_2025_AUDIT_RDF_LK PT Bank Mandiri-Desember 2025.pdf`
@@ -443,7 +443,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
 - **Done when:** both documents reach `COMMITTED` in `document_processing_log`, and `eval/reports/m9_lighthouse.md` has the per-module table filled for both.
 
 ### M9.6.2 — Acceptance gate script
-- [ ] **Files:** `eval/deep_extraction_gate.py` (new), `eval/reports/m9_gate.json` (generated), `db/seeds/sector_depth_minimums.yaml` (new: e.g. `BANK: 60`, `PLANTATION: 50`, `GENERIC: 40` distinct concepts per annual filing)
+- [x] **Files:** `eval/deep_extraction_gate.py` (new), `eval/reports/m9_gate.json` (generated), `db/seeds/sector_depth_minimums.yaml` (new: e.g. `BANK: 60`, `PLANTATION: 50`, `GENERIC: 40` distinct concepts per annual filing)
 - **Depends on:** M9.6.1, M9.3.4, M9.0.1
 - **What:** compute and check each threshold from design doc §Phase 6. Exit non-zero if any fails, and print a table of dimension / value / threshold / PASS|FAIL.
 
@@ -464,7 +464,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
   - Unit test `tests/unit/test_deep_extraction_gate.py` feeds a synthetic metrics dict with one failing check and asserts exit code 1 and FAIL in the output. This proves the gate can fail.
 
 ### M9.6.3 — Prioritized batch rollout
-- [ ] **Files:** `scripts/m9_batch.py` (new: `--priority lq45|all`, `--limit`, resumable), `eval/reports/m9_batch_<date>.json`
+- [x] **Files:** `scripts/m9_batch.py` (new: `--priority lq45|all`, `--limit`, resumable), `eval/reports/m9_batch_<date>.json`
 - **Depends on:** M9.6.2 passing
 - **What:** Index, embed and run extraction over in-scope tickers in priority order. After each batch of 20 documents, run the gate in `--aggregate` mode, which applies the same checks except router recall. Stop the batch automatically if any check regresses below threshold.
 - **Done when:** the first LQ45 batch of at least 20 documents completes, and `deep_extraction_gate.py --aggregate --since <batch_start>` exits 0.
@@ -473,8 +473,8 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
 
 ## M9 exit criteria
 
-- [ ] `uv run python eval/deep_extraction_gate.py --tickers BMRI,LSIP` exits 0
-- [ ] `uv run pytest -m "not integration" tests/` green; M9 integration tests green against the local stack
-- [ ] `uv run ruff check .` and `uv run mypy services eval` clean
-- [ ] `grep -rnE "'2024-12-31'|\"2024Q4\"|segment->>'segment'|generic_labels" services/ --include=*.py` returns nothing
-- [ ] `eval/reports/{m9_baseline,router_recall,m9_gate}.json` committed
+- [x] `uv run python eval/deep_extraction_gate.py --tickers BMRI,LSIP` exits 0
+- [x] `uv run pytest -m "not integration" tests/` green; M9 integration tests green against the local stack
+- [x] `uv run ruff check .` and `uv run mypy services eval` clean
+- [x] `grep -rnE "'2024-12-31'|\"2024Q4\"|segment->>'segment'|generic_labels" services/ --include=*.py` returns nothing
+- [x] `eval/reports/{m9_baseline,router_recall,m9_gate}.json` committed

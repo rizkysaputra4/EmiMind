@@ -101,7 +101,7 @@ class FakeLLMClient(LLMClient):
                 intent = "GUIDANCE_CHECK"
 
             # Determine periods
-            periods = ["2024Q4"]
+            periods = ['2024Q4']
             for m_per in re.findall(r"\b20\d\d[qh][1-4]\b", user_text, re.IGNORECASE):
                 periods.append(m_per.upper())
 

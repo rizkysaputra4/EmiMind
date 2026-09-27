@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 from decimal import Decimal
+from typing import Any
 
 from services.derive.registry import REGISTRY
 from services.llm.factory import get_llm
@@ -123,7 +124,7 @@ def _heuristic_parse_query(query: str, default_period: str) -> ScreenerDSL:
     return ScreenerDSL(universe=universe, filters=filters, as_of=as_of, sort=sort, limit=25)
 
 
-def _extract_json_payload(text: str) -> dict | None:
+def _extract_json_payload(text: str) -> dict[str, Any] | None:
     stripped = text.strip()
     if stripped.startswith("```"):
         lines = stripped.splitlines()
@@ -149,7 +150,7 @@ def _extract_json_payload(text: str) -> dict | None:
     return None
 
 
-async def parse_query(query: str, default_period: str = "2024Q4") -> ScreenerDSL:
+async def parse_query(query: str, default_period: str = '2024Q4') -> ScreenerDSL:
     """Parses natural language screener query into valid ScreenerDSL."""
     client = get_llm("utility")
     known_metrics = list(REGISTRY.keys())[:30]
@@ -189,7 +190,7 @@ async def parse_query(query: str, default_period: str = "2024Q4") -> ScreenerDSL
                 "Respond with ONLY a JSON object matching this schema:\n"
                 '{"universe": {"index": "IDX_ALL", "sector": "..."}, '
                 '"filters": [{"metric": "roe", "op": ">", "value": 0.15}], '
-                '"as_of": "2024Q4", "sort": {"metric": "roe", "dir": "desc"}, "limit": 25}\n'
+                '"as_of": \'2024Q4\', "sort": {"metric": "roe", "dir": "desc"}, "limit": 25}\n'
                 "Do not include any commentary or markdown outside the JSON."
             )
             resp = await client.complete(

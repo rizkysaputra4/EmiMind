@@ -80,7 +80,7 @@ def _resolve_periods(cls: QueryClassification, sticky: StickyState) -> list[Fisc
         return cls.periods
     if sticky.focus_periods:
         return sticky.focus_periods
-    return [FiscalPeriod("2024Q4")]
+    return [FiscalPeriod('2024Q4')]
 
 
 def plan_retrieval(

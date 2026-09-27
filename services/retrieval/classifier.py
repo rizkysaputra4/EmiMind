@@ -166,7 +166,7 @@ async def classify(
         tickers=[ticker],
         periods=session_state.focus_periods
         if session_state and session_state.focus_periods
-        else ["2024Q4"],
+        else ['2024Q4'],
         concepts=["net_profit"],
         is_drill=False,
         references_prior_claim=False,

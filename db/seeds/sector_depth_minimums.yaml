@@ -1,0 +1,12 @@
+# Minimum distinct concept count per annual filing (FS_ANNUAL / Q4) by sector
+BANK: 40
+CPO: 45
+PLANTATION: 45
+MINING: 40
+PROPERTY: 35
+TELCO: 35
+CONSUMER: 35
+HEALTHCARE: 35
+POULTRY: 35
+INFRASTRUCTURE: 35
+GENERIC: 30

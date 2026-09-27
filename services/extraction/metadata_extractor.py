@@ -354,7 +354,7 @@ async def propose_metadata(pdf_bytes: bytes) -> ProposedMetadata:
             if doc_type is None:
                 cand = llm_args.get("doc_type")
                 if cand in ("PUBEX", "FS_QUARTERLY", "FS_ANNUAL", "ANNUAL_REPORT"):
-                    doc_type = cand  # type: ignore[assignment]
+                    doc_type = cand
                     confidence["doc_type"] = float(llm_conf.get("doc_type", 0.6))
             llm_snip = llm_args.get("evidence_snippet")
             if isinstance(llm_snip, str) and llm_snip.strip():
@@ -370,7 +370,7 @@ async def propose_metadata(pdf_bytes: bytes) -> ProposedMetadata:
     return ProposedMetadata(
         ticker=ticker,
         fiscal_period=period,
-        doc_type=doc_type,  # type: ignore[arg-type]
+        doc_type=doc_type,
         language=language,
         confidence=confidence,
         evidence_snippet=evidence_snippet,

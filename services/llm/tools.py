@@ -26,7 +26,7 @@ class ExpandEvidenceArgs(BaseModel):
 class RunScreenerArgs(BaseModel):
     query: str = Field(default="", description="Natural language stock screening query")
     dsl_json: dict[str, Any] | None = Field(default=None, description="Screener query DSL payload")
-    as_of: str | None = Field(default="2024Q4", description="Reporting period")
+    as_of: str | None = Field(default='2024Q4', description="Reporting period")
 
 
 class ComputeMetricArgs(BaseModel):
@@ -137,7 +137,7 @@ async def handle_expand_evidence(conn: AsyncConnection, args_dict: dict[str, Any
 
 async def handle_run_screener(conn: AsyncConnection, args_dict: dict[str, Any]) -> str:
     args = RunScreenerArgs.model_validate(args_dict)
-    dsl = await parse_query(args.query, default_period=args.as_of or "2024Q4")
+    dsl = await parse_query(args.query, default_period=args.as_of or '2024Q4')
     result = await execute_screener(conn, dsl)
     return render_screener_results_table(result)
 

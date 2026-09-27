@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import text
@@ -91,8 +90,10 @@ async def calculate_valuation(
             {"ticker": ticker_clean},
         )
         doc_row = p_res.mappings().first()
-        target_period = doc_row["fiscal_period"] if doc_row else "2024Q4"
-        filing_dt = doc_row["period_end"] if doc_row else None
+        if not doc_row or not doc_row.get("fiscal_period"):
+            return None
+        target_period = str(doc_row["fiscal_period"])
+        filing_dt = doc_row["period_end"]
     else:
         target_period = fiscal_period.upper()
         p_res = await conn.execute(

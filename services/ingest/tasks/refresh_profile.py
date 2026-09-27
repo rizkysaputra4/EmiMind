@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy import text
@@ -100,12 +101,12 @@ def _synthesize_profile_summary(
     facts_dict = {f["concept_id"]: f for f in headline_facts}
     metrics_dict = {m["metric_id"]: m for m in metrics}
 
-    def _render_sec(title: str, items: list[tuple[str, str, dict[str, Any] | None]]) -> None:
+    def _render_sec(title: str, items: Sequence[tuple[str, str, dict[str, Any] | None]]) -> None:
         valid_items = [(label, fmt_type, obj) for label, fmt_type, obj in items if obj is not None]
         if not valid_items:
             return
         lines.append(f"#### {title}")
-        for label, fmt_type, obj in valid_items:
+        for label, _fmt_type, obj in valid_items:
             val = obj.get("value_numeric")
             unit = obj.get("unit")
             val_str = _fmt_amount(val, unit)
@@ -136,7 +137,7 @@ def _synthesize_profile_summary(
         p_dt = valuation.get("price_date") or "Latest"
         val_title = f"Valuation (Calculated on-the-fly with live price: IDR {p_val:,.0f} as of {p_dt})"
 
-    val_items = []
+    val_items: list[tuple[str, str, dict[str, Any] | None]] = []
     if valuation and valuation.get("price"):
         if valuation.get("pe"):
             val_items.append(("Current PE Ratio (TTM)", "RATIO", {"value_numeric": valuation["pe"], "unit": "x"}))

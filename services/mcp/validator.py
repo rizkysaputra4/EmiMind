@@ -77,7 +77,11 @@ def _is_round_fraction(child_val: Decimal, parent_val: Decimal) -> bool:
         return False
     pct = (child_val / parent_val) * Decimal(100)
     rounded_pct = round(pct)
-    if abs(pct - rounded_pct) < Decimal("1e-4") and int(rounded_pct) % 5 == 0 and 0 < int(rounded_pct) < 100:
+    if (
+        abs(pct - rounded_pct) < Decimal("1e-4")
+        and int(rounded_pct) % 5 == 0
+        and 0 < int(rounded_pct) < 100
+    ):
         return True
     return False
 
@@ -135,7 +139,9 @@ def load_narrative_boilerplate_hashes() -> set[str]:
     global _BOILERPLATE_HASHES
     if _BOILERPLATE_HASHES is None:
         hashes: set[str] = set()
-        txt_path = Path(__file__).resolve().parents[2] / "db" / "seeds" / "narrative_boilerplate.txt"
+        txt_path = (
+            Path(__file__).resolve().parents[2] / "db" / "seeds" / "narrative_boilerplate.txt"
+        )
         if not txt_path.is_file():
             txt_path = Path("db/seeds/narrative_boilerplate.txt").resolve()
         if txt_path.is_file():
@@ -164,7 +170,10 @@ def _hint_search_pages(rule: ExtractionFactRule, contract: ExtractionContract) -
     if rule.search_hints:
         hints.extend(rule.search_hints)
     for module in contract.granular_note_modules:
-        if rule.concept_id in module.target_concepts or _normalize_concept(rule.concept_id) in module.target_concepts:
+        if (
+            rule.concept_id in module.target_concepts
+            or _normalize_concept(rule.concept_id) in module.target_concepts
+        ):
             hint = f"'{module.typical_note_title}' ({module.name})"
             if hint not in hints:
                 hints.append(hint)
@@ -210,13 +219,23 @@ def validate_draft_submission(
             unsegmented_facts_by_concept[norm_cid] = f
             unsegmented_facts_by_concept[f.concept_id] = f
 
-    facts_by_concept: dict[str, ExtractedFactItem] = {**all_facts_by_concept, **unsegmented_facts_by_concept}
+    facts_by_concept: dict[str, ExtractedFactItem] = {
+        **all_facts_by_concept,
+        **unsegmented_facts_by_concept,
+    }
 
     # -------------------------------------------------------------
     # LEVEL 1: Schema & Completeness Validation
     # -------------------------------------------------------------
     valid_statements = {"BS", "IS", "CF", "EQ", "NOTE"}
-    valid_period_types = {"instant", "duration_qtd", "duration_ytd", "duration_q", "duration_12m", "duration"}
+    valid_period_types = {
+        "instant",
+        "duration_qtd",
+        "duration_ytd",
+        "duration_q",
+        "duration_12m",
+        "duration",
+    }
     for f in payload.facts:
         if not f.statement or f.statement not in valid_statements:
             issues.append(
@@ -251,7 +270,11 @@ def validate_draft_submission(
         omitted_by_concept[item.metric_id] = item
 
     coverage = ExtractionCoverage()
-    bucket_map = {"CRITICAL": coverage.critical, "HIGH": coverage.high, "OPTIONAL": coverage.optional}
+    bucket_map = {
+        "CRITICAL": coverage.critical,
+        "HIGH": coverage.high,
+        "OPTIONAL": coverage.optional,
+    }
 
     for rule in contract.required_facts:
         # Only EXTRACTED_RAW metrics count toward extraction coverage. Derived
@@ -264,8 +287,12 @@ def validate_draft_submission(
         bucket.expected += 1
 
         norm_rule_id = _normalize_concept(rule.concept_id)
-        is_present_in_facts = (rule.concept_id in facts_by_concept) or (norm_rule_id in facts_by_concept)
-        is_declared_omitted = (rule.concept_id in omitted_by_concept) or (norm_rule_id in omitted_by_concept)
+        is_present_in_facts = (rule.concept_id in facts_by_concept) or (
+            norm_rule_id in facts_by_concept
+        )
+        is_declared_omitted = (rule.concept_id in omitted_by_concept) or (
+            norm_rule_id in omitted_by_concept
+        )
 
         if is_present_in_facts:
             bucket.found += 1
@@ -276,7 +303,9 @@ def validate_draft_submission(
             continue
 
         if is_declared_omitted:
-            omitted_item = omitted_by_concept.get(norm_rule_id) or omitted_by_concept[rule.concept_id]
+            omitted_item = (
+                omitted_by_concept.get(norm_rule_id) or omitted_by_concept[rule.concept_id]
+            )
             expl_lower = omitted_item.explanation.lower()
             hints = _hint_search_pages(rule, contract)
             hints_str = "; ".join(hints) if hints else "(no additional hints)"
@@ -380,8 +409,14 @@ def validate_draft_submission(
 
     # Check Granular Segment Breakdown Requirement for Revenue
     if "ifrs:Revenue" in facts_by_concept:
-        segmented_rev = [f for f in payload.facts if f.concept_id == "ifrs:Revenue" and f.segment is not None]
-        if not segmented_rev and "REVENUE_BREAKDOWN" not in omitted_by_concept and "ifrs:Revenue_SEGMENTS" not in omitted_by_concept:
+        segmented_rev = [
+            f for f in payload.facts if f.concept_id == "ifrs:Revenue" and f.segment is not None
+        ]
+        if (
+            not segmented_rev
+            and "REVENUE_BREAKDOWN" not in omitted_by_concept
+            and "ifrs:Revenue_SEGMENTS" not in omitted_by_concept
+        ):
             issues.append(
                 ValidationIssue(
                     severity=IssueSeverity.WARNING,
@@ -414,7 +449,11 @@ def validate_draft_submission(
             )
             continue
 
-        if f.source_page is None or f.source_page < 1 or (page_count is not None and f.source_page > page_count):
+        if (
+            f.source_page is None
+            or f.source_page < 1
+            or (page_count is not None and f.source_page > page_count)
+        ):
             issues.append(
                 ValidationIssue(
                     severity=IssueSeverity.ERROR,
@@ -455,7 +494,8 @@ def validate_draft_submission(
                             severity=IssueSeverity.ERROR,
                             category="GROUNDING_CELL",
                             concept_id=f.concept_id,
-                            feedback_message=err_msg or f"Fact '{f.concept_id}' failed cell grounding.",
+                            feedback_message=err_msg
+                            or f"Fact '{f.concept_id}' failed cell grounding.",
                             target_pages=[f.source_page],
                         )
                     )
@@ -469,7 +509,8 @@ def validate_draft_submission(
                             severity=IssueSeverity.ERROR,
                             category="GROUNDING_TEXT",
                             concept_id=f.concept_id,
-                            feedback_message=err_msg or f"Fact '{f.concept_id}' value not found in text on page {f.source_page}.",
+                            feedback_message=err_msg
+                            or f"Fact '{f.concept_id}' value not found in text on page {f.source_page}.",
                             target_pages=[f.source_page],
                         )
                     )
@@ -508,7 +549,11 @@ def validate_draft_submission(
                 seg_label = _extract_segment_label(child)
                 norm_label = seg_label.lower().strip()
                 is_placeholder = norm_label in PLACEHOLDER_SEGMENT_LABELS
-                if not is_placeholder and len(children) == 1 and norm_label in ONLY_CHILD_PLACEHOLDER_LABELS:
+                if (
+                    not is_placeholder
+                    and len(children) == 1
+                    and norm_label in ONLY_CHILD_PLACEHOLDER_LABELS
+                ):
                     is_placeholder = True
 
                 if is_placeholder:
@@ -540,7 +585,9 @@ def validate_draft_submission(
                     else sum((c.value_numeric for c in children), Decimal(0))
                 )
                 if parent_val != 0:
-                    all_round = all(_is_round_fraction(c.value_numeric, parent_val) for c in children)
+                    all_round = all(
+                        _is_round_fraction(c.value_numeric, parent_val) for c in children
+                    )
                     if all_round:
                         any_grounded = any(
                             _is_child_grounded(c, evidence, default_contract_scale)
@@ -557,7 +604,9 @@ def validate_draft_submission(
                                         f"all {len(children)} children are exact round multiples of 5% of total ({parent_val:,.0f}) "
                                         f"and none is grounded in page evidence."
                                     ),
-                                    target_pages=list({c.source_page for c in children if c.source_page}),
+                                    target_pages=list(
+                                        {c.source_page for c in children if c.source_page}
+                                    ),
                                 )
                             )
 
@@ -773,18 +822,26 @@ def validate_draft_submission(
                             f"'{tgt_fact.concept_id}' ({tgt_fact.statement or 'BS'}, {tgt_fact.value_numeric:,.0f} IDR from p.{tgt_fact.source_page}). "
                             f"Difference: {diff:+,.0f} IDR. Check you used the current-period column."
                         ),
-                        target_pages=list({p for p in (src_fact.source_page, tgt_fact.source_page) if p is not None}),
+                        target_pages=list(
+                            {
+                                p
+                                for p in (src_fact.source_page, tgt_fact.source_page)
+                                if p is not None
+                            }
+                        ),
                     )
                 )
     assets = facts_by_concept.get("ifrs:Assets")
     liabilities = facts_by_concept.get("ifrs:Liabilities")
     equity = facts_by_concept.get("ifrs:Equity")
+    syirkah = facts_by_concept.get("idx:TemporarySyirkahFunds") or facts_by_concept.get("idx:SyirkahFunds")
+    syirkah_v = syirkah.value_numeric if syirkah else Decimal("0")
 
     if assets and liabilities and equity:
         ast_v = assets.value_numeric
         liab_v = liabilities.value_numeric
         eq_v = equity.value_numeric
-        rhs = liab_v + eq_v
+        rhs = liab_v + eq_v + syirkah_v
         diff = ast_v - rhs
 
         tol = abs(ast_v) * Decimal("0.0005") if ast_v != 0 else Decimal("1")
@@ -808,23 +865,34 @@ def validate_draft_submission(
                 feedback = (
                     f"Balance Sheet Unbalanced: Total Assets ({ast_v:,.0f} IDR from p.{assets.source_page}) "
                     f"does not equal Total Liabilities ({liab_v:,.0f} IDR from p.{liabilities.source_page}) + "
-                    f"Total Equity ({eq_v:,.0f} IDR from p.{equity.source_page}). "
-                    f"Discrepancy: {diff:+,.0f} IDR. Please re-check the Balance Sheet on pages {assets.source_page}, {liabilities.source_page}, {equity.source_page}."
+                    f"Total Equity ({eq_v:,.0f} IDR from p.{equity.source_page})"
+                    + (f" + Dana Syirkah Temporer ({syirkah_v:,.0f} IDR from p.{syirkah.source_page})" if syirkah else "")
+                    + f". Discrepancy: {diff:+,.0f} IDR. Please re-check the Balance Sheet on pages {assets.source_page}, {liabilities.source_page}, {equity.source_page}."
                 )
+
+            eq_formula = (
+                "Total Assets == Total Liabilities + Total Equity"
+                if syirkah is None
+                else "Total Assets == Total Liabilities + Dana Syirkah Temporer + Total Equity"
+            )
+            target_pgs = {assets.source_page, liabilities.source_page, equity.source_page}
+            if syirkah and syirkah.source_page:
+                target_pgs.add(syirkah.source_page)
 
             issues.append(
                 ValidationIssue(
                     severity=IssueSeverity.ERROR,
                     category="BALANCE_SHEET_UNBALANCED" if not is_scale_error else "SCALE_MISMATCH",
-                    equation="Total Assets == Total Liabilities + Total Equity",
+                    equation=eq_formula,
                     details={
                         "assets": float(ast_v),
                         "liabilities": float(liab_v),
                         "equity": float(eq_v),
+                        "syirkah_funds": float(syirkah_v),
                         "discrepancy": float(diff),
                     },
                     feedback_message=feedback,
-                    target_pages=list({assets.source_page, liabilities.source_page, equity.source_page}),
+                    target_pages=list(target_pgs),
                 )
             )
 
@@ -833,14 +901,22 @@ def validate_draft_submission(
     if assets and ca and nca:
         sum_ast = ca.value_numeric + nca.value_numeric
         diff_ast = assets.value_numeric - sum_ast
-        tol_ast = abs(assets.value_numeric) * Decimal("0.0005") if assets.value_numeric != 0 else Decimal("1")
+        tol_ast = (
+            abs(assets.value_numeric) * Decimal("0.0005")
+            if assets.value_numeric != 0
+            else Decimal("1")
+        )
         if abs(diff_ast) > tol_ast:
             issues.append(
                 ValidationIssue(
                     severity=IssueSeverity.ERROR,
                     category="ASSET_SUM_MISMATCH",
                     equation="Current Assets + Non-Current Assets == Total Assets",
-                    details={"assets": float(assets.value_numeric), "current_assets": float(ca.value_numeric), "non_current_assets": float(nca.value_numeric)},
+                    details={
+                        "assets": float(assets.value_numeric),
+                        "current_assets": float(ca.value_numeric),
+                        "non_current_assets": float(nca.value_numeric),
+                    },
                     feedback_message=(
                         f"Current Assets ({ca.value_numeric:,.0f} IDR from p.{ca.source_page}) + "
                         f"Non-Current Assets ({nca.value_numeric:,.0f} IDR from p.{nca.source_page}) = {sum_ast:,.0f} IDR, "
@@ -856,14 +932,22 @@ def validate_draft_submission(
     if liabilities and cl and ncl:
         sum_liab = cl.value_numeric + ncl.value_numeric
         diff_liab = liabilities.value_numeric - sum_liab
-        tol_liab = abs(liabilities.value_numeric) * Decimal("0.0005") if liabilities.value_numeric != 0 else Decimal("1")
+        tol_liab = (
+            abs(liabilities.value_numeric) * Decimal("0.0005")
+            if liabilities.value_numeric != 0
+            else Decimal("1")
+        )
         if abs(diff_liab) > tol_liab:
             issues.append(
                 ValidationIssue(
                     severity=IssueSeverity.ERROR,
                     category="LIABILITY_SUM_MISMATCH",
                     equation="Current Liabilities + Non-Current Liabilities == Total Liabilities",
-                    details={"liabilities": float(liabilities.value_numeric), "current_liabilities": float(cl.value_numeric), "non_current_liabilities": float(ncl.value_numeric)},
+                    details={
+                        "liabilities": float(liabilities.value_numeric),
+                        "current_liabilities": float(cl.value_numeric),
+                        "non_current_liabilities": float(ncl.value_numeric),
+                    },
                     feedback_message=(
                         f"Current Liabilities ({cl.value_numeric:,.0f} IDR from p.{cl.source_page}) + "
                         f"Non-Current Liabilities ({ncl.value_numeric:,.0f} IDR from p.{ncl.source_page}) = {sum_liab:,.0f} IDR, "
@@ -880,14 +964,20 @@ def validate_draft_submission(
     if rev and cos and gp:
         calc_gp = rev.value_numeric - abs(cos.value_numeric)
         diff_gp = gp.value_numeric - calc_gp
-        tol_gp = abs(rev.value_numeric) * Decimal("0.0005") if rev.value_numeric != 0 else Decimal("1")
+        tol_gp = (
+            abs(rev.value_numeric) * Decimal("0.0005") if rev.value_numeric != 0 else Decimal("1")
+        )
         if abs(diff_gp) > tol_gp:
             issues.append(
                 ValidationIssue(
                     severity=IssueSeverity.ERROR,
                     category="GROSS_PROFIT_MISMATCH",
                     equation="Revenue - Cost of Sales == Gross Profit",
-                    details={"revenue": float(rev.value_numeric), "cost_of_sales": float(cos.value_numeric), "gross_profit": float(gp.value_numeric)},
+                    details={
+                        "revenue": float(rev.value_numeric),
+                        "cost_of_sales": float(cos.value_numeric),
+                        "gross_profit": float(gp.value_numeric),
+                    },
                     feedback_message=(
                         f"Gross Profit mismatch: Revenue ({rev.value_numeric:,.0f} IDR from p.{rev.source_page}) - "
                         f"Cost of Sales ({cos.value_numeric:,.0f} IDR from p.{cos.source_page}) = {calc_gp:,.0f} IDR, "
@@ -930,7 +1020,9 @@ def validate_draft_submission(
     # -------------------------------------------------------------
     prior_misses = previous_attempt_misses or []
     if retry_attempt >= 2 and prior_misses:
-        still_missing = [c for c in prior_misses if c in (coverage.critical.missing + coverage.high.missing)]
+        still_missing = [
+            c for c in prior_misses if c in (coverage.critical.missing + coverage.high.missing)
+        ]
         if still_missing:
             issues.insert(
                 0,
@@ -977,7 +1069,9 @@ def validate_draft_submission(
     )
 
 
-def _pages_overlap(rule: ExtractionFactRule, searched_pages: list[int], contract: ExtractionContract) -> bool:
+def _pages_overlap(
+    rule: ExtractionFactRule, searched_pages: list[int], contract: ExtractionContract
+) -> bool:
     """Heuristic: does the LLM's searched-pages list include ANY location that hint text suggests?
 
     Since we don't know the document's ToC page numbers, we treat non-empty searched_pages as

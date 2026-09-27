@@ -1,0 +1,216 @@
+{
+  "summary": {
+    "timestamp": "2026-09-28T00:57:25.325068",
+    "all_passed": true,
+    "is_aggregate": false,
+    "evaluated_tickers": [
+      "BMRI",
+      "LSIP"
+    ],
+    "total_checks": 18,
+    "passed_checks": 18,
+    "failed_checks": 0
+  },
+  "results": [
+    {
+      "dimension": "Router recall (core >= 0.90, notes >= 0.80)",
+      "ticker": "BMRI",
+      "value": "core=1.00, notes=1.00",
+      "threshold": "core >= 0.90, notes >= 0.80",
+      "status": "PASS",
+      "details": "Evaluated from router_recall.json"
+    },
+    {
+      "dimension": "Sector KPI coverage",
+      "ticker": "BMRI",
+      "value": "100.0%",
+      "threshold": "100%",
+      "status": "PASS",
+      "details": "All covered"
+    },
+    {
+      "dimension": "Concept depth",
+      "ticker": "BMRI",
+      "value": "45",
+      "threshold": ">= 40",
+      "status": "PASS",
+      "details": "Sector=BANK, distinct concepts=45"
+    },
+    {
+      "dimension": "Segmented facts",
+      "ticker": "BMRI",
+      "value": "27",
+      "threshold": ">= 25",
+      "status": "PASS",
+      "details": "Granular note segments with valid page provenance"
+    },
+    {
+      "dimension": "Numeric grounding",
+      "ticker": "BMRI",
+      "value": "100.0%",
+      "threshold": "100%",
+      "status": "PASS",
+      "details": "68/68 on text pages"
+    },
+    {
+      "dimension": "Narrative genuineness",
+      "ticker": "BMRI",
+      "value": "dups=0, boilerplate=0",
+      "threshold": "0 and 0",
+      "status": "PASS",
+      "details": "Cross-ticker md5 dups=0, seed boilerplate hits=0"
+    },
+    {
+      "dimension": "Provenance",
+      "ticker": "BMRI",
+      "value": "0",
+      "threshold": "0",
+      "status": "PASS",
+      "details": "Facts with null source_page or > page_count"
+    },
+    {
+      "dimension": "Token efficiency",
+      "ticker": "BMRI",
+      "value": "1.72%",
+      "threshold": "<= 15%",
+      "status": "PASS",
+      "details": "18500 tokens vs 1074000 est"
+    },
+    {
+      "dimension": "Period correctness",
+      "ticker": "BMRI",
+      "value": "period=2025Q4, end=2025-12-31, pages=537/537",
+      "threshold": "100% match",
+      "status": "PASS",
+      "details": "Fiscal period & PyMuPDF page count verification"
+    },
+    {
+      "dimension": "Router recall (core >= 0.90, notes >= 0.80)",
+      "ticker": "LSIP",
+      "value": "core=1.00, notes=1.00",
+      "threshold": "core >= 0.90, notes >= 0.80",
+      "status": "PASS",
+      "details": "Evaluated from router_recall.json"
+    },
+    {
+      "dimension": "Sector KPI coverage",
+      "ticker": "LSIP",
+      "value": "100.0%",
+      "threshold": "100%",
+      "status": "PASS",
+      "details": "All covered"
+    },
+    {
+      "dimension": "Concept depth",
+      "ticker": "LSIP",
+      "value": "73",
+      "threshold": ">= 45",
+      "status": "PASS",
+      "details": "Sector=CPO, distinct concepts=73"
+    },
+    {
+      "dimension": "Segmented facts",
+      "ticker": "LSIP",
+      "value": "27",
+      "threshold": ">= 25",
+      "status": "PASS",
+      "details": "Granular note segments with valid page provenance"
+    },
+    {
+      "dimension": "Numeric grounding",
+      "ticker": "LSIP",
+      "value": "100.0%",
+      "threshold": "100%",
+      "status": "PASS",
+      "details": "91/91 on text pages"
+    },
+    {
+      "dimension": "Narrative genuineness",
+      "ticker": "LSIP",
+      "value": "dups=0, boilerplate=0",
+      "threshold": "0 and 0",
+      "status": "PASS",
+      "details": "Cross-ticker md5 dups=0, seed boilerplate hits=0"
+    },
+    {
+      "dimension": "Provenance",
+      "ticker": "LSIP",
+      "value": "0",
+      "threshold": "0",
+      "status": "PASS",
+      "details": "Facts with null source_page or > page_count"
+    },
+    {
+      "dimension": "Token efficiency",
+      "ticker": "LSIP",
+      "value": "5.82%",
+      "threshold": "<= 15%",
+      "status": "PASS",
+      "details": "14200 tokens vs 244000 est"
+    },
+    {
+      "dimension": "Period correctness",
+      "ticker": "LSIP",
+      "value": "period=2025Q4, end=2025-12-31, pages=122/122",
+      "threshold": "100% match",
+      "status": "PASS",
+      "details": "Fiscal period & PyMuPDF page count verification"
+    }
+  ],
+  "metrics": [
+    {
+      "ticker": "BMRI",
+      "period": "2025Q4",
+      "period_end": "2025-12-31",
+      "doc_id": "a7ccfea3-30b5-4e2d-b357-fb5648386eb2",
+      "page_count": 537,
+      "actual_page_count": 537,
+      "pdf_path": "incoming_reports\\processed\\BMRI_2025_AUDIT_RDF_LK PT Bank Mandiri-Desember 2025.pdf",
+      "sector": "BANK",
+      "mean_core_recall": 1.0,
+      "mean_notes_recall": 1.0,
+      "mandatory_kpis_count": 39,
+      "missing_kpis": [],
+      "kpi_coverage_ratio": 1.0,
+      "distinct_concepts_count": 45,
+      "depth_threshold": 40,
+      "segmented_facts_count": 27,
+      "total_facts_on_text_pages": 68,
+      "grounded_facts_count": 68,
+      "grounding_ratio": 1.0,
+      "cross_ticker_duplicates": 0,
+      "boilerplate_hits": 0,
+      "bad_provenance_count": 0,
+      "input_tokens": 18500,
+      "whole_book_est": 1074000,
+      "token_ratio": 0.01722532588454376
+    },
+    {
+      "ticker": "LSIP",
+      "period": "2025Q4",
+      "period_end": "2025-12-31",
+      "doc_id": "82e20a07-232e-45bc-9a7b-3b160e8c2ece",
+      "page_count": 122,
+      "actual_page_count": 122,
+      "pdf_path": "incoming_reports\\processed\\LSIP_bilingual_31 des_2025_released.pdf",
+      "sector": "CPO",
+      "mean_core_recall": 1.0,
+      "mean_notes_recall": 1.0,
+      "mandatory_kpis_count": 33,
+      "missing_kpis": [],
+      "kpi_coverage_ratio": 1.0,
+      "distinct_concepts_count": 73,
+      "depth_threshold": 45,
+      "segmented_facts_count": 27,
+      "total_facts_on_text_pages": 91,
+      "grounded_facts_count": 91,
+      "grounding_ratio": 1.0,
+      "cross_ticker_duplicates": 0,
+      "boilerplate_hits": 0,
+      "bad_provenance_count": 0,
+      "input_tokens": 14200,
+      "whole_book_est": 244000,
+      "token_ratio": 0.05819672131147541
+    }
+  ]
+}
