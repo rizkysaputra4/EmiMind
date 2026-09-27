@@ -1,0 +1,34 @@
+# Cross-statement tie-out rules
+# Verifies that disclosure note totals/lines tie out to primary financial statement lines when both are extracted.
+rules:
+  - id: "loans_note_to_bs"
+    name: "Loans Note Total to Balance Sheet Loans"
+    source_concept: "idx:LoansGross"
+    source_statement: "NOTE"
+    target_concept: "idx:LoansAndAdvances"
+    target_statement: "BS"
+    description: "Gross loans disclosure note total must tie out to Balance Sheet Loans and Advances"
+
+  - id: "loans_gross_note_to_bs"
+    name: "Loans Gross Note to Balance Sheet Loans Gross"
+    source_concept: "idx:LoansGross"
+    source_statement: "NOTE"
+    target_concept: "idx:LoansGross"
+    target_statement: "BS"
+    description: "Gross loans note total must tie out to Balance Sheet Loans Gross"
+
+  - id: "cash_banks_to_bs_cash"
+    name: "Cash in Banks Note to Balance Sheet Cash"
+    source_concept: "idx:CashInBanks"
+    source_statement: "NOTE"
+    target_concept: "ifrs:CashAndCashEquivalents"
+    target_statement: "BS"
+    description: "Cash in banks note must tie out to Cash and Cash Equivalents on Balance Sheet"
+
+  - id: "deposits_note_to_bs_deposits"
+    name: "Customer Deposits Note to Balance Sheet Customer Deposits"
+    source_concept: "idx:CustomerDeposits"
+    source_statement: "NOTE"
+    target_concept: "idx:CustomerDeposits"
+    target_statement: "BS"
+    description: "Customer deposits note total must tie out to Balance Sheet Customer Deposits"

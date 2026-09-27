@@ -375,7 +375,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
   - A genuine grounded split whose values happen to be 50/50 but appear in the page text passes.
 
 ### M9.4.5 — Sum and cross-statement tie-outs
-- [ ] **Files:** `services/mcp/validator.py`, `db/seeds/tie_out_rules.yaml` (new: pairs like `idx:LoansGross` note total ↔ BS line, cash per bank ↔ `ifrs:CashAndCashEquivalents`), `tests/unit/test_mcp_validator.py`
+- [x] **Files:** `services/mcp/validator.py`, `db/seeds/tie_out_rules.yaml` (new: pairs like `idx:LoansGross` note total ↔ BS line, cash per bank ↔ `ifrs:CashAndCashEquivalents`), `tests/unit/test_mcp_validator.py`
 - **Depends on:** M9.4.2
 - **What:**
   - Children with the same parent concept and segment dimension must sum to the parent within tolerance (max(1 unit of scale, 0.1%)).

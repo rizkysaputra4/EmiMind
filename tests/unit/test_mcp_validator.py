@@ -581,4 +581,133 @@ def test_validator_segmented_fact_without_source_page_fails_segment_provenance()
     assert seg_prov.concept_id == "ifrs:Revenue"
 
 
+def test_validator_loan_matrix_children_summing_to_total_passes() -> None:
+    contract = make_test_contract("BANK")
+    facts = [
+        ExtractedFactItem(
+            concept_id="idx:LoansGross",
+            value_numeric=Decimal("80000000000"),
+            source_page=22,
+            statement="NOTE",
+            source_label_original="Total Pinjaman yang Diberikan",
+        ),
+        ExtractedFactItem(
+            concept_id="idx:LoansGross",
+            value_numeric=Decimal("45500000000"),
+            source_page=22,
+            statement="NOTE",
+            segment={"segment": "Korporasi", "type": "customer_type"},
+        ),
+        ExtractedFactItem(
+            concept_id="idx:LoansGross",
+            value_numeric=Decimal("17200000000"),
+            source_page=22,
+            statement="NOTE",
+            segment={"segment": "Komersial", "type": "customer_type"},
+        ),
+        ExtractedFactItem(
+            concept_id="idx:LoansGross",
+            value_numeric=Decimal("11000000000"),
+            source_page=22,
+            statement="NOTE",
+            segment={"segment": "Retail", "type": "customer_type"},
+        ),
+        ExtractedFactItem(
+            concept_id="idx:LoansGross",
+            value_numeric=Decimal("6300000000"),
+            source_page=22,
+            statement="NOTE",
+            segment={"segment": "UMKM", "type": "customer_type"},
+        ),
+    ]
+
+    payload = DraftSubmissionPayload(doc_id="doc_loan_sum_ok", ticker="BMRI", fiscal_period="2025Q4", facts=facts)
+    report = validate_draft_submission(payload, contract=contract, sector="BANK", page_count=50)
+
+    categories = [i.category for i in report.issues]
+    assert "SUM_MISMATCH" not in categories
+
+
+def test_validator_children_off_by_five_percent_fails_sum_mismatch() -> None:
+    contract = make_test_contract("BANK")
+    # Total is 80B, but children sum to 76B (4B discrepancy = 5% off)
+    facts = [
+        ExtractedFactItem(
+            concept_id="idx:LoansGross",
+            value_numeric=Decimal("80000000000"),
+            source_page=22,
+            statement="NOTE",
+            source_label_original="Total Pinjaman yang Diberikan",
+        ),
+        ExtractedFactItem(
+            concept_id="idx:LoansGross",
+            value_numeric=Decimal("41500000000"),
+            source_page=22,
+            statement="NOTE",
+            segment={"segment": "Korporasi", "type": "customer_type"},
+        ),
+        ExtractedFactItem(
+            concept_id="idx:LoansGross",
+            value_numeric=Decimal("17200000000"),
+            source_page=22,
+            statement="NOTE",
+            segment={"segment": "Komersial", "type": "customer_type"},
+        ),
+        ExtractedFactItem(
+            concept_id="idx:LoansGross",
+            value_numeric=Decimal("11000000000"),
+            source_page=22,
+            statement="NOTE",
+            segment={"segment": "Retail", "type": "customer_type"},
+        ),
+        ExtractedFactItem(
+            concept_id="idx:LoansGross",
+            value_numeric=Decimal("6300000000"),
+            source_page=22,
+            statement="NOTE",
+            segment={"segment": "UMKM", "type": "customer_type"},
+        ),
+    ]
+
+    payload = DraftSubmissionPayload(doc_id="doc_loan_sum_bad", ticker="BMRI", fiscal_period="2025Q4", facts=facts)
+    report = validate_draft_submission(payload, contract=contract, sector="BANK", page_count=50)
+
+    assert report.status == "INVALID"
+    sum_issue = next(i for i in report.issues if i.category == "SUM_MISMATCH")
+    assert sum_issue.concept_id == "idx:LoansGross"
+    assert "80,000,000,000" in sum_issue.feedback_message
+    assert "76,000,000,000" in sum_issue.feedback_message
+
+
+def test_validator_note_total_equal_prior_year_bs_fails_tie_out_with_column_hint() -> None:
+    contract = make_test_contract("BANK")
+    # Current year BS Loans is 80B
+    # Agent extracted note total idx:LoansGross = 70B (prior year column value)
+    facts = [
+        ExtractedFactItem(
+            concept_id="idx:LoansAndAdvances",
+            value_numeric=Decimal("80000000000"),
+            source_page=6,
+            statement="BS",
+            source_label_original="Kredit yang Diberikan",
+        ),
+        ExtractedFactItem(
+            concept_id="idx:LoansGross",
+            value_numeric=Decimal("70000000000"),
+            source_page=22,
+            statement="NOTE",
+            source_label_original="Jumlah Pinjaman yang Diberikan (Catatan 12)",
+        ),
+    ]
+
+    payload = DraftSubmissionPayload(doc_id="doc_prior_year_col", ticker="BMRI", fiscal_period="2025Q4", facts=facts)
+    report = validate_draft_submission(payload, contract=contract, sector="BANK", page_count=50)
+
+    assert report.status == "INVALID"
+    tie_issue = next(i for i in report.issues if i.category == "TIE_OUT")
+    assert tie_issue.concept_id == "idx:LoansGross"
+    assert "check you used the current-period column" in tie_issue.feedback_message.lower()
+
+
+
 

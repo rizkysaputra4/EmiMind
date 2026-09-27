@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import uuid
 from decimal import Decimal
+from pathlib import Path
+from typing import Any
+
+import yaml  # type: ignore[import-untyped]
 
 from services.mcp.grounding import check_cell_grounding, check_text_grounding, resolve_scale
 from services.mcp.types import (
@@ -89,6 +93,25 @@ def _is_child_grounded(
         return is_g
     is_g, _ = check_text_grounding(c, page_ev, default_scale=default_scale)
     return is_g
+
+
+_TIE_OUT_RULES: list[dict[str, Any]] | None = None
+
+
+def load_tie_out_rules() -> list[dict[str, Any]]:
+    """Loads and caches cross-statement tie-out rules from db/seeds/tie_out_rules.yaml."""
+    global _TIE_OUT_RULES
+    if _TIE_OUT_RULES is None:
+        yaml_path = Path(__file__).resolve().parents[2] / "db" / "seeds" / "tie_out_rules.yaml"
+        if not yaml_path.is_file():
+            yaml_path = Path("db/seeds/tie_out_rules.yaml").resolve()
+        if yaml_path.is_file():
+            with open(yaml_path, encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+                _TIE_OUT_RULES = data.get("rules", [])
+        else:
+            _TIE_OUT_RULES = []
+    return _TIE_OUT_RULES
 
 
 def _normalize_concept(cid: str) -> str:
@@ -430,12 +453,13 @@ def validate_draft_submission(
                         )
                     )
 
+    # Group facts by concept
+    facts_by_concept_grouped: dict[str, list[ExtractedFactItem]] = {}
+    for f in payload.facts:
+        facts_by_concept_grouped.setdefault(f.concept_id, []).append(f)
+
     # Anti-synthetic rules: SYNTHETIC_LABEL and SYNTHETIC_SPLIT
     if evidence is not None:
-        facts_by_concept_grouped: dict[str, list[ExtractedFactItem]] = {}
-        for f in payload.facts:
-            facts_by_concept_grouped.setdefault(f.concept_id, []).append(f)
-
         for cid, c_facts in facts_by_concept_grouped.items():
             children = [f for f in c_facts if f.segment]
             unsegmented = [f for f in c_facts if not f.segment]
@@ -519,8 +543,111 @@ def validate_draft_submission(
             )
 
     # -------------------------------------------------------------
-    # LEVEL 2: Accounting Math Equations
+    # LEVEL 2: Accounting Math Equations & Tie-Outs
     # -------------------------------------------------------------
+
+    # 1. Segment sum-to-parent tie-out (SUM_MISMATCH)
+    for cid, c_facts in facts_by_concept_grouped.items():
+        children = [f for f in c_facts if f.segment]
+        unsegmented = [f for f in c_facts if not f.segment]
+        if not children or not unsegmented:
+            continue
+
+        parent_fact = unsegmented[0]
+        parent_val = parent_fact.value_numeric
+
+        # Group children by dimension
+        children_by_dim: dict[str, list[ExtractedFactItem]] = {}
+        for child in children:
+            seg = child.segment or {}
+            dim = seg.get("type") or seg.get("dimension") or "default"
+            children_by_dim.setdefault(str(dim), []).append(child)
+
+        for dim, dim_children in children_by_dim.items():
+            dim_sum = sum((c.value_numeric for c in dim_children), Decimal(0))
+            tol = max(default_contract_scale, Decimal("0.001") * abs(parent_val))
+            diff = dim_sum - parent_val
+            if abs(diff) > tol:
+                issues.append(
+                    ValidationIssue(
+                        severity=IssueSeverity.ERROR,
+                        category="SUM_MISMATCH",
+                        concept_id=cid,
+                        details={
+                            "parent_value": float(parent_val),
+                            "children_sum": float(dim_sum),
+                            "discrepancy": float(diff),
+                            "dimension": dim,
+                        },
+                        feedback_message=(
+                            f"Children of '{cid}' for segment dimension '{dim}' sum to {dim_sum:,.0f} IDR, "
+                            f"which does not match parent total ({parent_val:,.0f} IDR from p.{parent_fact.source_page}). "
+                            f"Difference: {diff:+,.0f} IDR (tolerance: {tol:,.0f} IDR). "
+                            f"Please re-check the breakdown rows on pages {sorted({c.source_page for c in dim_children if c.source_page})}."
+                        ),
+                        target_pages=list(
+                            {c.source_page for c in dim_children if c.source_page}
+                            | ({parent_fact.source_page} if parent_fact.source_page else set())
+                        ),
+                    )
+                )
+
+    # 2. Cross-statement tie-out validation from YAML (TIE_OUT)
+    tie_out_rules = load_tie_out_rules()
+    for to_rule in tie_out_rules:
+        src_cid = _normalize_concept(to_rule["source_concept"])
+        tgt_cid = _normalize_concept(to_rule["target_concept"])
+        src_stmt = to_rule.get("source_statement")
+        tgt_stmt = to_rule.get("target_statement")
+
+        src_candidates = [
+            f
+            for f in payload.facts
+            if _normalize_concept(f.concept_id) == src_cid
+            and not f.segment
+            and (src_stmt is None or f.statement == src_stmt)
+        ]
+        tgt_candidates = [
+            f
+            for f in payload.facts
+            if _normalize_concept(f.concept_id) == tgt_cid
+            and not f.segment
+            and (tgt_stmt is None or f.statement == tgt_stmt)
+        ]
+
+        if src_candidates and tgt_candidates:
+            src_fact = src_candidates[0]
+            tgt_fact = tgt_candidates[0]
+            if src_fact is tgt_fact:
+                continue
+
+            tol = max(
+                default_contract_scale,
+                Decimal("0.001") * max(abs(src_fact.value_numeric), abs(tgt_fact.value_numeric)),
+            )
+            diff = src_fact.value_numeric - tgt_fact.value_numeric
+            if abs(diff) > tol:
+                issues.append(
+                    ValidationIssue(
+                        severity=IssueSeverity.ERROR,
+                        category="TIE_OUT",
+                        concept_id=src_fact.concept_id,
+                        details={
+                            "source_concept": src_fact.concept_id,
+                            "source_value": float(src_fact.value_numeric),
+                            "target_concept": tgt_fact.concept_id,
+                            "target_value": float(tgt_fact.value_numeric),
+                            "difference": float(diff),
+                        },
+                        feedback_message=(
+                            f"Cross-statement tie-out failure: '{src_fact.concept_id}' ({src_fact.statement or 'NOTE'}, "
+                            f"{src_fact.value_numeric:,.0f} IDR from p.{src_fact.source_page}) does not match "
+                            f"'{tgt_fact.concept_id}' ({tgt_fact.statement or 'BS'}, {tgt_fact.value_numeric:,.0f} IDR from p.{tgt_fact.source_page}). "
+                            f"Difference: {diff:+,.0f} IDR. Check you used the current-period column."
+                        ),
+                        target_pages=list({p for p in (src_fact.source_page, tgt_fact.source_page) if p is not None}),
+                    )
+                )
     assets = facts_by_concept.get("ifrs:Assets")
     liabilities = facts_by_concept.get("ifrs:Liabilities")
     equity = facts_by_concept.get("ifrs:Equity")
