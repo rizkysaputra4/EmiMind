@@ -176,7 +176,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
   - `uv run python scripts/reset_extraction_data.py --help` exits 0.
 
 ### M9.1.6 — Reset the data
-- [ ] **Files:** none (operation)
+- [x] **Files:** none (operation)
 - **Depends on:** M9.0.1 (baseline saved), M9.1.2, M9.1.3, M9.1.4 merged
 - **What:** `uv run python scripts/reset_extraction_data.py --yes`.
 - **Done when:**
