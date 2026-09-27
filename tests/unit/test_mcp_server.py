@@ -18,6 +18,7 @@ from services.mcp.server import (
     submit_draft_extraction,
 )
 from services.mcp.types import (
+    CellRef,
     DraftSubmissionPayload,
     ExtractedCausalLink,
     ExtractedFactItem,
@@ -26,6 +27,7 @@ from services.mcp.types import (
     RoutedPages,
 )
 from tests.fixtures.m9.build_fixtures import build_fs_small
+from tests.unit._mcp_contract_fixtures import make_test_contract
 
 
 @pytest.mark.asyncio
@@ -64,34 +66,34 @@ async def test_mcp_submit_draft_extraction_and_commit() -> None:
         ExtractedFactItem(concept_id="ifrs:Revenue", value_numeric=Decimal("600000000000"), source_page=3, statement="IS"),
         ExtractedFactItem(concept_id="ifrs:OperatingProfit", value_numeric=Decimal("200000000000"), source_page=3, statement="IS"),
         ExtractedFactItem(concept_id="ifrs:ProfitLoss", value_numeric=Decimal("150000000000"), source_page=3, statement="IS"),
-        ExtractedFactItem(concept_id="ifrs:CashFlowsFromUsedInOperatingActivities", value_numeric=Decimal("180000000000"), source_page=4, statement="CF"),
+        ExtractedFactItem(concept_id="ifrs:CashFlowsFromUsedInOperatingActivities", value_numeric=Decimal("180000000000"), source_page=3, statement="CF"),
         ExtractedFactItem(concept_id="ifrs:EquityAttributableToOwnersOfParent", value_numeric=Decimal("480000000000"), source_page=2, statement="BS"),
         ExtractedFactItem(concept_id="ifrs:ProfitLossAttributableToOwnersOfParent", value_numeric=Decimal("145000000000"), source_page=3, statement="IS"),
-        ExtractedFactItem(concept_id="idx:Capex", value_numeric=Decimal("40000000000"), source_page=4, statement="CF"),
+        ExtractedFactItem(concept_id="idx:Capex", value_numeric=Decimal("40000000000"), source_page=3, statement="CF"),
         ExtractedFactItem(concept_id="idx:LoansAndAdvances", value_numeric=Decimal("1400000000000"), source_page=1, statement="BS"),
         ExtractedFactItem(concept_id="idx:CustomerDeposits", value_numeric=Decimal("1300000000000"), source_page=2, statement="BS"),
         ExtractedFactItem(concept_id="idx:CASA", value_numeric=Decimal("950000000000"), source_page=2, statement="BS"),
         ExtractedFactItem(concept_id="idx:NetInterestIncome", value_numeric=Decimal("250000000000"), source_page=3, statement="IS"),
-        ExtractedFactItem(concept_id="idx:NetInterestMargin", value_numeric=Decimal("5.35"), source_page=20, statement="NOTE"),
-        ExtractedFactItem(concept_id="idx:NonPerformingLoansGross", value_numeric=Decimal("15000000000"), source_page=22, statement="NOTE"),
-        ExtractedFactItem(concept_id="idx:CapitalAdequacyRatio", value_numeric=Decimal("21.5"), source_page=25, statement="NOTE"),
-        ExtractedFactItem(concept_id="idx:BOPO", value_numeric=Decimal("58.2"), source_page=26, statement="NOTE"),
-        ExtractedFactItem(concept_id="idx:CostOfCredit", value_numeric=Decimal("0.95"), source_page=26, statement="NOTE"),
-        ExtractedFactItem(concept_id="idx:LoanToDepositRatio", value_numeric=Decimal("84.2"), source_page=27, statement="NOTE"),
-        ExtractedFactItem(concept_id="idx:NPLCoverageRatio", value_numeric=Decimal("310.5"), source_page=28, statement="NOTE"),
-        ExtractedFactItem(concept_id="idx:ReturnOnAssetsBank", value_numeric=Decimal("3.15"), source_page=25, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:NetInterestMargin", value_numeric=Decimal("5.35"), source_page=3, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:NonPerformingLoansGross", value_numeric=Decimal("15000000000"), source_page=3, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:CapitalAdequacyRatio", value_numeric=Decimal("21.5"), source_page=3, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:BOPO", value_numeric=Decimal("58.2"), source_page=3, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:CostOfCredit", value_numeric=Decimal("0.95"), source_page=3, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:LoanToDepositRatio", value_numeric=Decimal("84.2"), source_page=3, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:NPLCoverageRatio", value_numeric=Decimal("310.5"), source_page=3, statement="NOTE"),
+        ExtractedFactItem(concept_id="idx:ReturnOnAssetsBank", value_numeric=Decimal("3.15"), source_page=3, statement="NOTE"),
         # Granular Segmented Fact Items
         ExtractedFactItem(
             concept_id="ifrs:Revenue",
             value_numeric=Decimal("400000000000"),
-            source_page=15,
+            source_page=3,
             statement="IS",
             segment={"segment": "Kredit Korporasi / Wholesale", "type": "product_segment", "pct_total": 66.7},
         ),
         ExtractedFactItem(
             concept_id="ifrs:Revenue",
             value_numeric=Decimal("200000000000"),
-            source_page=15,
+            source_page=3,
             statement="IS",
             segment={"segment": "Kredit Ritel & Konsumer", "type": "product_segment", "pct_total": 33.3},
         ),
@@ -102,7 +104,7 @@ async def test_mcp_submit_draft_extraction_and_commit() -> None:
             section="MDA",
             text_original="PT Bank Mandiri (Persero) Tbk mencatatkan pertumbuhan penyaluran kredit...",
             text_en="PT Bank Mandiri (Persero) Tbk recorded loan growth...",
-            source_page=10,
+            source_page=3,
             topic="Loan Growth Review",
         )
     ]
@@ -113,7 +115,7 @@ async def test_mcp_submit_draft_extraction_and_commit() -> None:
             direction="INCREASED",
             cause_category="VOLUME_GROWTH",
             driver_description="Pertumbuhan volume kredit wholesale dan retail mendorong peningkatan pendapatan bunga bersih.",
-            source_page=10,
+            source_page=3,
             confidence=0.95,
         )
     ]
@@ -368,6 +370,9 @@ async def test_commit_no_invented_segment() -> None:
         def fetchall(self) -> list[Any]:
             return []
 
+        def __iter__(self) -> Any:
+            return iter([])
+
     async def mock_execute(sql: Any, params: dict[str, Any] | None = None) -> MockResult:
         nonlocal insert_params
         if "INSERT INTO financial_facts" in str(sql):
@@ -429,6 +434,9 @@ async def test_commit_cashflow_statement_and_period_type() -> None:
 
         def fetchall(self) -> list[Any]:
             return [("ifrs:CashFlowsFromUsedInOperatingActivities", "FLOW_PERIOD")]
+
+        def __iter__(self) -> Any:
+            return iter([])
 
     async def mock_execute(sql: Any, params: dict[str, Any] | None = None) -> MockResult:
         nonlocal insert_params
@@ -522,6 +530,9 @@ async def test_commit_persists_bbox() -> None:
 
         def fetchall(self) -> list[Any]:
             return []
+
+        def __iter__(self) -> Any:
+            return iter([])
 
     async def mock_execute(sql: Any, params: dict[str, Any] | None = None) -> MockResult:
         nonlocal insert_params
@@ -699,6 +710,244 @@ async def test_get_routed_pages_unknown_module() -> None:
     err = str(exc_info.value)
     assert "Unknown module 'INVALID_MODULE_XYZ'" in err
     assert "BALANCE_SHEET" in err
+
+
+@pytest.mark.asyncio
+async def test_commit_uses_grounding_params_table_parser_llm_extract_and_ocr() -> None:
+    executed_inserts: list[dict[str, Any]] = []
+
+    class MockResult:
+        def __init__(self, data: list[dict[str, Any]] | None = None) -> None:
+            self.data = data or []
+
+        def mappings(self) -> MockResult:
+            return self
+
+        def first(self) -> dict[str, Any] | None:
+            return self.data[0] if self.data else None
+
+        def all(self) -> list[dict[str, Any]]:
+            return self.data
+
+        def fetchall(self) -> list[Any]:
+            return []
+
+    async def mock_execute(sql: Any, params: dict[str, Any] | None = None) -> MockResult:
+        sql_str = str(sql)
+        res_data: list[dict[str, Any]] = []
+        if "INSERT INTO financial_facts" in sql_str and params is not None:
+            executed_inserts.append(params)
+        elif "SELECT name, sector FROM peer_groups" in sql_str:
+            res_data = [{"name": "PT Astra Tbk", "sector": "GENERIC"}]
+        elif "SELECT doc_type, page_count FROM documents" in sql_str:
+            res_data = [{"doc_type": "FS_ANNUAL", "page_count": 10}]
+        elif "SELECT 1 FROM document_pages" in sql_str:
+            res_data = [{"1": 1}]
+        elif "SELECT page_index, text_source, page_text" in sql_str:
+            res_data = [
+                {"page_index": 1, "text_source": "pdf_text", "page_text": "Total aset 100.000"},
+                {"page_index": 2, "text_source": "pdf_text", "page_text": "Penjualan 80.000"},
+                {"page_index": 3, "text_source": "ocr", "page_text": "buram scan"},
+            ]
+        elif "SELECT page_index, table_index" in sql_str:
+            res_data = [
+                {
+                    "page_index": 1,
+                    "table_index": 0,
+                    "extraction_method": "camelot_lattice",
+                    "confidence": 0.95,
+                    "unit_hint": "jutaan rupiah",
+                    "cells": [
+                        {
+                            "row": 1,
+                            "col": 1,
+                            "text": "100.000",
+                            "value": 100000.0,
+                            "bbox": [10.0, 20.0, 30.0, 40.0],
+                            "confidence": 0.92,
+                        }
+                    ],
+                }
+            ]
+        return MockResult(res_data)
+
+    mock_conn = AsyncMock()
+    mock_conn.execute.side_effect = mock_execute
+    mock_conn.commit = AsyncMock()
+
+    class MockConnectCtx:
+        async def __aenter__(self) -> AsyncMock:
+            return mock_conn
+
+        async def __aexit__(self, *args: Any) -> None:
+            pass
+
+    mock_engine = MagicMock()
+    mock_engine.connect.return_value = MockConnectCtx()
+
+    contract = make_test_contract("GENERIC")
+    for r in contract.required_facts:
+        r.required = False
+        r.importance = "OPTIONAL"
+
+    facts = [
+        ExtractedFactItem(
+            concept_id="ifrs:Assets",
+            value_numeric=Decimal("100000000000"),
+            source_page=1,
+            statement="BS",
+            cell_ref=CellRef(table_index=0, row=1, col=1),
+        ),
+        ExtractedFactItem(
+            concept_id="ifrs:Revenue",
+            value_numeric=Decimal("80000000000"),
+            source_page=2,
+            statement="IS",
+        ),
+        ExtractedFactItem(
+            concept_id="ifrs:ProfitLoss",
+            value_numeric=Decimal("10000000000"),
+            source_page=3,
+            statement="IS",
+        ),
+    ]
+
+    payload = DraftSubmissionPayload(doc_id="doc-test-1", ticker="ASII", fiscal_period="2024Q4", facts=facts)
+
+    with (
+        patch("services.mcp.server.get_engine", return_value=mock_engine),
+        patch("services.mcp.server.build_extraction_contract", new_callable=AsyncMock, return_value=contract),
+        patch("services.mcp.server._log_processing_event", new_callable=AsyncMock),
+        patch("services.mcp.server.compute_for_document", new_callable=AsyncMock, return_value=MagicMock(computed=5)),
+        patch("services.mcp.server.refresh_profile_task"),
+        patch("services.mcp.server.calculate_valuation", return_value={}),
+    ):
+        rep = await commit_verified_report(json.dumps(payload.model_dump(mode="json")))
+        assert rep.status == "COMMITTED"
+        assert len(executed_inserts) == 3
+
+        # 1. Cell-grounded fact
+        f1 = executed_inserts[0]
+        assert f1["method"] == "table_parser"
+        assert f1["conf"] == 0.92
+        assert f1["source_bbox"] == json.dumps([10.0, 20.0, 30.0, 40.0])
+        assert f1["needs_review"] is False
+
+        # 2. Text-grounded fact
+        f2 = executed_inserts[1]
+        assert f2["method"] == "llm_extract"
+        assert f2["conf"] == 0.75
+        assert f2["needs_review"] is False
+
+        # 3. OCR fact
+        f3 = executed_inserts[2]
+        assert f3["method"] == "llm_extract"
+        assert f3["conf"] == 0.65
+        assert f3["needs_review"] is True
+
+
+@pytest.mark.asyncio
+async def test_commit_fails_grounding_rejected_no_insert() -> None:
+    executed_inserts: list[dict[str, Any]] = []
+
+    class MockResult:
+        def __init__(self, data: list[dict[str, Any]] | None = None) -> None:
+            self.data = data or []
+
+        def mappings(self) -> MockResult:
+            return self
+
+        def first(self) -> dict[str, Any] | None:
+            return self.data[0] if self.data else None
+
+        def all(self) -> list[dict[str, Any]]:
+            return self.data
+
+        def fetchall(self) -> list[Any]:
+            return []
+
+        def __iter__(self) -> Any:
+            return iter([])
+
+    async def mock_execute(sql: Any, params: dict[str, Any] | None = None) -> MockResult:
+        sql_str = str(sql)
+        res_data: list[dict[str, Any]] = []
+        if "INSERT INTO financial_facts" in sql_str and params is not None:
+            executed_inserts.append(params)
+        elif "SELECT name, sector FROM peer_groups" in sql_str:
+            res_data = [{"name": "PT Astra Tbk", "sector": "GENERIC"}]
+        elif "SELECT doc_type, page_count FROM documents" in sql_str:
+            res_data = [{"doc_type": "FS_ANNUAL", "page_count": 10}]
+        elif "SELECT 1 FROM document_pages" in sql_str:
+            res_data = [{"1": 1}]
+        elif "SELECT page_index, text_source, page_text" in sql_str:
+            res_data = [{"page_index": 1, "text_source": "pdf_text", "page_text": "Total aset 100.000"}]
+        elif "SELECT page_index, table_index" in sql_str:
+            res_data = [
+                {
+                    "page_index": 1,
+                    "table_index": 0,
+                    "extraction_method": "camelot_lattice",
+                    "confidence": 0.95,
+                    "unit_hint": "jutaan rupiah",
+                    "cells": [
+                        {
+                            "row": 1,
+                            "col": 1,
+                            "text": "100.000",
+                            "value": 100000.0,
+                            "bbox": [10.0, 20.0, 30.0, 40.0],
+                            "confidence": 0.92,
+                        }
+                    ],
+                }
+            ]
+        return MockResult(res_data)
+
+    mock_conn = AsyncMock()
+    mock_conn.execute.side_effect = mock_execute
+    mock_conn.commit = AsyncMock()
+
+    class MockConnectCtx:
+        async def __aenter__(self) -> AsyncMock:
+            return mock_conn
+
+        async def __aexit__(self, *args: Any) -> None:
+            pass
+
+    mock_engine = MagicMock()
+    mock_engine.connect.return_value = MockConnectCtx()
+
+    contract = make_test_contract("GENERIC")
+    for r in contract.required_facts:
+        r.required = False
+        r.importance = "OPTIONAL"
+
+    # Bad fact with cell value mismatch (fails grounding)
+    bad_facts = [
+        ExtractedFactItem(
+            concept_id="ifrs:Assets",
+            value_numeric=Decimal("999999999999"),
+            source_page=1,
+            statement="BS",
+            cell_ref=CellRef(table_index=0, row=1, col=1),
+        )
+    ]
+    bad_payload = DraftSubmissionPayload(doc_id="doc-test-1", ticker="ASII", fiscal_period="2024Q4", facts=bad_facts)
+
+    with (
+        patch("services.mcp.server.get_engine", return_value=mock_engine),
+        patch("services.mcp.server.build_extraction_contract", new_callable=AsyncMock, return_value=contract),
+        patch("services.mcp.server._log_processing_event", new_callable=AsyncMock),
+        patch("services.mcp.server.compute_for_document", new_callable=AsyncMock, return_value=MagicMock(computed=5)),
+        patch("services.mcp.server.refresh_profile_task"),
+        patch("services.mcp.server.calculate_valuation", return_value={}),
+    ):
+        bad_rep = await commit_verified_report(json.dumps(bad_payload.model_dump(mode="json")))
+        assert bad_rep.status == "REJECTED_VALIDATION_FAILED"
+        assert bad_rep.facts_committed == 0
+        assert len(executed_inserts) == 0
+
 
 
 

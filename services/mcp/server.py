@@ -24,6 +24,7 @@ from services.mcp.contracts import (
     get_route_query,
     load_page_router_queries,
 )
+from services.mcp.grounding import check_cell_grounding, resolve_scale
 from services.mcp.periods import period_end_for, resolve_fiscal_period
 from services.mcp.types import (
     CommitReport,
@@ -36,6 +37,7 @@ from services.mcp.types import (
     InspectionStatus,
     MetricOntologyDefinition,
     MetricOntologyQueryResult,
+    PageEvidence,
     PageTable,
     PageTableCell,
     RoutedPage,
@@ -384,7 +386,7 @@ async def inspect_document(
             d_id = str(doc_uuid)
             minio_key = f"raw/{doc_type}/{t_clean}/{fp_clean}/{p.name}"
             try:
-                real_page_count = pymupdf.open(str(p)).page_count
+                real_page_count = pymupdf.open(str(p)).page_count  # type: ignore[no-untyped-call]
             except Exception:
                 real_page_count = 1
 
@@ -823,15 +825,16 @@ async def submit_draft_extraction(payload_json: str, retry_attempt: int = 1) -> 
             if sec_row.get("name"):
                 company_name = sec_row["name"]
 
-        # Look up doc_type so announcement submissions route to the right contract.
+        doc_page_count: int | None = None
         try:
             dt_res = await conn.execute(
-                text("SELECT doc_type FROM documents WHERE id = :id"),
+                text("SELECT doc_type, page_count FROM documents WHERE id = :id"),
                 {"id": payload.doc_id},
             )
             dt_row = dt_res.mappings().first()
             if dt_row:
                 doc_type_val = dt_row["doc_type"]
+                doc_page_count = dt_row.get("page_count")
         except Exception:
             doc_type_val = None
 
@@ -845,10 +848,81 @@ async def submit_draft_extraction(payload_json: str, retry_attempt: int = 1) -> 
             doc_type=doc_type_val,
         )
 
+        # Load evidence for every cited source_page
+        cited_pages: set[int] = set()
+        for f in payload.facts:
+            cited_pages.add(f.source_page)
+        for n in payload.narratives:
+            cited_pages.add(n.source_page)
+        for c in payload.causal_links:
+            cited_pages.add(c.source_page)
+        for g in payload.guidance:
+            cited_pages.add(g.source_page)
+
+        evidence: dict[int, PageEvidence] | None = None
+        try:
+            has_pages_res = await conn.execute(
+                text("SELECT 1 FROM document_pages WHERE doc_id = :doc_id LIMIT 1"),
+                {"doc_id": payload.doc_id},
+            )
+            if has_pages_res.first():
+                evidence = {}
+                if cited_pages:
+                    pages_res = await conn.execute(
+                        text(
+                            """
+                            SELECT page_index, text_source, page_text
+                            FROM document_pages
+                            WHERE doc_id = :doc_id AND page_index = ANY(:pages)
+                            """
+                        ),
+                        {"doc_id": payload.doc_id, "pages": list(cited_pages)},
+                    )
+                    tables_res = await conn.execute(
+                        text(
+                            """
+                            SELECT page_index, table_index, extraction_method, confidence, unit_hint, cells
+                            FROM document_page_tables
+                            WHERE doc_id = :doc_id AND page_index = ANY(:pages)
+                            ORDER BY page_index, table_index
+                            """
+                        ),
+                        {"doc_id": payload.doc_id, "pages": list(cited_pages)},
+                    )
+                    tables_by_page: dict[int, list[PageTable]] = {}
+                    for tr in tables_res.mappings().all():
+                        p_idx = tr["page_index"]
+                        raw_cells = tr["cells"]
+                        if isinstance(raw_cells, str):
+                            raw_cells = json.loads(raw_cells)
+                        cell_objs = [PageTableCell.model_validate(c) for c in (raw_cells or [])]
+                        pt = PageTable(
+                            table_index=tr["table_index"],
+                            extraction_method=tr.get("extraction_method") or "pdfplumber",
+                            confidence=float(tr.get("confidence") or 1.0),
+                            unit_hint=tr.get("unit_hint"),
+                            cells=cell_objs,
+                        )
+                        tables_by_page.setdefault(p_idx, []).append(pt)
+
+                    for pr in pages_res.mappings().all():
+                        p_idx = pr["page_index"]
+                        evidence[p_idx] = PageEvidence(
+                            page_index=p_idx,
+                            text_source=pr["text_source"] or "pdf_text",
+                            page_text=pr["page_text"] or "",
+                            tables=tables_by_page.get(p_idx, []),
+                        )
+        except Exception as e:
+            log.warning("Failed to load page evidence for doc %s: %s", payload.doc_id, e)
+            evidence = None
+
     report = validate_draft_submission(
         payload,
         contract=contract,
         sector=sector,
+        evidence=evidence,
+        page_count=doc_page_count,
         retry_attempt=retry_attempt,
     )
 
@@ -938,6 +1012,137 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
         )
 
     async with engine.connect() as conn:
+        # Resolve company context and document metadata
+        sector = "GENERIC"
+        company_name = f"PT {ticker} Tbk"
+        sec_res = await conn.execute(
+            text("SELECT name, sector FROM peer_groups WHERE :ticker = ANY(tickers) LIMIT 1"),
+            {"ticker": ticker},
+        )
+        sec_row = sec_res.mappings().first()
+        if sec_row:
+            sector = sec_row.get("sector") or "GENERIC"
+            if sec_row.get("name"):
+                company_name = sec_row["name"]
+
+        doc_type_val = None
+        doc_page_count = None
+        try:
+            dt_res = await conn.execute(
+                text("SELECT doc_type, page_count FROM documents WHERE id = :id"),
+                {"id": doc_id},
+            )
+            dt_row = dt_res.mappings().first()
+            if dt_row:
+                doc_type_val = dt_row.get("doc_type")
+                doc_page_count = dt_row.get("page_count")
+        except Exception:
+            pass
+
+        contract = await build_extraction_contract(
+            conn,
+            doc_id=doc_id,
+            ticker=ticker,
+            company_name=company_name,
+            sector=sector,
+            fiscal_period=fiscal_period,
+            doc_type=doc_type_val,
+        )
+
+        # Load evidence for every cited source_page
+        cited_pages: set[int] = set()
+        for f in payload.facts:
+            cited_pages.add(f.source_page)
+        for n in payload.narratives:
+            cited_pages.add(n.source_page)
+        for c in payload.causal_links:
+            cited_pages.add(c.source_page)
+        for g in payload.guidance:
+            cited_pages.add(g.source_page)
+
+        evidence: dict[int, PageEvidence] | None = None
+        try:
+            has_pages_res = await conn.execute(
+                text("SELECT 1 FROM document_pages WHERE doc_id = :doc_id LIMIT 1"),
+                {"doc_id": doc_id},
+            )
+            if has_pages_res.first():
+                evidence = {}
+                if cited_pages:
+                    pages_res = await conn.execute(
+                        text(
+                            """
+                            SELECT page_index, text_source, page_text
+                            FROM document_pages
+                            WHERE doc_id = :doc_id AND page_index = ANY(:pages)
+                            """
+                        ),
+                        {"doc_id": doc_id, "pages": list(cited_pages)},
+                    )
+                    tables_res = await conn.execute(
+                        text(
+                            """
+                            SELECT page_index, table_index, extraction_method, confidence, unit_hint, cells
+                            FROM document_page_tables
+                            WHERE doc_id = :doc_id AND page_index = ANY(:pages)
+                            ORDER BY page_index, table_index
+                            """
+                        ),
+                        {"doc_id": doc_id, "pages": list(cited_pages)},
+                    )
+                    tables_by_page: dict[int, list[PageTable]] = {}
+                    for tr in tables_res.mappings().all():
+                        p_idx = tr["page_index"]
+                        raw_cells = tr["cells"]
+                        if isinstance(raw_cells, str):
+                            raw_cells = json.loads(raw_cells)
+                        cell_objs = [PageTableCell.model_validate(c) for c in (raw_cells or [])]
+                        pt = PageTable(
+                            table_index=tr["table_index"],
+                            extraction_method=tr.get("extraction_method") or "pdfplumber",
+                            confidence=float(tr.get("confidence") or 1.0),
+                            unit_hint=tr.get("unit_hint"),
+                            cells=cell_objs,
+                        )
+                        tables_by_page.setdefault(p_idx, []).append(pt)
+
+                    for pr in pages_res.mappings().all():
+                        p_idx = pr["page_index"]
+                        evidence[p_idx] = PageEvidence(
+                            page_index=p_idx,
+                            text_source=pr["text_source"] or "pdf_text",
+                            page_text=pr["page_text"] or "",
+                            tables=tables_by_page.get(p_idx, []),
+                        )
+        except Exception as e:
+            log.warning("Failed to load page evidence for doc %s in commit: %s", doc_id, e)
+            evidence = None
+
+        # Re-run validation with evidence at commit time; never trust the draft blindly
+        val_rep = validate_draft_submission(
+            payload,
+            contract=contract,
+            sector=sector,
+            evidence=evidence,
+            page_count=doc_page_count,
+        )
+        if val_rep.status != "VALID":
+            err_msg = val_rep.issues[0].feedback_message if val_rep.issues else "Validation failed"
+            return CommitReport(
+                status="REJECTED_VALIDATION_FAILED",
+                doc_id=doc_id,
+                ticker=ticker,
+                fiscal_period=fiscal_period,
+                facts_committed=0,
+                narratives_committed=0,
+                guidance_committed=0,
+                omissions_recorded=0,
+                derived_metrics_computed=0,
+                profile_refreshed=False,
+                live_valuation_computed=False,
+                message=f"Commit rejected: validation failed ({err_msg})",
+            )
+
         # Look up metric_definitions.flow_stock_type for all fact concepts
         cids = list({f.concept_id for f in payload.facts})
         norm_map = {cid: CONCEPT_ALIASES.get(cid.lower(), cid) for cid in cids}
@@ -960,15 +1165,13 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
                 pass
 
         # 1. Insert/update financial_facts
+        default_contract_scale = resolve_scale(None, getattr(contract, "scaling_rules", None))
         facts_count = 0
         for f in payload.facts:
             cid = f.concept_id
             stmt_type = f.statement or "NOTE"
 
-            # Determine period_type:
-            # 1. Look up metric_definitions.flow_stock_type for concept_id (STOCK_* -> instant, FLOW_* -> duration_ytd)
-            # 2. Otherwise use submitted value
-            # 3. Default based on statement type
+            # Determine period_type
             flow_stock = flow_stock_map.get(cid)
             if flow_stock and flow_stock.startswith("STOCK"):
                 p_type = "instant"
@@ -985,7 +1188,38 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
                 p_type = "duration_ytd" if stmt_type in ("IS", "CF") else "instant"
 
             seg_dict = f.segment
-            source_bbox_json = json.dumps(f.bbox) if f.bbox else None
+
+            # Determine grounding result
+            method = "llm_extract"
+            conf = 0.75
+            needs_review = False
+            source_bbox_val = f.bbox
+
+            if evidence is not None and f.source_page in evidence:
+                page_ev = evidence[f.source_page]
+                if page_ev.text_source == "ocr":
+                    method = "llm_extract"
+                    conf = 0.65
+                    needs_review = True
+                elif f.cell_ref is not None:
+                    is_grounded, _err, cell_conf, cell_bbox = check_cell_grounding(
+                        f, page_ev, default_scale=default_contract_scale
+                    )
+                    if is_grounded:
+                        method = "table_parser"
+                        conf = round(cell_conf if cell_conf is not None else 0.95, 2)
+                        source_bbox_val = cell_bbox or f.bbox
+                        needs_review = False
+                    else:
+                        method = "llm_extract"
+                        conf = 0.75
+                        needs_review = False
+                else:
+                    method = "llm_extract"
+                    conf = 0.75
+                    needs_review = False
+
+            source_bbox_json = json.dumps(source_bbox_val) if source_bbox_val else None
 
             await conn.execute(
                 text(
@@ -993,11 +1227,11 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
                     INSERT INTO financial_facts (
                         source_doc_id, ticker, period_end, fiscal_period, statement, concept_id, concept_local,
                         value_numeric, unit, segment, period_type, accounting_std, source_page, source_bbox,
-                        extraction_conf, extraction_method
+                        extraction_conf, extraction_method, needs_review
                     ) VALUES (
                         :doc_id, :ticker, :period_end, :period, :statement, :concept_id, :label,
                         :val, :unit, CAST(:seg AS jsonb), :period_type, :std, :page, CAST(:source_bbox AS jsonb),
-                        0.75, 'llm_extract'
+                        :conf, :method, :needs_review
                     )
                     ON CONFLICT (ticker, fiscal_period, concept_id, (coalesce(segment, '{}'::jsonb)))
                     WHERE is_restated = false
@@ -1010,8 +1244,9 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
                         source_page = EXCLUDED.source_page,
                         source_bbox = EXCLUDED.source_bbox,
                         source_doc_id = EXCLUDED.source_doc_id,
-                        extraction_method = 'llm_extract',
-                        extraction_conf = 0.75;
+                        extraction_method = EXCLUDED.extraction_method,
+                        extraction_conf = EXCLUDED.extraction_conf,
+                        needs_review = EXCLUDED.needs_review;
                     """
                 ),
                 {
@@ -1029,6 +1264,9 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
                     "std": payload.accounting_standard,
                     "page": f.source_page,
                     "source_bbox": source_bbox_json,
+                    "conf": conf,
+                    "method": method,
+                    "needs_review": needs_review,
                 },
             )
             facts_count += 1
@@ -1083,16 +1321,17 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
                         from services.narrative.chunker import chunk_pages
                         from services.shared.types import PageContent
 
-                        pdf_doc = pymupdf.open(str(cand))
+                        pdf_doc = pymupdf.open(str(cand))  # type: ignore[no-untyped-call]
                         pdf_pages = []
-                        for i, pg in enumerate(pdf_doc):
-                            txt = pg.get_text("text")
+                        for i in range(len(pdf_doc)):
+                            pg = pdf_doc[i]
+                            txt = pg.get_text("text")  # type: ignore[no-untyped-call]
                             pdf_pages.append(PageContent(page_num=i + 1, text=txt, language="mixed", has_text_layer=True))
-                        pdf_doc.close()
+                        pdf_doc.close()  # type: ignore[no-untyped-call]
 
                         auto_chunks = chunk_pages(pdf_pages, ticker, "FS_ANNUAL", fiscal_period)
-                        for c in auto_chunks:
-                            sec = c.section if c.section in valid_sections else "OTHER"
+                        for chunk in auto_chunks:
+                            sec = chunk.section if chunk.section in valid_sections else "OTHER"
                             await conn.execute(
                                 text(
                                     """
@@ -1111,13 +1350,13 @@ async def commit_verified_report(payload_json: str) -> CommitReport:
                                     "period_end": period_end_dt,
                                     "period": fiscal_period,
                                     "sec": sec,
-                                    "page": c.source_page,
-                                    "lang": c.language,
-                                    "orig": c.text_original,
-                                    "en": c.text_en or c.text_original,
-                                    "speaker": c.speaker,
-                                    "claim": c.claim_type,
-                                    "concepts": c.mentioned_concepts or [],
+                                    "page": chunk.source_page,
+                                    "lang": chunk.language,
+                                    "orig": chunk.text_original,
+                                    "en": chunk.text_en or chunk.text_original,
+                                    "speaker": chunk.speaker,
+                                    "claim": chunk.claim_type,
+                                    "concepts": chunk.mentioned_concepts or [],
                                 },
                             )
                             narratives_count += 1

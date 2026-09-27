@@ -102,6 +102,12 @@ class ExtractionContract(BaseModel):
     do_not_extract: list[str] = Field(default_factory=list)
 
 
+class CellRef(BaseModel):
+    table_index: int
+    row: int
+    col: int
+
+
 class ExtractedFactItem(BaseModel):
     concept_id: str
     value_numeric: Decimal
@@ -112,6 +118,7 @@ class ExtractedFactItem(BaseModel):
     source_label_original: str | None = None
     segment: dict[str, Any] | None = None
     bbox: list[float] | None = None
+    cell_ref: CellRef | None = None
     note_reference: str | None = None
 
 
@@ -287,6 +294,13 @@ class PageTable(BaseModel):
     confidence: float = 1.0
     unit_hint: str | None = None
     cells: list[PageTableCell] = Field(default_factory=list)
+
+
+class PageEvidence(BaseModel):
+    page_index: int
+    text_source: str = "pdf_text"  # 'pdf_text' | 'ocr'
+    page_text: str = ""
+    tables: list[PageTable] = Field(default_factory=list)
 
 
 class RoutedPage(BaseModel):

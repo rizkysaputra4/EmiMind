@@ -4,7 +4,15 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from services.mcp.types import DraftSubmissionPayload, ExtractedFactItem, OmittedMetricItem
+from services.mcp.types import (
+    CellRef,
+    DraftSubmissionPayload,
+    ExtractedFactItem,
+    OmittedMetricItem,
+    PageEvidence,
+    PageTable,
+    PageTableCell,
+)
 from services.mcp.validator import validate_draft_submission
 from tests.unit._mcp_contract_fixtures import make_test_contract
 
@@ -234,4 +242,175 @@ def test_validator_invalid_period_type_fails() -> None:
     assert report.status == "INVALID"
     issue = next(i for i in report.issues if i.category == "SCHEMA" and "invalid period_type" in i.feedback_message)
     assert "ifrs:Assets" in issue.feedback_message
+
+
+def _make_core_evidence() -> dict[int, PageEvidence]:
+    """Helper creating minimal valid evidence for core statement pages 5, 6, 7, 8."""
+    return {
+        5: PageEvidence(
+            page_index=5,
+            text_source="pdf_text",
+            page_text="Total aset 100.000 aset lancar 40.000 aset tidak lancar 60.000 kas 10.000",
+            tables=[
+                PageTable(
+                    table_index=0,
+                    unit_hint="jutaan rupiah",
+                    cells=[
+                        PageTableCell(row=1, col=1, text="100.000", value=100000.0),
+                        PageTableCell(row=2, col=1, text="40.000", value=40000.0),
+                        PageTableCell(row=3, col=1, text="60.000", value=60000.0),
+                        PageTableCell(row=4, col=1, text="10.000", value=10000.0),
+                    ],
+                )
+            ],
+        ),
+        6: PageEvidence(
+            page_index=6,
+            text_source="pdf_text",
+            page_text="Liabilitas 40.000 liabilitas lancar 20.000 tidak lancar 20.000 ekuitas 60.000",
+            tables=[
+                PageTable(
+                    table_index=0,
+                    unit_hint="jutaan rupiah",
+                    cells=[
+                        PageTableCell(row=1, col=1, text="40.000", value=40000.0),
+                        PageTableCell(row=2, col=1, text="20.000", value=20000.0),
+                        PageTableCell(row=3, col=1, text="20.000", value=20000.0),
+                        PageTableCell(row=4, col=1, text="60.000", value=60000.0),
+                    ],
+                )
+            ],
+        ),
+        7: PageEvidence(
+            page_index=7,
+            text_source="pdf_text",
+            page_text="Pendapatan 80.000 laba usaha 25.000 laba bersih 18.000",
+            tables=[
+                PageTable(
+                    table_index=0,
+                    unit_hint="jutaan rupiah",
+                    cells=[
+                        PageTableCell(row=1, col=1, text="80.000", value=80000.0),
+                        PageTableCell(row=2, col=1, text="25.000", value=25000.0),
+                        PageTableCell(row=3, col=1, text="18.000", value=18000.0),
+                    ],
+                )
+            ],
+        ),
+        8: PageEvidence(
+            page_index=8,
+            text_source="pdf_text",
+            page_text="Arus kas operasi 22.000",
+            tables=[
+                PageTable(
+                    table_index=0,
+                    unit_hint="jutaan rupiah",
+                    cells=[
+                        PageTableCell(row=1, col=1, text="22.000", value=22000.0),
+                    ],
+                )
+            ],
+        ),
+    }
+
+
+def test_validator_correct_cell_ref_millions_scale_passes() -> None:
+    contract = make_test_contract("GENERIC")
+    facts = _core_facts()
+    # Attach correct cell_ref to Assets (table 0, row 1, col 1 = 100,000 * 1,000,000)
+    facts[0] = ExtractedFactItem(
+        concept_id="ifrs:Assets",
+        value_numeric=Decimal("100000000000"),
+        source_page=5,
+        statement="BS",
+        cell_ref=CellRef(table_index=0, row=1, col=1),
+    )
+
+    payload = DraftSubmissionPayload(doc_id="doc_cell_ok", ticker="ASII", fiscal_period="2024Q4", facts=facts)
+    evidence = _make_core_evidence()
+    report = validate_draft_submission(payload, contract=contract, sector="GENERIC", evidence=evidence, page_count=10)
+
+    assert report.status == "VALID"
+    assert report.errors_count == 0
+    assert not any(i.category == "GROUNDING_CELL" for i in report.issues)
+
+
+def test_validator_cell_ref_transposed_digit_fails_grounding_cell() -> None:
+    contract = make_test_contract("GENERIC")
+    facts = _core_facts()
+    # Fact value has a transposed digit: 100200000000 instead of 100000000000
+    facts[0] = ExtractedFactItem(
+        concept_id="ifrs:Assets",
+        value_numeric=Decimal("100200000000"),
+        source_page=5,
+        statement="BS",
+        cell_ref=CellRef(table_index=0, row=1, col=1),
+    )
+
+    payload = DraftSubmissionPayload(doc_id="doc_cell_bad", ticker="ASII", fiscal_period="2024Q4", facts=facts)
+    evidence = _make_core_evidence()
+    report = validate_draft_submission(payload, contract=contract, sector="GENERIC", evidence=evidence, page_count=10)
+
+    assert report.status == "INVALID"
+    cell_issue = next(i for i in report.issues if i.category == "GROUNDING_CELL")
+    assert "GROUNDING_CELL" == cell_issue.category
+    assert 5 in cell_issue.target_pages
+
+
+def test_validator_text_fact_absent_fails_grounding_text() -> None:
+    contract = make_test_contract("GENERIC")
+    facts = _core_facts()
+    # Remove cell_ref and point to page with no matching text
+    evidence = _make_core_evidence()
+    evidence[5].page_text = "Laporan Posisi Keuangan tanpa angka sama sekali"
+    evidence[5].tables = []  # No tables either
+
+    payload = DraftSubmissionPayload(doc_id="doc_text_bad", ticker="ASII", fiscal_period="2024Q4", facts=facts)
+    report = validate_draft_submission(payload, contract=contract, sector="GENERIC", evidence=evidence, page_count=10)
+
+    assert report.status == "INVALID"
+    text_issue = next(i for i in report.issues if i.category == "GROUNDING_TEXT")
+    assert "GROUNDING_TEXT" == text_issue.category
+    assert 5 in text_issue.target_pages
+
+
+def test_validator_ocr_page_miss_gives_warning_status_valid() -> None:
+    contract = make_test_contract("GENERIC")
+    facts = _core_facts()
+    evidence = _make_core_evidence()
+    # Change page 5 to OCR page with missing number in OCR text
+    evidence[5].text_source = "ocr"
+    evidence[5].page_text = "Teks buram hasil scan tanpa angka yang jelas"
+    evidence[5].tables = []
+
+    payload = DraftSubmissionPayload(doc_id="doc_ocr_warn", ticker="ASII", fiscal_period="2024Q4", facts=facts)
+    report = validate_draft_submission(payload, contract=contract, sector="GENERIC", evidence=evidence, page_count=10)
+
+    # Should produce WARNING GROUNDING_OCR, but overall status VALID (no ERRORs)
+    assert report.status == "VALID"
+    ocr_issue = next(i for i in report.issues if i.category == "GROUNDING_OCR")
+    assert ocr_issue.severity.value == "WARNING"
+    assert ocr_issue.details.get("needs_review") is True
+
+
+def test_validator_source_page_exceeds_page_count_fails_provenance() -> None:
+    contract = make_test_contract("GENERIC")
+    facts = _core_facts()
+    page_count = 10
+    # source_page = page_count + 1 = 11
+    facts[0] = ExtractedFactItem(
+        concept_id="ifrs:Assets",
+        value_numeric=Decimal("100000000000"),
+        source_page=page_count + 1,
+        statement="BS",
+    )
+
+    payload = DraftSubmissionPayload(doc_id="doc_prov_bad", ticker="ASII", fiscal_period="2024Q4", facts=facts)
+    report = validate_draft_submission(payload, contract=contract, sector="GENERIC", page_count=page_count)
+
+    assert report.status == "INVALID"
+    prov_issue = next(i for i in report.issues if i.category == "PROVENANCE")
+    assert "PROVENANCE" == prov_issue.category
+    assert 11 in prov_issue.target_pages
+
 

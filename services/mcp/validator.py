@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from decimal import Decimal
 
+from services.mcp.grounding import check_cell_grounding, check_text_grounding, resolve_scale
 from services.mcp.types import (
     DraftSubmissionPayload,
     ExtractedFactItem,
@@ -12,10 +13,10 @@ from services.mcp.types import (
     ExtractionCoverage,
     ExtractionFactRule,
     IssueSeverity,
+    PageEvidence,
     ValidationIssue,
     ValidationReport,
 )
-
 
 # Common concept ID aliases mapping (case-insensitive)
 CONCEPT_ALIASES: dict[str, str] = {
@@ -68,6 +69,8 @@ def validate_draft_submission(
     *,
     contract: ExtractionContract,
     sector: str = "GENERIC",
+    evidence: dict[int, PageEvidence] | None = None,
+    page_count: int | None = None,
     retry_attempt: int = 1,
     previous_attempt_misses: list[str] | None = None,
 ) -> ValidationReport:
@@ -282,15 +285,104 @@ def validate_draft_submission(
                 )
             )
 
+    default_contract_scale = resolve_scale(None, getattr(contract, "scaling_rules", None))
+
     for f in payload.facts:
-        if f.source_page < 1:
+        if f.source_page < 1 or (page_count is not None and f.source_page > page_count):
             issues.append(
                 ValidationIssue(
                     severity=IssueSeverity.ERROR,
-                    category="INVALID_PROVENANCE",
+                    category="PROVENANCE",
                     concept_id=f.concept_id,
-                    feedback_message=f"Fact '{f.concept_id}' has an invalid source_page ({f.source_page}). Must be >= 1.",
+                    feedback_message=(
+                        f"Fact '{f.concept_id}' source_page {f.source_page} is out of document bounds "
+                        f"(valid: 1..{page_count or 'N/A'})."
+                    ),
                     target_pages=[f.source_page],
+                )
+            )
+            continue
+
+        if evidence is not None:
+            if f.source_page not in evidence:
+                issues.append(
+                    ValidationIssue(
+                        severity=IssueSeverity.ERROR,
+                        category="PROVENANCE",
+                        concept_id=f.concept_id,
+                        feedback_message=(
+                            f"Fact '{f.concept_id}' cites source_page {f.source_page} which has no evidence loaded."
+                        ),
+                        target_pages=[f.source_page],
+                    )
+                )
+                continue
+
+            page_ev = evidence[f.source_page]
+            if f.cell_ref is not None:
+                is_grounded, err_msg, _conf, _bbox = check_cell_grounding(
+                    f, page_ev, default_scale=default_contract_scale
+                )
+                if not is_grounded:
+                    issues.append(
+                        ValidationIssue(
+                            severity=IssueSeverity.ERROR,
+                            category="GROUNDING_CELL",
+                            concept_id=f.concept_id,
+                            feedback_message=err_msg or f"Fact '{f.concept_id}' failed cell grounding.",
+                            target_pages=[f.source_page],
+                        )
+                    )
+            elif page_ev.text_source == "pdf_text":
+                is_grounded, err_msg = check_text_grounding(
+                    f, page_ev, default_scale=default_contract_scale
+                )
+                if not is_grounded:
+                    issues.append(
+                        ValidationIssue(
+                            severity=IssueSeverity.ERROR,
+                            category="GROUNDING_TEXT",
+                            concept_id=f.concept_id,
+                            feedback_message=err_msg or f"Fact '{f.concept_id}' value not found in text on page {f.source_page}.",
+                            target_pages=[f.source_page],
+                        )
+                    )
+            elif page_ev.text_source == "ocr":
+                is_grounded, _ = check_text_grounding(
+                    f, page_ev, default_scale=default_contract_scale
+                )
+                if not is_grounded:
+                    issues.append(
+                        ValidationIssue(
+                            severity=IssueSeverity.WARNING,
+                            category="GROUNDING_OCR",
+                            concept_id=f.concept_id,
+                            details={"needs_review": True},
+                            feedback_message=(
+                                f"Fact '{f.concept_id}' on OCR page {f.source_page} could not be confirmed "
+                                f"in OCR text; flagged for review."
+                            ),
+                            target_pages=[f.source_page],
+                        )
+                    )
+
+    for n in payload.narratives:
+        if n.source_page < 1 or (page_count is not None and n.source_page > page_count):
+            issues.append(
+                ValidationIssue(
+                    severity=IssueSeverity.ERROR,
+                    category="PROVENANCE",
+                    feedback_message=f"Narrative source_page {n.source_page} is out of document bounds.",
+                    target_pages=[n.source_page],
+                )
+            )
+        elif evidence is not None and n.source_page not in evidence:
+            issues.append(
+                ValidationIssue(
+                    severity=IssueSeverity.ERROR,
+                    category="PROVENANCE",
+                    feedback_message=f"Narrative cites source_page {n.source_page} which has no evidence loaded.",
+                    target_pages=[n.source_page],
                 )
             )
 

@@ -328,12 +328,12 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
 ## Phase 4 — Grounded extraction & validator
 
 ### M9.4.1 — `cell_ref` on facts
-- [ ] **Files:** `services/mcp/types.py` (`ExtractedFactItem.cell_ref: CellRef | None` with `table_index`, `row`, `col`), `tests/unit/test_types.py`
+- [x] **Files:** `services/mcp/types.py` (`ExtractedFactItem.cell_ref: CellRef | None` with `table_index`, `row`, `col`), `tests/unit/test_types.py`
 - **Depends on:** M9.3.3
 - **Done when:** a payload with `cell_ref` round-trips through `DraftSubmissionPayload.model_validate`, and one without it still validates (it is optional).
 
 ### M9.4.2 — Validator evidence input + grounding rules
-- [ ] **Files:**
+- [x] **Files:**
   - `services/mcp/validator.py`: new param `evidence: dict[int, PageEvidence] | None`. `PageEvidence` = `{text_source, page_text, tables}`. The validator stays pure, with no DB access.
   - `services/mcp/grounding.py` (new): number normalization and matching.
   - `services/mcp/server.py`: `submit_draft_extraction` loads evidence for every cited `source_page` and passes it in.
@@ -354,7 +354,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
   - `source_page = page_count + 1` → `PROVENANCE` ERROR
 
 ### M9.4.3 — Commit uses grounding result
-- [ ] **Files:** `services/mcp/server.py` (`commit_verified_report`), `tests/unit/test_mcp_server.py`
+- [x] **Files:** `services/mcp/server.py` (`commit_verified_report`), `tests/unit/test_mcp_server.py`
 - **Depends on:** M9.4.2, M9.1.4
 - **What:**
   - Re-run validation with evidence at commit time; never trust the draft blindly.

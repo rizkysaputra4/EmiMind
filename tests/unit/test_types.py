@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 import pytest
 from pydantic import BaseModel, ValidationError
 
+from services.mcp.types import CellRef, DraftSubmissionPayload, ExtractedFactItem
 from services.shared.types import (
     BBox,
     FiscalPeriod,
@@ -77,3 +80,56 @@ def test_pydantic_model_validation() -> None:
 
     with pytest.raises(ValidationError):
         SampleModel(ticker="invalid", fiscal_period="2024Q1")
+
+
+def test_extracted_fact_item_cell_ref_optional_and_roundtrip() -> None:
+    # Fact with cell_ref
+    fact_with_cell = ExtractedFactItem(
+        concept_id="ifrs:Assets",
+        value_numeric=Decimal("1234567"),
+        source_page=2,
+        cell_ref=CellRef(table_index=0, row=5, col=2),
+    )
+    assert fact_with_cell.cell_ref is not None
+    assert fact_with_cell.cell_ref.table_index == 0
+    assert fact_with_cell.cell_ref.row == 5
+    assert fact_with_cell.cell_ref.col == 2
+
+    # Fact without cell_ref
+    fact_without_cell = ExtractedFactItem(
+        concept_id="ifrs:Revenue",
+        value_numeric=Decimal("500000"),
+        source_page=3,
+    )
+    assert fact_without_cell.cell_ref is None
+
+    # DraftSubmissionPayload roundtrip with and without cell_ref
+    payload_data = {
+        "doc_id": "test-doc-123",
+        "ticker": "BMRI",
+        "fiscal_period": "2024Q4",
+        "facts": [
+            {
+                "concept_id": "ifrs:Assets",
+                "value_numeric": "1234567",
+                "source_page": 2,
+                "cell_ref": {"table_index": 0, "row": 5, "col": 2},
+            },
+            {
+                "concept_id": "ifrs:Revenue",
+                "value_numeric": "500000",
+                "source_page": 3,
+            },
+        ],
+    }
+
+    parsed = DraftSubmissionPayload.model_validate(payload_data)
+    assert len(parsed.facts) == 2
+    assert parsed.facts[0].cell_ref == CellRef(table_index=0, row=5, col=2)
+    assert parsed.facts[1].cell_ref is None
+
+    # Serialize back and re-validate
+    dumped = parsed.model_dump(mode="json")
+    re_parsed = DraftSubmissionPayload.model_validate(dumped)
+    assert re_parsed == parsed
+
