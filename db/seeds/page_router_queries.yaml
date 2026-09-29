@@ -233,76 +233,97 @@ DEBT_FACILITIES:
   BANK:
     terms_id:
       - "pinjaman yang diterima"
+      - "efek-efek yang diterbitkan"
       - "surat berharga yang diterbitkan"
-      - "pinjaman subordinasi"
+      - "pemberi pinjaman"
+      - "pinjaman bilateral"
       - "suku bunga"
       - "jatuh tempo"
     terms_en:
       - "borrowings"
-      - "securities issued"
-      - "subordinated loans"
+      - "debt securities issued"
+      - "lender"
+      - "bilateral loans"
       - "interest rate"
       - "maturity"
     max_pages: 6
+    # banks title these notes "Pinjaman yang diterima" (fund borrowings) and
+    # "Efek-efek / efek utang / surat berharga yang diterbitkan" (securities issued)
     anchor_patterns:
       - "PINJAMAN YANG DITERIMA"
+      - "EFEK(-EFEK| UTANG)? YANG DITERBITKAN"
       - "SURAT BERHARGA YANG DITERBITKAN"
       - "BORROWINGS"
+      - "SECURITIES ISSUED"
 
 BANK_LOANS_NPL:
   ALL:
+    # single generic words ("lancar", "current", "loss") are left out: they match every
+    # page with current assets / current accounts / profit or loss
     terms_id:
       - "kredit yang diberikan"
+      - "pinjaman yang diberikan"
       - "kolektibilitas"
-      - "kualitas aset"
-      - "lancar"
+      - "dalam perhatian khusus"
       - "kurang lancar"
       - "diragukan"
       - "macet"
+      - "kredit bermasalah"
       - "cadangan kerugian penurunan nilai"
       - "CKPN"
     terms_en:
-      - "loans and advances"
+      - "loans"
       - "collectibility"
-      - "asset quality"
-      - "current"
+      - "collectability"
+      - "special mention"
       - "substandard"
       - "doubtful"
-      - "loss"
+      - "non-performing loans"
       - "allowance for impairment losses"
+      - "stage 3"
     # loan quality spans the loans note (collectibility, stage, CKPN movement) plus the
     # credit-risk note (e.g. BMRI 2025: 7 pages); 6 pages cannot cover both
     max_pages: 12
     anchor_patterns:
       - "KREDIT YANG DIBERIKAN"
+      - "PINJAMAN YANG DIBERIKAN"
       - "KUALITAS ASET"
+      - "KUALITAS KREDIT"
+      - "CREDIT QUALITY"
       - "LOANS AND ADVANCES"
 
 PLANTATION_AREA:
   ALL:
+    # planted hectares (mature / immature) sit in the bearer-plants note, the plasma note, a
+    # plantation-area note, or the general-information note; the biological-assets note
+    # (growing produce at fair value) is BIOLOGICAL_ASSETS_DETAIL and is not anchored here
     terms_id:
-      - "aset biologis"
       - "tanaman menghasilkan"
       - "tanaman belum menghasilkan"
-      - "tanaman perkebunan"
       - "tanaman produktif"
-      - "luas areal perkebunan"
-      - "luas area tanaman produktif"
+      - "luas areal"
+      - "luas area tanaman"
+      - "area perkebunan"
+      - "perkebunan plasma"
       - "hektar"
     terms_en:
-      - "biological assets"
       - "mature plantations"
       - "immature plantations"
       - "bearer plants"
       - "total area of bearer plants"
       - "planted area"
+      - "plantation area"
+      - "plasma plantations"
       - "hectares"
     max_pages: 6
     anchor_patterns:
-      - "ASET BIOLOGIS"
+      - "TANAMAN PRODUKTIF"
       - "TANAMAN PERKEBUNAN"
-      - "LUAS AREA TANAMAN PRODUKTIF"
-      - "BIOLOGICAL ASSETS"
+      - "BEARER PLANTS"
+      - "AREA PERKEBUNAN"
+      - "PLANTATION AREA"
+      - "LUAS AREAL?"
+      - "PLASMA"
 
 # Granular Module Synonyms / Aliases
 REVENUE_BREAKDOWN:
@@ -341,15 +362,20 @@ CUSTOMER_CONCENTRATION:
   ALL:
     terms_id:
       - "pelanggan utama"
-      - "transaksi penjualan melebihi 10%"
+      - "pelanggan yang melebihi 10%"
+      - "melebihi 10% dari pendapatan"
+      - "melebihi 10% dari penjualan"
       - "konsentrasi pelanggan"
       - "pelanggan tunggal"
     terms_en:
       - "major customers"
-      - "sales exceeding 10%"
+      - "customers exceeding 10%"
+      - "exceeding 10% of revenue"
+      - "more than 10% of sales"
       - "customer concentration"
       - "single customer"
     max_pages: 6
+    # the >10% customer table usually sits inside the revenue note
     anchor_patterns:
       - "PELANGGAN TUNGGAL"
       - "MELEBIHI 10%"
@@ -357,6 +383,10 @@ CUSTOMER_CONCENTRATION:
       - "EXCEEDING 10%"
       - "KONSENTRASI PELANGGAN"
       - "PENDAPATAN DARI KONTRAK"
+      - "PENDAPATAN (BERSIH|NETO|USAHA)"
+      - "PENJUALAN (BERSIH|NETO)"
+      - "NET (REVENUE|SALES)"
+      - "REVENUE FROM CONTRACTS"
   BANK:
     terms_id:
       - "pendapatan bunga"
@@ -410,58 +440,76 @@ DEBT_BY_LENDER:
       - "utang bank"
       - "pinjaman bank"
       - "kreditur"
+      - "pemberi pinjaman"
       - "suku bunga"
     terms_en:
       - "bank borrowings"
       - "bank loans"
       - "creditor"
+      - "lenders"
       - "interest rate"
     max_pages: 6
     anchor_patterns:
       - "UTANG BANK"
+      - "PINJAMAN BANK"
       - "PINJAMAN JANGKA PANJANG"
+      - "BANK LOANS?"
   BANK:
     terms_id:
       - "pinjaman yang diterima"
+      - "efek-efek yang diterbitkan"
       - "surat berharga yang diterbitkan"
-      - "pinjaman subordinasi"
+      - "pemberi pinjaman"
+      - "pinjaman bilateral"
       - "suku bunga"
       - "jatuh tempo"
     terms_en:
       - "borrowings"
-      - "securities issued"
-      - "subordinated loans"
+      - "debt securities issued"
+      - "lender"
+      - "bilateral loans"
       - "interest rate"
       - "maturity"
     max_pages: 6
+    # banks title these notes "Pinjaman yang diterima" (fund borrowings) and
+    # "Efek-efek / efek utang / surat berharga yang diterbitkan" (securities issued)
     anchor_patterns:
       - "PINJAMAN YANG DITERIMA"
+      - "EFEK(-EFEK| UTANG)? YANG DITERBITKAN"
       - "SURAT BERHARGA YANG DITERBITKAN"
       - "BORROWINGS"
+      - "SECURITIES ISSUED"
 
 BANK_LOAN_QUALITY_NPL:
   ALL:
+    # Kol 1-5 collectibility table and the NPL amount / ratio
     terms_id:
-      - "kualitas aset produktif"
-      - "kolektibilitas kredit"
-      - "kredit lancar"
-      - "kredit macet"
-      - "CKPN"
+      - "kolektibilitas"
+      - "dalam perhatian khusus"
+      - "kurang lancar"
+      - "diragukan"
+      - "macet"
+      - "kredit bermasalah"
+      - "rasio kredit bermasalah"
     terms_en:
-      - "asset quality"
-      - "loan collectibility"
-      - "performing loans"
+      - "collectibility"
+      - "collectability"
+      - "special mention"
+      - "substandard"
+      - "doubtful"
       - "non-performing loans"
-      - "allowance for credit losses"
+      - "NPL ratio"
     max_pages: 6
     anchor_patterns:
       - "KREDIT YANG DIBERIKAN"
+      - "PINJAMAN YANG DIBERIKAN"
       - "KUALITAS ASET"
 
 BANK_LOANS_BY_SEGMENT:
   ALL:
     terms_id:
       - "kredit berdasarkan segmen"
+      - "segmen operasi"
       - "korporasi"
       - "komersial"
       - "konsumer"
@@ -469,14 +517,19 @@ BANK_LOANS_BY_SEGMENT:
       - "ritel"
     terms_en:
       - "loans by segment"
+      - "operating segment"
       - "corporate"
       - "commercial"
       - "consumer"
       - "micro"
       - "retail"
     max_pages: 6
+    # loans per business segment: the loans note, or the segment-information note
     anchor_patterns:
       - "KREDIT YANG DIBERIKAN"
+      - "PINJAMAN YANG DIBERIKAN"
+      - "INFORMASI SEGMEN"
+      - "SEGMENT INFORMATION"
 
 BIOLOGICAL_ASSETS_DETAIL:
   ALL:

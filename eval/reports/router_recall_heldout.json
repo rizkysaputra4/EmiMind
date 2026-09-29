@@ -1,0 +1,752 @@
+{
+  "summary": {
+    "core_mean_recall": 1.0,
+    "notes_mean_recall": 0.8074,
+    "mean_precision": 0.7654,
+    "mean_pages_per_module": 3.2222,
+    "total_evaluated_modules": 27,
+    "core_module_count": 9,
+    "notes_module_count": 18,
+    "failures": 0,
+    "thresholds": {
+      "core_recall": 0.9,
+      "notes_recall": 0.8,
+      "precision": 0.4
+    },
+    "thresholds_met": true,
+    "fail_reasons": [],
+    "per_ticker": {
+      "AALI": {
+        "core_mean_recall": 1.0,
+        "notes_mean_recall": 0.9285714285714286,
+        "mean_precision": 0.8666666666666666,
+        "mean_pages_per_module": 2.1,
+        "modules": 10
+      },
+      "BMRI": {
+        "core_mean_recall": 1.0,
+        "notes_mean_recall": 0.4066666666666666,
+        "mean_precision": 0.5833333333333334,
+        "mean_pages_per_module": 5.75,
+        "modules": 8
+      },
+      "LSIP": {
+        "core_mean_recall": 1.0,
+        "notes_mean_recall": 1.0,
+        "mean_precision": 0.8148148148148148,
+        "mean_pages_per_module": 2.2222222222222223,
+        "modules": 9
+      }
+    }
+  },
+  "modules": [
+    {
+      "gold_file": "AALI_2021Q1.yaml",
+      "ticker": "AALI",
+      "doc_id": "68083f0c-6659-4842-8a24-8c590f1bdcde",
+      "module": "BALANCE_SHEET",
+      "type": "core",
+      "gold_pages": [
+        3,
+        4
+      ],
+      "returned_pages": [
+        3,
+        4
+      ],
+      "hits": [
+        3,
+        4
+      ],
+      "missed": [],
+      "pages_returned": 2,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "AALI_2021Q1.yaml",
+      "ticker": "AALI",
+      "doc_id": "68083f0c-6659-4842-8a24-8c590f1bdcde",
+      "module": "INCOME_STATEMENT",
+      "type": "core",
+      "gold_pages": [
+        5
+      ],
+      "returned_pages": [
+        5
+      ],
+      "hits": [
+        5
+      ],
+      "missed": [],
+      "pages_returned": 1,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "AALI_2021Q1.yaml",
+      "ticker": "AALI",
+      "doc_id": "68083f0c-6659-4842-8a24-8c590f1bdcde",
+      "module": "CASH_FLOW",
+      "type": "core",
+      "gold_pages": [
+        7
+      ],
+      "returned_pages": [
+        7
+      ],
+      "hits": [
+        7
+      ],
+      "missed": [],
+      "pages_returned": 1,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "AALI_2021Q1.yaml",
+      "ticker": "AALI",
+      "doc_id": "68083f0c-6659-4842-8a24-8c590f1bdcde",
+      "module": "CASH_BANKS",
+      "type": "notes",
+      "gold_pages": [
+        28
+      ],
+      "returned_pages": [
+        28
+      ],
+      "hits": [
+        28
+      ],
+      "missed": [],
+      "pages_returned": 1,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "AALI_2021Q1.yaml",
+      "ticker": "AALI",
+      "doc_id": "68083f0c-6659-4842-8a24-8c590f1bdcde",
+      "module": "BIOLOGICAL_ASSETS_DETAIL",
+      "type": "notes",
+      "gold_pages": [
+        41
+      ],
+      "returned_pages": [
+        41
+      ],
+      "hits": [
+        41
+      ],
+      "missed": [],
+      "pages_returned": 1,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "AALI_2021Q1.yaml",
+      "ticker": "AALI",
+      "doc_id": "68083f0c-6659-4842-8a24-8c590f1bdcde",
+      "module": "PLANTATION_AREA",
+      "type": "notes",
+      "gold_pages": [
+        15,
+        16,
+        36,
+        37
+      ],
+      "returned_pages": [
+        36,
+        37,
+        42,
+        43
+      ],
+      "hits": [
+        36,
+        37
+      ],
+      "missed": [
+        15,
+        16
+      ],
+      "pages_returned": 4,
+      "recall": 0.5,
+      "precision": 0.5
+    },
+    {
+      "gold_file": "AALI_2021Q1.yaml",
+      "ticker": "AALI",
+      "doc_id": "68083f0c-6659-4842-8a24-8c590f1bdcde",
+      "module": "REVENUE_BREAKDOWN",
+      "type": "notes",
+      "gold_pages": [
+        64
+      ],
+      "returned_pages": [
+        63,
+        64,
+        65
+      ],
+      "hits": [
+        64
+      ],
+      "missed": [],
+      "pages_returned": 3,
+      "recall": 1.0,
+      "precision": 0.3333333333333333
+    },
+    {
+      "gold_file": "AALI_2021Q1.yaml",
+      "ticker": "AALI",
+      "doc_id": "68083f0c-6659-4842-8a24-8c590f1bdcde",
+      "module": "CUSTOMER_CONCENTRATION",
+      "type": "notes",
+      "gold_pages": [
+        64
+      ],
+      "returned_pages": [
+        64
+      ],
+      "hits": [
+        64
+      ],
+      "missed": [],
+      "pages_returned": 1,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "AALI_2021Q1.yaml",
+      "ticker": "AALI",
+      "doc_id": "68083f0c-6659-4842-8a24-8c590f1bdcde",
+      "module": "COGS_BREAKDOWN",
+      "type": "notes",
+      "gold_pages": [
+        64
+      ],
+      "returned_pages": [
+        64
+      ],
+      "hits": [
+        64
+      ],
+      "missed": [],
+      "pages_returned": 1,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "AALI_2021Q1.yaml",
+      "ticker": "AALI",
+      "doc_id": "68083f0c-6659-4842-8a24-8c590f1bdcde",
+      "module": "DEBT_BY_LENDER",
+      "type": "notes",
+      "gold_pages": [
+        53,
+        54,
+        55,
+        56,
+        57
+      ],
+      "returned_pages": [
+        53,
+        54,
+        55,
+        56,
+        57,
+        58
+      ],
+      "hits": [
+        53,
+        54,
+        55,
+        56,
+        57
+      ],
+      "missed": [],
+      "pages_returned": 6,
+      "recall": 1.0,
+      "precision": 0.8333333333333334
+    },
+    {
+      "gold_file": "BMRI_2025Q4.yaml",
+      "ticker": "BMRI",
+      "doc_id": "9a0154b0-9d27-42d4-b45a-f2ee9e75a187",
+      "module": "BALANCE_SHEET",
+      "type": "core",
+      "gold_pages": [
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29
+      ],
+      "returned_pages": [
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29
+      ],
+      "hits": [
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29
+      ],
+      "missed": [],
+      "pages_returned": 8,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "BMRI_2025Q4.yaml",
+      "ticker": "BMRI",
+      "doc_id": "9a0154b0-9d27-42d4-b45a-f2ee9e75a187",
+      "module": "INCOME_STATEMENT",
+      "type": "core",
+      "gold_pages": [
+        30,
+        31,
+        32
+      ],
+      "returned_pages": [
+        30,
+        31,
+        32
+      ],
+      "hits": [
+        30,
+        31,
+        32
+      ],
+      "missed": [],
+      "pages_returned": 3,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "BMRI_2025Q4.yaml",
+      "ticker": "BMRI",
+      "doc_id": "9a0154b0-9d27-42d4-b45a-f2ee9e75a187",
+      "module": "CASH_FLOW",
+      "type": "core",
+      "gold_pages": [
+        35,
+        36,
+        37,
+        38
+      ],
+      "returned_pages": [
+        35,
+        36,
+        37,
+        38
+      ],
+      "hits": [
+        35,
+        36,
+        37,
+        38
+      ],
+      "missed": [],
+      "pages_returned": 4,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "BMRI_2025Q4.yaml",
+      "ticker": "BMRI",
+      "doc_id": "9a0154b0-9d27-42d4-b45a-f2ee9e75a187",
+      "module": "CASH_BANKS",
+      "type": "notes",
+      "gold_pages": [
+        183,
+        184,
+        185
+      ],
+      "returned_pages": [
+        183,
+        184,
+        185,
+        186,
+        190,
+        191
+      ],
+      "hits": [
+        183,
+        184,
+        185
+      ],
+      "missed": [],
+      "pages_returned": 6,
+      "recall": 1.0,
+      "precision": 0.5
+    },
+    {
+      "gold_file": "BMRI_2025Q4.yaml",
+      "ticker": "BMRI",
+      "doc_id": "9a0154b0-9d27-42d4-b45a-f2ee9e75a187",
+      "module": "BANK_LOANS_NPL",
+      "type": "notes",
+      "gold_pages": [
+        217,
+        218,
+        219,
+        220,
+        221,
+        222,
+        223,
+        224,
+        225,
+        226
+      ],
+      "returned_pages": [
+        220,
+        221,
+        222,
+        223,
+        224,
+        225,
+        226
+      ],
+      "hits": [
+        220,
+        221,
+        222,
+        223,
+        224,
+        225,
+        226
+      ],
+      "missed": [
+        217,
+        218,
+        219
+      ],
+      "pages_returned": 7,
+      "recall": 0.7,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "BMRI_2025Q4.yaml",
+      "ticker": "BMRI",
+      "doc_id": "9a0154b0-9d27-42d4-b45a-f2ee9e75a187",
+      "module": "BANK_LOAN_QUALITY_NPL",
+      "type": "notes",
+      "gold_pages": [
+        507,
+        512,
+        513
+      ],
+      "returned_pages": [
+        225,
+        506,
+        507,
+        508,
+        509,
+        510
+      ],
+      "hits": [
+        507
+      ],
+      "missed": [
+        512,
+        513
+      ],
+      "pages_returned": 6,
+      "recall": 0.3333333333333333,
+      "precision": 0.16666666666666666
+    },
+    {
+      "gold_file": "BMRI_2025Q4.yaml",
+      "ticker": "BMRI",
+      "doc_id": "9a0154b0-9d27-42d4-b45a-f2ee9e75a187",
+      "module": "BANK_LOANS_BY_SEGMENT",
+      "type": "notes",
+      "gold_pages": [
+        507,
+        508,
+        509
+      ],
+      "returned_pages": [
+        425,
+        426,
+        427,
+        428,
+        429,
+        485
+      ],
+      "hits": [],
+      "missed": [
+        507,
+        508,
+        509
+      ],
+      "pages_returned": 6,
+      "recall": 0.0,
+      "precision": 0.0
+    },
+    {
+      "gold_file": "BMRI_2025Q4.yaml",
+      "ticker": "BMRI",
+      "doc_id": "9a0154b0-9d27-42d4-b45a-f2ee9e75a187",
+      "module": "DEBT_BY_LENDER",
+      "type": "notes",
+      "gold_pages": [
+        305,
+        306,
+        307,
+        308,
+        309,
+        310
+      ],
+      "returned_pages": [
+        266,
+        271,
+        274,
+        487,
+        488,
+        489
+      ],
+      "hits": [],
+      "missed": [
+        305,
+        306,
+        307,
+        308,
+        309,
+        310
+      ],
+      "pages_returned": 6,
+      "recall": 0.0,
+      "precision": 0.0
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "9cbf5811-986f-4c8f-882f-6c0cf67a504a",
+      "module": "BALANCE_SHEET",
+      "type": "core",
+      "gold_pages": [
+        14,
+        15
+      ],
+      "returned_pages": [
+        14,
+        15
+      ],
+      "hits": [
+        14,
+        15
+      ],
+      "missed": [],
+      "pages_returned": 2,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "9cbf5811-986f-4c8f-882f-6c0cf67a504a",
+      "module": "INCOME_STATEMENT",
+      "type": "core",
+      "gold_pages": [
+        16,
+        17
+      ],
+      "returned_pages": [
+        16,
+        17
+      ],
+      "hits": [
+        16,
+        17
+      ],
+      "missed": [],
+      "pages_returned": 2,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "9cbf5811-986f-4c8f-882f-6c0cf67a504a",
+      "module": "CASH_FLOW",
+      "type": "core",
+      "gold_pages": [
+        19
+      ],
+      "returned_pages": [
+        19
+      ],
+      "hits": [
+        19
+      ],
+      "missed": [],
+      "pages_returned": 1,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "9cbf5811-986f-4c8f-882f-6c0cf67a504a",
+      "module": "CASH_BANKS",
+      "type": "notes",
+      "gold_pages": [
+        63,
+        64
+      ],
+      "returned_pages": [
+        63,
+        64
+      ],
+      "hits": [
+        63,
+        64
+      ],
+      "missed": [],
+      "pages_returned": 2,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "9cbf5811-986f-4c8f-882f-6c0cf67a504a",
+      "module": "BIOLOGICAL_ASSETS_DETAIL",
+      "type": "notes",
+      "gold_pages": [
+        68,
+        69
+      ],
+      "returned_pages": [
+        68,
+        69
+      ],
+      "hits": [
+        68,
+        69
+      ],
+      "missed": [],
+      "pages_returned": 2,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "9cbf5811-986f-4c8f-882f-6c0cf67a504a",
+      "module": "PLANTATION_AREA",
+      "type": "notes",
+      "gold_pages": [
+        80,
+        81
+      ],
+      "returned_pages": [
+        70,
+        71,
+        79,
+        80,
+        81,
+        82
+      ],
+      "hits": [
+        80,
+        81
+      ],
+      "missed": [],
+      "pages_returned": 6,
+      "recall": 1.0,
+      "precision": 0.3333333333333333
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "9cbf5811-986f-4c8f-882f-6c0cf67a504a",
+      "module": "REVENUE_BREAKDOWN",
+      "type": "notes",
+      "gold_pages": [
+        100
+      ],
+      "returned_pages": [
+        100,
+        101
+      ],
+      "hits": [
+        100
+      ],
+      "missed": [],
+      "pages_returned": 2,
+      "recall": 1.0,
+      "precision": 0.5
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "9cbf5811-986f-4c8f-882f-6c0cf67a504a",
+      "module": "CUSTOMER_CONCENTRATION",
+      "type": "notes",
+      "gold_pages": [
+        101
+      ],
+      "returned_pages": [
+        100,
+        101
+      ],
+      "hits": [
+        101
+      ],
+      "missed": [],
+      "pages_returned": 2,
+      "recall": 1.0,
+      "precision": 0.5
+    },
+    {
+      "gold_file": "LSIP_2025Q4.yaml",
+      "ticker": "LSIP",
+      "doc_id": "9cbf5811-986f-4c8f-882f-6c0cf67a504a",
+      "module": "COGS_BREAKDOWN",
+      "type": "notes",
+      "gold_pages": [
+        101
+      ],
+      "returned_pages": [
+        101
+      ],
+      "hits": [
+        101
+      ],
+      "missed": [],
+      "pages_returned": 1,
+      "recall": 1.0,
+      "precision": 1.0
+    }
+  ],
+  "failures": [],
+  "notes": [
+    "AALI PLANTATION_AREA: missed gold pages [15, 16] (returned [36, 37, 42, 43])",
+    "AALI PLANTATION_AREA: recall 0.50, precision 0.50 (4 pages for 4 gold)",
+    "AALI REVENUE_BREAKDOWN: recall 1.00, precision 0.33 (3 pages for 1 gold)",
+    "BMRI BANK_LOANS_NPL: missed gold pages [217, 218, 219] (returned [220, 221, 222, 223, 224, 225, 226])",
+    "BMRI BANK_LOANS_NPL: recall 0.70, precision 1.00 (7 pages for 10 gold)",
+    "BMRI BANK_LOAN_QUALITY_NPL: missed gold pages [512, 513] (returned [225, 506, 507, 508, 509, 510])",
+    "BMRI BANK_LOAN_QUALITY_NPL: recall 0.33, precision 0.17 (6 pages for 3 gold)",
+    "BMRI BANK_LOANS_BY_SEGMENT: missed gold pages [507, 508, 509] (returned [425, 426, 427, 428, 429, 485])",
+    "BMRI BANK_LOANS_BY_SEGMENT: recall 0.00, precision 0.00 (6 pages for 3 gold)",
+    "BMRI DEBT_BY_LENDER: missed gold pages [305, 306, 307, 308, 309, 310] (returned [266, 271, 274, 487, 488, 489])",
+    "BMRI DEBT_BY_LENDER: recall 0.00, precision 0.00 (6 pages for 6 gold)",
+    "LSIP PLANTATION_AREA: recall 1.00, precision 0.33 (6 pages for 2 gold)"
+  ]
+}

@@ -1,0 +1,30 @@
+# Dev gold (Workstream D). Labels from BMRI's own note headings / page text, not router output.
+# Not the held-out BMRI 2025Q4 filing. Tables carry three periods (30 Jun 2026, 31 Dec 2025,
+# 31 Dec 2024), often one period per page; where that happens only the current-period page
+# (30 Juni 2026) is gold.
+file: "bank mandiri_consol_interim_30 june 2026_released (1).pdf"
+sha256: "385e5b498c59305c15a961ef1c6926411355f682508c61b105a4ed2ac2916ded"
+ticker: "BMRI"
+fiscal_period: "2026Q2"
+modules:
+  BALANCE_SHEET: [6, 7, 8, 9, 10, 11, 12, 13]   # LAPORAN POSISI KEUANGAN INTERIM (8 pages)
+  INCOME_STATEMENT: [14, 15, 16]                # LAPORAN LABA RUGI DAN PENGHASILAN KOMPREHENSIF LAIN
+  CASH_FLOW: [21, 22, 23, 24]                   # LAPORAN ARUS KAS INTERIM
+  # note 41 PENDAPATAN BUNGA DAN SYARIAH (pp428-429), note 43 PENDAPATAN PROVISI DAN KOMISI (p430)
+  REVENUE_BREAKDOWN: [428, 429, 430]
+  COGS_COMPONENTS: [429, 430]                   # note 42 BEBAN BUNGA DAN BEBAN SYARIAH
+  # note 30 EFEK-EFEK YANG DITERBITKAN summary by type (p288); note 36 PINJAMAN YANG DITERIMA
+  # summary by type/currency (pp330-331) and the direct off-shore loans list per lender
+  # (pp332-333). The rest of note 36 (pp334-401) is per-facility lender tables and narrative
+  # and is not labelled (72 pages cannot be a 6-page answer).
+  DEBT_BY_LENDER: [288, 330, 331, 332, 333]
+  # note 65k INFORMASI TAMBAHAN - kredit yang diberikan: 1a by type x collectability POJK
+  # (Kol 1-5, 30 Jun 2026: p573), 1b by economic sector x collectability (p576), 4 NPL summary
+  # by sector (p581), 5 NPL ratio (p582). Note 12m (p239) only cross-refers to note 65k.
+  BANK_LOAN_QUALITY_NPL: [573, 576, 581, 582]
+  # the above plus note 12c stage 1/2/3 movement (p229) and 12g CKPN movements (pp235-237)
+  BANK_LOANS_NPL: [229, 235, 236, 237, 573, 576, 581, 582]
+  # note 57 INFORMASI SEGMEN, loans per Corporate/Commercial/Retail segment (30 Jun 2026, p471);
+  # note 62A credit risk: loans by Korporasi/Komersial/Retail/Syariah (p496) and the
+  # concentration tables by segment row, geographic (p498) and industry (p502), 30 Jun 2026
+  BANK_LOANS_BY_SEGMENT: [471, 496, 498, 502]

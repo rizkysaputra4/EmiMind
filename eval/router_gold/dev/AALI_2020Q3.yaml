@@ -1,0 +1,21 @@
+# Dev gold (Workstream D). Labels from AALI's own note headings / page text, not router output.
+# Not the held-out AALI 2021Q1 filing.
+file: "AALI_2020_TW3_RDF_AALI LK TW III 2020.pdf"
+sha256: "50d3fbab490034cd25e4601613dca472ed85422170ac432f58a1aee1312e00ad"
+ticker: "AALI"
+fiscal_period: "2020Q3"
+modules:
+  BALANCE_SHEET: [3, 4]               # Lampiran 1/1-1/2 LAPORAN POSISI KEUANGAN KONSOLIDASIAN
+  INCOME_STATEMENT: [5]               # Lampiran 2 LAPORAN LABA RUGI DAN PENGHASILAN KOMPREHENSIF LAIN
+  CASH_FLOW: [7]                      # Lampiran 4 LAPORAN ARUS KAS KONSOLIDASIAN
+  CASH_BANKS: [27]                    # note 4 KAS DAN SETARA KAS
+  BIOLOGICAL_ASSETS_DETAIL: [40]      # note 13 ASET BIOLOGIS
+  # This filing discloses no planted hectares; the mature / immature split is by value in
+  # note 11 TANAMAN PRODUKTIF (a. tanaman menghasilkan p35, b. tanaman belum menghasilkan p36)
+  PLANTATION_AREA: [35, 36]
+  REVENUE_BREAKDOWN: [62]             # note 28 PENDAPATAN BERSIH (by product)
+  CUSTOMER_CONCENTRATION: [62]        # note 28: "pelanggan yang melebihi 10% dari pendapatan bersih"
+  COGS_BREAKDOWN: [63]                # note 29 BEBAN POKOK PENDAPATAN
+  # note 19 PINJAMAN BANK: per-lender balances (p51 short/long-term by bank, p52 club-loan
+  # lenders); pp53-56 are CCIRS hedges and facility narratives
+  DEBT_BY_LENDER: [51, 52]

@@ -1,0 +1,20 @@
+# Dev gold (Workstream D). Labels from SSMS's own note headings / page text, not router output.
+file: "SSMS_2025_TW3_RDF_Sawit Sumbermas Sarana_tbk_billingual_30_Sep_25.pdf"
+sha256: "805120630a038b7fd8858d8df3e375f0981a73c704c7f57bb1a12cd24e907fc6"
+ticker: "SSMS"
+fiscal_period: "2025Q3"
+modules:
+  BALANCE_SHEET: [4, 5, 6]            # LAPORAN POSISI KEUANGAN INTERIM (3 pages)
+  INCOME_STATEMENT: [7, 8]            # LAPORAN LABA RUGI DAN PENGHASILAN KOMPREHENSIF LAIN
+  CASH_FLOW: [10, 11]                 # LAPORAN ARUS KAS (+ lanjutan)
+  CASH_BANKS: [58, 59]                # note 4 KAS DAN SETARA KAS
+  BIOLOGICAL_ASSETS_DETAIL: [63]      # note 8 ASET BIOLOGIS
+  # planted hectares: note 1e subsidiaries table (mature / immature ha, p19), note 15
+  # PIUTANG PLASMA plasma estate hectares (pp76-78), note 36 AREA PERKEBUNAN (p134)
+  PLANTATION_AREA: [19, 76, 77, 78, 134]
+  REVENUE_BREAKDOWN: [113]            # note 27 PENDAPATAN DARI KONTRAK DENGAN PELANGGAN
+  CUSTOMER_CONCENTRATION: [113]       # note 27: customers exceeding 10% of revenue
+  COGS_BREAKDOWN: [114]               # note 28 BEBAN POKOK PENJUALAN
+  # note 21 UTANG BANK: per-creditor balance tables (short-term p93-94, long-term summary p95);
+  # pp96-105 are facility narratives and are not labelled
+  DEBT_BY_LENDER: [93, 94, 95]

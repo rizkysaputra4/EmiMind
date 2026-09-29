@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,7 @@ from services.retrieval.page_router import (
     rrf_fuse,
     select_pages,
     statement_title,
+    sub_heading_starts,
 )
 from tests.fixtures.m9.build_fixtures import build_fs_small
 from tests.unit._fake_async_db import FakeConn
@@ -94,7 +96,10 @@ def test_is_continuation_fixture_headers(tmp_path: Path) -> None:
 
 def test_exclusions_and_anchor_ranking() -> None:
     doc = _doc()
-    assert 1 in excluded_pages(doc, core_query=True)  # table of contents
+    core_ex = excluded_pages(doc, core_query=True)
+    assert 1 in core_ex  # table of contents
+    # statement queries skip notes pages (notes header + a note heading), not statements
+    assert {5, 6, 7, 8, 9, 10} <= core_ex and not {2, 3, 4} & core_ex
     note_ex = excluded_pages(doc, core_query=False)
     assert {1, 2, 3, 4} <= note_ex and 5 not in note_ex
     ranked, starts = anchor_ranking(doc, ["PENDAPATAN DARI KONTRAK"], note_ex)
@@ -108,13 +113,82 @@ def test_exclusions_and_anchor_ranking() -> None:
 def test_select_pages_respects_total_budget_and_seed_ratio() -> None:
     doc = _doc()
     fused = [(6, 0.05), (9, 0.049), (7, 0.048), (10, 0.047)]
+    # 9 is inside note 7 but outside seed 6's reach, 7 starts note 6: three seeds, and with a
+    # budget of 3 each keeps its own page instead of seed 6 taking all of it
     units = select_pages(fused, doc, budget=3, top_k=3, seed_ratio=0.7, heading_starts={5})
-    pages = [p for _s, ps, _sc in units for p in ps]
-    assert len(pages) <= 3
-    assert pages[:2] == [5, 6]  # seed 6 continues note 5 -> takes its start page
+    assert [ps for _s, ps, _sc in units] == [[6], [9], [7]]
+    # one page more: seed 6 continues note 5 -> takes its start page first
+    units = select_pages(fused, doc, budget=4, top_k=3, seed_ratio=0.7, heading_starts={5})
+    assert [ps for _s, ps, _sc in units] == [[5, 6], [9], [7]]
     # a weak second seed is not added
     units = select_pages([(6, 0.05), (10, 0.02)], doc, budget=6, seed_ratio=0.7)
     assert [ps for _s, ps, _sc in units] == [[5, 6]]
+
+
+def _long_note_doc() -> dict[int, str]:
+    """Note 9 runs pp1-8 (a long lender list); note 10 starts on p9."""
+    doc = {1: NOTES_HDR + "9. PINJAMAN YANG DITERIMA\nRingkasan per jenis 1.000"}
+    for i in range(2, 9):
+        doc[i] = NOTES_HDR + f"9. PINJAMAN YANG DITERIMA (lanjutan)\nPemberi pinjaman {i}"
+    doc[9] = NOTES_HDR + "10. EFEK-EFEK YANG DITERBITKAN\nObligasi 500"
+    return doc
+
+
+def test_select_pages_long_first_note_does_not_starve_a_second_location() -> None:
+    doc = _long_note_doc()
+    units = select_pages([(3, 0.05), (9, 0.045)], doc, budget=4, heading_starts={1, 9})
+    # seed 3 grows over its note, but seed 9 keeps its page
+    assert [ps for _s, ps, _sc in units] == [[2, 3, 4], [9]]
+    # a candidate inside the first seed's continuation reach is the same note, not a seed
+    units = select_pages([(3, 0.05), (5, 0.049), (9, 0.045)], doc, budget=4, heading_starts={1, 9})
+    assert [s for s, _ps, _sc in units] == [3, 9]
+
+
+def test_select_pages_adds_the_note_start_when_every_seed_is_mid_note() -> None:
+    doc = _long_note_doc()
+    # seed 6 is deep inside note 9 (reach 5..8); the note starts on p1, which only the
+    # anchor leg ranks
+    fused = [(6, 0.05), (1, 0.016)]
+    units = select_pages(fused, doc, budget=4, heading_starts={1})
+    assert [s for s, _ps, _sc in units] == [6, 1]
+    assert sorted(p for _s, ps, _sc in units for p in ps) == [1, 5, 6, 7]
+    # no extra seed when a seed already reaches a heading start
+    units = select_pages([(2, 0.05), (1, 0.016)], doc, budget=4, heading_starts={1})
+    assert [s for s, _ps, _sc in units] == [2]
+    # never in statement mode
+    units = select_pages(fused, doc, budget=4, top_k=1, heading_starts={1}, statement_mode=True)
+    assert [s for s, _ps, _sc in units] == [6]
+
+
+def test_policy_notes_that_describe_statements_are_excluded() -> None:
+    policy = NOTES_HDR + "2. INFORMASI KEBIJAKAN AKUNTANSI MATERIAL (lanjutan)\nLaporan posisi keuangan"
+    estimates = NOTES_HDR + "3. PENGGUNAAN ESTIMASI DAN PERTIMBANGAN\nAKUNTANSI YANG PENTING"
+    estimates_en = NOTES_HDR + "38. CRITICAL ACCOUNTING ESTIMATES AND\nJUDGEMENTS"
+    doc = {1: policy, 2: estimates, 3: estimates_en, 4: HDR + "LAPORAN POSISI KEUANGAN\nJumlah aset 1"}
+    assert excluded_pages(doc, core_query=False) == {1, 2, 3, 4}
+    assert excluded_pages(doc, core_query=True) == {1, 2, 3}
+
+
+def test_sub_heading_anchors_rank_after_note_starts_and_before_continuations() -> None:
+    comp = [re.compile("KREDIT YANG DIBERIKAN", re.I)]
+    assert sub_heading_starts("Intro\nk. Kredit yang Diberikan dan Piutang/ k. Loans", comp)
+    assert sub_heading_starts("(iii) Kredit yang diberikan dan piutang/\nx", comp)
+    assert sub_heading_starts("4. Ikhtisar kredit yang diberikan dan\npiutang bermasalah", comp)
+    # continued sub-heading, enumeration, table row, phrase far from the start: no
+    assert not sub_heading_starts("k. Kredit yang Diberikan dan Piutang/\nPembiayaan (lanjutan)", comp)
+    assert not sub_heading_starts("1. Kas, piutang dan kredit yang diberikan", comp)
+    assert not sub_heading_starts("a. Kredit yang diberikan 1.234.567 1.000.000", comp)
+    assert not sub_heading_starts("a. Rincian saldo menurut mata uang dan jangka waktu kredit yang diberikan", comp)
+
+    doc = {
+        1: NOTES_HDR + "12. KREDIT YANG DIBERIKAN\na. Berdasarkan jenis",
+        2: NOTES_HDR + "12. KREDIT YANG DIBERIKAN (lanjutan)\nb. Berdasarkan sektor",
+        3: NOTES_HDR + "40. INFORMASI TAMBAHAN\nk. Kredit yang Diberikan dan Piutang\nKol 1 Lancar",
+        4: NOTES_HDR + "40. INFORMASI TAMBAHAN (lanjutan)\nk. Kredit yang Diberikan (lanjutan)",
+    }
+    ranked, starts = anchor_ranking(doc, ["KREDIT YANG DIBERIKAN"], set())
+    # p4: the note heading line plus its next line matches -> a continuation page
+    assert ranked == [1, 3, 2, 4] and starts == {1, 3}
 
 
 def test_select_pages_statement_mode_walks_back_to_statement_start() -> None:

@@ -41,6 +41,14 @@ _HEADING_SCAN_LINES = 40
 
 _CONT_MARKER = re.compile(r"\((?:lanjutan|continued)\)", re.I)
 _NOTE_HEADING = re.compile(r"^\s*(?:catatan\s+|note\s+)?(\d{1,3}[a-z]?)\.\s+([A-Za-z].{2,})$", re.I)
+# labelled sub-heading inside a note: "k. Kredit yang diberikan", "(iii) Informasi kualitas
+# kredit", "A. Risiko kredit", "4. Ikhtisar kredit bermasalah"
+_SUB_HEADING = re.compile(
+    r"^\s*(?:\((?:[a-z]{1,2}|[ivx]{1,5}|\d{1,2})\)|(?:[a-z]{1,2}|[ivx]{1,5}|\d{1,2})\)"
+    r"|(?:[A-Za-z]|[ivx]{1,5}|\d{1,2})\.)\s+([A-Za-z].{2,})$"
+)
+_SUB_MATCH_CHARS = 45  # an anchor must match this close to the start of the sub-heading text
+_TABLE_NUMBER = re.compile(r"\d[\d.,]{4,}")
 _TOC_OR_AUDIT = re.compile(
     r"daftar\s+isi|table\s+of\s+contents|laporan\s+(?:atas\s+)?reviu|report\s+on\s+(?:the\s+)?review"
     r"|laporan\s+auditor\s+independen|independent\s+auditor",
@@ -58,7 +66,8 @@ _CORE_TITLE = re.compile(
     re.I,
 )
 _POLICY_HEADING = re.compile(
-    r"kebijakan\s+akuntansi|accounting\s+polic|pertimbangan,?\s+estimasi|judgements?,?\s+estimates",
+    r"kebijakan\s+akuntansi|accounting\s+polic|pertimbangan,?\s+estimasi|judge?ments?,?\s+estimates"
+    r"|estimasi\s+dan\s+pertimbangan|estimates\s+and\s+judge?ments",
     re.I,
 )
 
@@ -185,37 +194,71 @@ def is_core_statement_query(route_query: RouteQuery) -> bool:
 
 
 def excluded_pages(page_texts: dict[int, str], core_query: bool) -> set[int]:
-    """TOC / auditor pages always; for note queries also core statements and policy notes."""
+    """TOC / auditor pages always.
+
+    Statement queries also drop notes pages (a notes header plus a numbered note heading):
+    policy notes that describe each statement otherwise outrank the statement itself.
+    Note queries drop core statements and policy notes.
+    """
     out: set[int] = set()
     for p_idx, p_text in page_texts.items():
         top = "\n".join(_lines(p_text, _HEADER_LINES))
         if _TOC_OR_AUDIT.search(top):
             out.add(p_idx)
             continue
+        heads = note_headings(p_text, _HEADING_SCAN_LINES)
         if core_query:
+            if heads and _NOTES_HEADER.search(top):
+                out.add(p_idx)
             continue
         if _CORE_TITLE.search(top) and not _NOTES_HEADER.search(top):
             out.add(p_idx)
             continue
-        heads = note_headings(p_text, _HEADING_SCAN_LINES)
         if len(heads) == 1 and _POLICY_HEADING.search(heads[0][1]):
             out.add(p_idx)
     return out
 
 
+def sub_heading_starts(page_text: str, compiled: Sequence[re.Pattern[str]]) -> bool:
+    """True if a labelled sub-heading on the page opens with an anchor phrase.
+
+    'k. Kredit yang Diberikan dan Piutang' matches KREDIT YANG DIBERIKAN; the anchor must
+    match within the first _SUB_MATCH_CHARS characters of the sub-heading text. Table rows
+    (a number of 5+ characters), enumerations ('1. Kas dan setara kas, piutang usaha, ...'
+    in fair-value notes: a comma in the matched span) and '(lanjutan)/(continued)'
+    sub-headings do not count.
+    """
+    lines = _lines(page_text)
+    for i, ln in enumerate(lines):
+        m = _SUB_HEADING.match(ln)
+        if not m or _TABLE_NUMBER.search(ln):
+            continue
+        head = m.group(1)[:_SUB_MATCH_CHARS]
+        if "," in head or not any(c.search(head) for c in compiled):
+            continue
+        nxt = lines[i + 1] if i + 1 < len(lines) else ""
+        if _CONT_MARKER.search(ln) or _CONT_MARKER.search(nxt):
+            continue
+        return True
+    return False
+
+
 def anchor_ranking(
     page_texts: dict[int, str], anchor_patterns: Sequence[str], exclude: set[int]
 ) -> tuple[list[int], set[int]]:
-    """(ranked anchor pages, pages where a matching heading starts).
+    """(ranked anchor pages, pages where a matching heading or sub-heading starts).
 
     A heading is a numbered note heading anywhere on the page, or, on a non-notes page
-    without note headings, a statement title in the page header. Pages where the heading
-    starts rank first, then '(lanjutan)' pages; each group keeps document order.
+    without note headings, a statement title in the page header. Three groups, each in
+    document order: pages where a matching heading starts; pages where a matching labelled
+    sub-heading starts (a section inside another note, e.g. 'k. Kredit yang diberikan' in an
+    additional-information note); then '(lanjutan)' pages of matching headings.
     """
     if not anchor_patterns:
         return [], set()
     compiled = [re.compile(p, re.I) for p in anchor_patterns]
     starts: list[int] = []
+    subs: list[int] = []
     conts: list[int] = []
     for p_idx in sorted(page_texts):
         if p_idx in exclude:
@@ -236,9 +279,37 @@ def anchor_ranking(
                     hit_start = True
         if hit_start:
             starts.append(p_idx)
+        elif sub_heading_starts(p_text, compiled):
+            subs.append(p_idx)
         elif hit_cont:
             conts.append(p_idx)
-    return starts + conts, set(starts)
+    return starts + subs + conts, set(starts) | set(subs)
+
+
+def _reach(
+    seed: int, page_texts: dict[int, str], budget: int, max_back: int, skip: set[int]
+) -> set[int]:
+    """Pages the seed's continuation walk could cover (max_back back, budget - 1 forward)."""
+    out = {seed}
+    cur = seed
+    while (
+        seed - cur < max_back
+        and cur - 1 in page_texts
+        and cur - 1 not in skip
+        and is_continuation(page_texts[cur - 1], page_texts[cur])
+    ):
+        cur -= 1
+        out.add(cur)
+    nxt = seed + 1
+    while (
+        nxt - seed < budget
+        and nxt in page_texts
+        and nxt not in skip
+        and is_continuation(page_texts.get(nxt - 1, ""), page_texts[nxt])
+    ):
+        out.add(nxt)
+        nxt += 1
+    return out
 
 
 def select_pages(
@@ -251,35 +322,55 @@ def select_pages(
     statement_mode: bool = False,
     exclude: set[int] | None = None,
 ) -> list[tuple[int, list[int], float]]:
-    """Greedy seeds in fused order → (seed, pages, score); total pages <= budget.
+    """Seeds in fused order, then the budget shared among them → (seed, pages, score).
 
-    Each seed is extended over its continuation pages: forward always; backward to the
-    statement's first page in statement_mode, otherwise by one page (the spec's ±1, applied
-    only across a real continuation) when the seed is not itself where a matching heading
-    starts. Covered seeds are skipped; seeds after the first need score >= seed_ratio * best.
+    1. Seeds: fused order, at most top_k; seeds after the first need score >= seed_ratio *
+       best. A candidate the continuation walk of an earlier seed would reach is skipped (it
+       is the same note, not a second location).
+    2. Pages: every seed holds its own page; then, in seed order, each seed grows over its
+       continuation pages into the budget that is left, so a long first note cannot starve a
+       second location of its seed page. Backward: to the statement's first page in
+       statement_mode, otherwise one page (the spec's ±1, only across a real continuation)
+       when the seed is not itself where a matching heading starts. Forward: along
+       continuation pages.
     """
     if not fused or budget <= 0:
         return []
     starts = heading_starts or set()
     best = fused[0][1]
-    chosen: set[int] = set()
-    units: list[tuple[int, list[int], float]] = []
-    last_page = max(page_texts) if page_texts else 0
     max_back = budget if statement_mode else 1
     skip = exclude or set()
+
+    seeds: list[tuple[int, float]] = []
+    covered: set[int] = set()
     for seed, score in fused:
-        if len(units) >= top_k or len(chosen) >= budget:
+        if len(seeds) >= min(top_k, budget):
             break
-        if seed in chosen:
+        if seeds and score < seed_ratio * best:
+            break
+        if seed in covered:
             continue
-        if units and score < seed_ratio * best:
-            break
-        pages = [seed]
+        seeds.append((seed, score))
+        covered |= _reach(seed, page_texts, budget, max_back, skip)
+    # a note's first page carries its summary table: when every seed sits inside a note
+    # (none is, or reaches, a page where a matching heading starts), the best-fused heading
+    # start becomes one more seed
+    if not statement_mode and starts and len(seeds) < budget and not covered & starts:
+        start_seed = next(((p, sc) for p, sc in fused if p in starts), None)
+        if start_seed:
+            seeds.append(start_seed)
+            covered |= _reach(start_seed[0], page_texts, budget, max_back, skip)
+
+    chosen = {seed for seed, _ in seeds}
+    units: list[tuple[int, list[int], float]] = []
+    for seed, score in seeds:
+        # later seeds already hold their own page; this seed may grow into what is left
         room = budget - len(chosen)
+        pages = [seed]
         cur = seed
         while (
-            len(pages) < room
-            and len(pages) - 1 < max_back
+            room > 0
+            and seed - cur < max_back
             and (statement_mode or seed not in starts)
             and cur - 1 in page_texts
             and cur - 1 not in chosen
@@ -288,17 +379,20 @@ def select_pages(
         ):
             cur -= 1
             pages.insert(0, cur)
+            chosen.add(cur)
+            room -= 1
         nxt = seed + 1
         while (
-            nxt <= last_page
-            and len(pages) < room
+            room > 0
+            and nxt in page_texts
             and nxt not in chosen
             and nxt not in skip
-            and is_continuation(page_texts.get(nxt - 1, ""), page_texts.get(nxt, ""))
+            and is_continuation(page_texts.get(nxt - 1, ""), page_texts[nxt])
         ):
             pages.append(nxt)
+            chosen.add(nxt)
+            room -= 1
             nxt += 1
-        chosen.update(pages)
         units.append((seed, pages, score))
     return units
 

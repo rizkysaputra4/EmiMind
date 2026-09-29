@@ -1,0 +1,26 @@
+# Dev gold (Workstream D). Labels from BBNI's own note headings / page text, not router output.
+# Pages 284-295 are the parent-only schedules (Lampiran 5); they are not gold for any module.
+file: "BBNI_2021_TW3_RDF_BNI_Bilingual_30_SEP_2021 - Released.pdf"
+sha256: "327caffdece65ff5c08a92d59b5ad7115d0719bd085f64693b4672a2dc3d653f"
+ticker: "BBNI"
+fiscal_period: "2021Q3"
+modules:
+  BALANCE_SHEET: [4, 5, 6, 7, 8]      # LAPORAN POSISI KEUANGAN KONSOLIDASIAN (5 pages)
+  INCOME_STATEMENT: [9, 10, 11]       # LAPORAN LABA RUGI DAN PENGHASILAN KOMPREHENSIF LAIN
+  CASH_FLOW: [14, 15]                 # LAPORAN ARUS KAS KONSOLIDASIAN
+  REVENUE_BREAKDOWN: [196]            # note 39 PENDAPATAN BUNGA DAN PENDAPATAN SYARIAH
+  COGS_COMPONENTS: [196]              # note 40 BEBAN BUNGA DAN BEBAN SYARIAH
+  # note 29 EFEK-EFEK YANG DITERBITKAN a. by type (bonds, rates, maturities) pp168-169;
+  # note 30 PINJAMAN YANG DITERIMA a. by type p170 and the bilateral lenders a)-g) pp171-173.
+  # pp174-183 (two-step loans, BNI Multifinance facilities) are not labelled.
+  DEBT_BY_LENDER: [168, 169, 170, 171, 172, 173]
+  # note 12 PINJAMAN YANG DIBERIKAN: e. kolektibilitas Bank Indonesia (p126), f. pinjaman
+  # bermasalah + NPL ratio (p127)
+  BANK_LOAN_QUALITY_NPL: [126, 127]
+  # the above plus h. restructured loans incl. NPL (p128), j. gross carrying amount and CKPN by
+  # stage (pp129-131), and note 60 ANALISIS KUALITAS KREDIT loan tables by stage: internal rating
+  # (p269) and days past due (p275)
+  BANK_LOANS_NPL: [126, 127, 128, 129, 130, 131, 269, 275]
+  # no loans-by-business-segment table: note 12 a. by type (modal kerja / investasi / konsumen,
+  # p124) and note 47 INFORMASI SEGMEN table Korporasi/Menengah/Kecil/Konsumer (p220)
+  BANK_LOANS_BY_SEGMENT: [124, 220]

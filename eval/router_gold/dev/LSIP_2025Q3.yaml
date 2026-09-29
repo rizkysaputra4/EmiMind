@@ -1,0 +1,15 @@
+# Dev gold (Workstream D). Labels copied from docs/m9_workstreams/README.md, Workstream A item 7.
+file: "LSIP_2025_TW3_RDF_LSIP_bilingual_30_Sep_2025_Released.pdf"
+sha256: "a4d5155516c5a05ee212e8e2512858b50c91db15f3ecfc9975bd177460408b40"
+ticker: "LSIP"
+fiscal_period: "2025Q3"
+modules:
+  BALANCE_SHEET: [4, 5]
+  INCOME_STATEMENT: [6, 7]
+  CASH_FLOW: [9]
+  CASH_BANKS: [54, 55]                # note 5 KAS DAN SETARA KAS
+  BIOLOGICAL_ASSETS_DETAIL: [59, 60]  # note 8 ASET BIOLOGIS
+  PLANTATION_AREA: [62, 73, 74]       # note 9 plasma hectares; note 13 luas area tanaman produktif
+  REVENUE_BREAKDOWN: [93, 94]         # note 21 PENDAPATAN DARI KONTRAK DENGAN PELANGGAN
+  CUSTOMER_CONCENTRATION: [94, 95]
+  COGS_BREAKDOWN: [94, 95]            # note 22 BEBAN POKOK PENJUALAN
