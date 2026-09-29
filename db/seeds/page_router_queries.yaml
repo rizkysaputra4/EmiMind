@@ -549,3 +549,59 @@ BIOLOGICAL_ASSETS_DETAIL:
     anchor_patterns:
       - "ASET BIOLOGIS"
       - "BIOLOGICAL ASSETS"
+
+BANK_PROFITABILITY_KPIS:
+  ALL:
+    # OJK bank ratios. In the financial statements usually only the capital-adequacy ratio
+    # (KPMM / CAR) and sometimes LDR appear, in the capital-management, risk-management or
+    # additional-information notes; NIM, BOPO and ROA are mostly in the annual report or the
+    # OJK publication report, so an empty or ratio-less result is an honest omission.
+    terms_id:
+      - "rasio kewajiban penyediaan modal minimum"
+      - "kewajiban penyediaan modal minimum"
+      - "KPMM"
+      - "rasio keuangan"
+      - "marjin bunga bersih"
+      - "beban operasional terhadap pendapatan operasional"
+      - "rasio kredit terhadap dana pihak ketiga"
+    terms_en:
+      - "capital adequacy ratio"
+      - "minimum capital requirement"
+      - "net interest margin"
+      - "operating expenses to operating income"
+      - "loan to deposit ratio"
+      - "return on assets"
+    max_pages: 6
+    anchor_patterns:
+      - "MANAJEMEN MODAL"
+      - "CAPITAL MANAGEMENT"
+      - "INFORMASI TAMBAHAN"
+      - "ADDITIONAL INFORMATION"
+      - "RASIO KEUANGAN"
+
+CPO_UPSTREAM_KPIS:
+  ALL:
+    # Palm-oil operating KPIs (FFB / CPO / kernel production, OER, ASP, cash cost). Financial
+    # statements rarely disclose them; when they do, it is in the general-information,
+    # segment, revenue or inventory notes. An empty result is usually an honest omission.
+    terms_id:
+      - "produksi tandan buah segar"
+      - "produksi TBS"
+      - "produksi minyak sawit"
+      - "inti sawit"
+      - "rendemen minyak"
+      - "harga jual rata-rata"
+      - "ton"
+    terms_en:
+      - "fresh fruit bunches production"
+      - "FFB production"
+      - "crude palm oil production"
+      - "palm kernel"
+      - "oil extraction rate"
+      - "average selling price"
+    max_pages: 3
+    anchor_patterns:
+      - "INFORMASI SEGMEN"
+      - "SEGMENT INFORMATION"
+      - "UMUM"
+      - "GENERAL"

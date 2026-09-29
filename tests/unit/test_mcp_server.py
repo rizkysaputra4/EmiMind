@@ -680,7 +680,7 @@ async def test_get_routed_pages_schema_and_tables() -> None:
         mock_minio.presigned_get_object.return_value = "https://minio.local/p2.png"
         mock_get_minio.return_value = mock_minio
 
-        res = await get_routed_pages("doc-uuid-1", "BALANCE_SHEET")
+        res = await get_routed_pages("doc-uuid-1", "BALANCE_SHEET", include_images=True)
 
     assert isinstance(res, RoutedPages)
     assert res.doc_id == "doc-uuid-1"
@@ -695,10 +695,9 @@ async def test_get_routed_pages_schema_and_tables() -> None:
     assert len(p2.tables) == 1
     t0 = p2.tables[0]
     assert t0.table_index == 0
-    assert len(t0.cells) == 1
-    c0 = t0.cells[0]
-    assert c0.value == 12345.0
-    assert c0.bbox == [10.0, 20.0, 30.0, 40.0]
+    # served as a text grid; value and bbox stay server-side (resolved from cell_ref)
+    assert t0.rows == [["Total Assets"]]
+    assert "bbox" not in t0.model_dump_json()
 
 
 @pytest.mark.asyncio

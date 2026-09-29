@@ -21,10 +21,9 @@ from services.mcp.contracts import (
 from services.mcp.services.common import _log_processing_event, get_engine
 from services.mcp.types import (
     ExtractionContract,
-    PageTable,
-    PageTableCell,
     RoutedPage,
     RoutedPages,
+    RoutedTable,
 )
 from services.retrieval.page_router import route_pages as default_route_pages
 from services.shared.config import get_settings
@@ -87,17 +86,41 @@ async def get_extraction_contract(
         return cast(ExtractionContract, contract)
 
 
+def cell_text_grid(raw_cells: list[dict[str, Any]]) -> list[list[str]]:
+    """Row-major text grid of stored table cells: grid[row][col] = cell text ("" if empty)."""
+    if not raw_cells:
+        return []
+    n_rows = max(int(c.get("row", 0)) for c in raw_cells) + 1
+    n_cols = max(int(c.get("col", 0)) for c in raw_cells) + 1
+    grid = [[""] * n_cols for _ in range(n_rows)]
+    for c in raw_cells:
+        grid[int(c.get("row", 0))][int(c.get("col", 0))] = str(c.get("text", ""))
+    return grid
+
+
 async def get_routed_pages(
     doc_id: str,
     module: str,
     top_k: int = 3,
     *,
+    include_images: bool = False,
+    exclude_pages: list[int] | None = None,
     engine: AsyncEngine | None = None,
     router_fn: Callable[..., Any] = default_route_pages,
     minio_getter: Callable[..., Any] = default_get_minio,
     log_event_fn: Callable[..., Any] = _log_processing_event,
 ) -> RoutedPages:
-    """Return ranked page_index hits (+ expanded neighbours, text, image URL, and tables) for a contract module."""
+    """Return the routed pages of one contract module: page text plus table grids.
+
+    Tables are served as row-text grids (`RoutedTable.rows`); per-cell values, bboxes and
+    confidences stay server-side and are resolved from the agent's cell_ref. Page image URLs
+    are only served with include_images=True. Both keep a module's response within a
+    tool-result budget and the token gate (tokens = chars / 4 + 1,600 per image served).
+
+    Pages in `exclude_pages` (ones the agent already holds from an earlier module) are still
+    listed with their index, label and score, but marked `already_served` with no text,
+    tables or image, so a page shared by several modules is served once per run.
+    """
     eng = engine or get_engine()
     async with eng.connect() as conn:
         res = await conn.execute(
@@ -135,6 +158,8 @@ async def get_routed_pages(
                     page_score_map[p] = s.score
 
         unique_pages = sorted(page_score_map.keys())
+        excluded = set(exclude_pages or [])
+        served_pages = [p for p in unique_pages if p not in excluded]
 
         if not unique_pages:
             await log_event_fn(
@@ -148,6 +173,7 @@ async def get_routed_pages(
                 metadata={
                     "module": module.upper(),
                     "pages": [],
+                    "excluded_pages": [],
                     "span_count": len(routed_spans),
                     "chars": 0,
                     "text_chars": 0,
@@ -188,38 +214,27 @@ async def get_routed_pages(
                 ORDER BY page_index ASC, table_index ASC
                 """
             ),
-            {"doc_id": doc_id, "pages": unique_pages},
+            {"doc_id": doc_id, "pages": served_pages},
         )
-        tables_by_page: dict[int, list[PageTable]] = {}
+        tables_by_page: dict[int, list[RoutedTable]] = {}
         for tr in tables_res.mappings().all():
             p_idx = int(tr["page_index"])
             raw_cells = tr["cells"] if isinstance(tr["cells"], list) else json.loads(tr["cells"])
-            cells_objs = [
-                PageTableCell(
-                    row=int(c.get("row", 0)),
-                    col=int(c.get("col", 0)),
-                    text=str(c.get("text", "")),
-                    value=float(c["value"]) if c.get("value") is not None else None,
-                    bbox=c.get("bbox"),
-                    confidence=float(c["confidence"]) if c.get("confidence") is not None else None,
-                )
-                for c in raw_cells
-            ]
-            tbl = PageTable(
+            tbl = RoutedTable(
                 table_index=int(tr["table_index"]),
                 extraction_method=str(tr["extraction_method"]),
                 confidence=float(tr["confidence"]),
                 unit_hint=tr.get("unit_hint"),
-                cells=cells_objs,
+                rows=cell_text_grid(raw_cells),
             )
             tables_by_page.setdefault(p_idx, []).append(tbl)
 
-        # MinIO Presigned URLs for thumbnails
+        # MinIO presigned page-image URLs, only on request (each served image is budgeted)
         settings = get_settings()
         page_image_urls: dict[int, str | None] = {}
         try:
             minio_client = minio_getter(settings)
-            for p_idx in unique_pages:
+            for p_idx in served_pages if include_images else []:
                 prec = page_records.get(p_idx, {})
                 img_key = prec.get("image_key")
                 if img_key:
@@ -236,22 +251,24 @@ async def get_routed_pages(
         routed_pages_list: list[RoutedPage] = []
         for p_idx in unique_pages:
             prec = page_records.get(p_idx, {})
+            already = p_idx in excluded
             routed_pages_list.append(
                 RoutedPage(
                     page_index=p_idx,
                     page_label=prec.get("page_label"),
                     text_source=prec.get("text_source", "pdf_text"),
                     score=page_score_map.get(p_idx, 0.0),
-                    page_text=prec.get("page_text", ""),
+                    already_served=already,
+                    page_text="" if already else prec.get("page_text", ""),
                     image_url=page_image_urls.get(p_idx),
-                    tables=tables_by_page.get(p_idx, []),
+                    tables=[] if already else tables_by_page.get(p_idx, []),
                 )
             )
 
         text_chars = sum(len(rp.page_text or "") for rp in routed_pages_list)
         table_chars = sum(
             len(tbl.model_dump_json()) for rp in routed_pages_list for tbl in rp.tables
-        )
+        )  # the grids exactly as served
         served_chars = text_chars + table_chars
         images_served = sum(1 for rp in routed_pages_list if rp.image_url)
 
@@ -268,6 +285,7 @@ async def get_routed_pages(
             metadata={
                 "module": module.upper(),
                 "pages": unique_pages,
+                "excluded_pages": sorted(p for p in unique_pages if p in excluded),
                 "span_count": len(routed_spans),
                 # Served-content size, used by eval/deep_extraction_gate.py to compute tokens
                 # server-side: tokens = chars / 4 + TOKENS_PER_PAGE_IMAGE x images.

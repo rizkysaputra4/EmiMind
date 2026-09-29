@@ -155,20 +155,37 @@ async def get_extraction_contract(doc_id: str) -> ExtractionContract:
 
 
 @mcp.tool()
-async def get_routed_pages(doc_id: str, module: str, top_k: int = 3) -> RoutedPages:
-    """Return ranked page_index hits (+ expanded neighbours, text, image URL, and tables) for a contract module.
+async def get_routed_pages(
+    doc_id: str,
+    module: str,
+    top_k: int = 3,
+    include_images: bool = False,
+    exclude_pages: list[int] | None = None,
+) -> RoutedPages:
+    """Return the pages relevant to one contract module: page text plus parsed table grids.
+
+    Each table is `rows[r][c]` = printed cell text. Cite a number with
+    cell_ref={table_index, row: r, col: c}; the server reads the cell's value and bbox itself.
 
     Parameters:
       doc_id: UUID of the document returned by inspect_document.
-      module: Module name from the contract (e.g. 'BALANCE_SHEET', 'INCOME_STATEMENT',
-              'CASH_FLOW', 'MDA', 'BANK_LOANS_NPL', 'PLANTATION_AREA', 'CASH_BANKS',
-              'REVENUE_CUSTOMERS', 'COGS_BREAKDOWN', 'DEBT_FACILITIES').
+      module: A module name from the extraction contract (core_modules or
+              granular_note_modules[].name), e.g. 'BALANCE_SHEET', 'INCOME_STATEMENT',
+              'CASH_FLOW', 'MDA', 'BANK_LOAN_QUALITY_NPL', 'PLANTATION_AREA'.
       top_k:  Number of seed pages to rank and expand (default: 3).
+      include_images: Also return presigned page-image URLs (default False). Each image
+              served counts ~1,600 tokens against the token budget; ask only when a
+              layout cannot be understood from the text and grids.
+      exclude_pages: page_index values you already received from an earlier module in this
+              run. They are still listed (already_served=true) but without text, tables or
+              image; reuse the copy you hold. Pass every page you already have.
     """
     return await get_routed_pages_impl(
         doc_id=doc_id,
         module=module,
         top_k=top_k,
+        include_images=include_images,
+        exclude_pages=exclude_pages,
         engine=get_engine(),
         router_fn=route_pages,
         minio_getter=get_minio,

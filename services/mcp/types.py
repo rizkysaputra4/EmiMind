@@ -332,14 +332,28 @@ class PageEvidence(BaseModel):
     tables: list[PageTable] = Field(default_factory=list)
 
 
+class RoutedTable(BaseModel):
+    """A parsed table grid as served to the agent: `rows[r][c]` is the printed text of cell
+    (r, c), "" when empty. Cite a number as cell_ref={table_index, row: r, col: c}; the
+    server reads that cell's parsed value and bbox itself, so they are not sent."""
+
+    table_index: int
+    unit_hint: str | None = None
+    extraction_method: str = "pdfplumber"
+    confidence: float = 1.0
+    rows: list[list[str]] = Field(default_factory=list)
+
+
 class RoutedPage(BaseModel):
     page_index: int
     page_label: str | None = None
     text_source: str = "pdf_text"
     score: float = 0.0
+    # True when the agent passed this page in exclude_pages: listed, but text/tables omitted
+    already_served: bool = False
     page_text: str = ""
-    image_url: str | None = None
-    tables: list[PageTable] = Field(default_factory=list)
+    image_url: str | None = None  # only with include_images=True
+    tables: list[RoutedTable] = Field(default_factory=list)
 
 
 class RoutedPages(BaseModel):

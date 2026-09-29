@@ -116,15 +116,15 @@ The agent-facing runbook is `../EmiMind-Extraction/AGENTS.md` (read by Claude Co
 ### Core rules
 1. Never read a whole 150+ page PDF: work from `get_routed_pages` output. Tokens are measured server-side from the pages and characters it serves (`document_processing_log` `ROUTED` rows: `chars/4 + 1,600 per page image`), budget ≤ 15 % of `page_count × 2,000`.
 2. `source_page` is always the **1-based physical PDF page index** (`page_index`), never the printed folio (`page_label`). Same for `search_pages_checked`.
-3. Digits come from `tables[].cells`: cite `cell_ref {table_index,row,col}` and copy the cell `bbox` (or `null`); scale by the table `unit_hint`. Page images are for layout only.
+3. Digits come from the table grids `tables[].rows[r][c]` (printed cell text): cite `cell_ref {table_index,row,col}` and scale by the table `unit_hint`. The server resolves the cell's parsed value and bbox from `cell_ref`, so the agent sends no `bbox`. Page images are served only with `include_images=true`, and are for layout only.
 4. Every fact carries an explicit `statement` (`BS`/`IS`/`CF`/`EQ`/`NOTE`) and `period_type` (`instant` / `duration_ytd` / `duration_qtd`); IS and CF facts are never `instant`.
 5. Narratives are verbatim quotes of the cited page; omissions only when the metric is truly absent (the server searches every indexed page and rejects contradicted omissions).
 
 ### The loop
 1. **`inspect_document`** — `AUTHORIZED` → continue; `ALREADY_PROCESSED` / `OUT_OF_SCOPE` / `ERROR` → stop; `SKIPPED_ADMINISTRATIVE` (checklists, cover letters, directors' statements, ESG, PUBEX, *Penjelasan*, *Perubahan > 20 %*, newspaper publications, ≤ 3-page docs without statements) → nothing registered, move on; `NEEDS_METADATA` (period unresolved or filename prefix ≠ title and the cover page does not settle it) → read the cover page and re-call with `fiscal_period="YYYYQn"`. Inspection is deterministic (no LLM); `doc_type` is inferred from the downloader prefix (`AUDIT_RDF` → `FS_ANNUAL`, `TW1-3_RDF` → `FS_QUARTERLY`, `ANNUAL_AAR` → `ANNUAL_REPORT`) unless passed explicitly.
 2. **`get_extraction_contract(doc_id)`** — mandatory KPIs, modules, narratives, scaling rules.
-3. **`get_routed_pages(doc_id, module)`** for each core and granular module.
-4. **Read digits from `tables[].cells`** with `cell_ref` + `bbox`; right row label, current-period column, right concept (e.g. *Kas* ≠ cash and cash equivalents).
+3. **`get_routed_pages(doc_id, module, exclude_pages=[…])`** for each core and granular module. `exclude_pages` lists the pages already received from earlier modules; they come back as `already_served` stubs without text or tables, so each page is served (and budgeted) once per run.
+4. **Read digits from `tables[].rows`** and cite `cell_ref`: right row label, current-period column, right concept (e.g. *Kas* ≠ cash and cash equivalents).
 5. **Set `statement` and `period_type`** on every fact.
 6. **Verbatim narratives** (`text_original` copied from `source_page`; `text_en` may translate).
 7. **Omissions only when truly absent**, with the pages actually read.
