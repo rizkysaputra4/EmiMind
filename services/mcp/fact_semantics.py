@@ -72,6 +72,9 @@ _EQUIVALENT_WORDS: list[frozenset[str]] = [
 ]
 # Net-words may be absent from a label ("Laba tahun berjalan" is net profit).
 _OPTIONAL = frozenset({"bersih", "neto", "net"})
+# ...except where the gross line is a different figure: "Pendapatan bunga" is gross interest
+# income, not net interest income.
+_NET_WORD_REQUIRED = frozenset({"idx:NetInterestIncome"})
 
 _STOPWORDS = frozenset(
     """
@@ -156,8 +159,10 @@ def _tok_eq(a: str, b: str) -> bool:
     return len(a) >= 6 and len(b) >= 6 and fuzz.ratio(a, b) >= 88
 
 
-def _covers(label_toks: list[str], variant_toks: list[str]) -> bool:
-    required = [v for v in variant_toks if v not in _OPTIONAL] or variant_toks
+def _covers(
+    label_toks: list[str], variant_toks: list[str], optional: frozenset[str] = _OPTIONAL
+) -> bool:
+    required = [v for v in variant_toks if v not in optional] or variant_toks
     return bool(required) and all(any(_tok_eq(v, lt) for lt in label_toks) for v in required)
 
 
@@ -178,7 +183,8 @@ def check_concept_label(
         return ConceptLabelVerdict(False, "empty label")
     variants = name_variants(cdef)
     variant_toks = [_tokens(v) for v in variants]
-    covering = [vt for vt in variant_toks if _covers(label_toks, vt)]
+    optional = frozenset() if cdef.metric_id in _NET_WORD_REQUIRED else _OPTIONAL
+    covering = [vt for vt in variant_toks if _covers(label_toks, vt, optional)]
     if not covering:
         return ConceptLabelVerdict(
             False,
