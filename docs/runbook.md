@@ -111,58 +111,38 @@ To add a new sector (e.g., `PROPERTY` or `HEALTHCARE`):
 
 ## 6. Agent Targeted Deep Extraction Protocol
 
-When extracting from financial statement PDFs in `incoming_reports/`:
+The agent-facing runbook is `../EmiMind-Extraction/AGENTS.md` (read by Claude Code / Codex / Gemini in that workspace). This section is the operator's summary of the same loop; if the two ever disagree, fix both.
 
-### Core Rules
-1. **NEVER read the entire 150+ page PDF from start to end.**
-2. `source_page` must **always** be the **1-based physical PDF page index** (`page_index`), **never** the printed folio label.
-3. Numeric values must come from table cell parser (`tables[].cells`), citing `cell_ref: {"table_index": T, "row": R, "col": C}` and bounding box `bbox`. Use page images only for visual confirmation.
-4. Scale detection: Check table `unit_hint` (e.g. "dalam jutaan rupiah" vs "dalam ribuan rupiah") and expand values to full integer IDR in the JSON payload.
-5. Provide token/page usage telemetry in `usage: {"input_tokens": N, "output_tokens": N, "pages_read": N}`.
+### Core rules
+1. Never read a whole 150+ page PDF: work from `get_routed_pages` output. Tokens are measured server-side from the pages and characters it serves (`document_processing_log` `ROUTED` rows: `chars/4 + 1,600 per page image`), budget ≤ 15 % of `page_count × 2,000`.
+2. `source_page` is always the **1-based physical PDF page index** (`page_index`), never the printed folio (`page_label`). Same for `search_pages_checked`.
+3. Digits come from `tables[].cells`: cite `cell_ref {table_index,row,col}` and copy the cell `bbox` (or `null`); scale by the table `unit_hint`. Page images are for layout only.
+4. Every fact carries an explicit `statement` (`BS`/`IS`/`CF`/`EQ`/`NOTE`) and `period_type` (`instant` / `duration_ytd` / `duration_qtd`); IS and CF facts are never `instant`.
+5. Narratives are verbatim quotes of the cited page; omissions only when the metric is truly absent (the server searches every indexed page and rejects contradicted omissions).
 
-### 7-Step Extraction Loop
+### The loop
+1. **`inspect_document`** — `AUTHORIZED` → continue; `ALREADY_PROCESSED` / `OUT_OF_SCOPE` / `ERROR` → stop; `SKIPPED_ADMINISTRATIVE` (checklists, cover letters, directors' statements, ESG, PUBEX, *Penjelasan*, *Perubahan > 20 %*, newspaper publications, ≤ 3-page docs without statements) → nothing registered, move on; `NEEDS_METADATA` (period unresolved or filename prefix ≠ title and the cover page does not settle it) → read the cover page and re-call with `fiscal_period="YYYYQn"`. Inspection is deterministic (no LLM); `doc_type` is inferred from the downloader prefix (`AUDIT_RDF` → `FS_ANNUAL`, `TW1-3_RDF` → `FS_QUARTERLY`, `ANNUAL_AAR` → `ANNUAL_REPORT`) unless passed explicitly.
+2. **`get_extraction_contract(doc_id)`** — mandatory KPIs, modules, narratives, scaling rules.
+3. **`get_routed_pages(doc_id, module)`** for each core and granular module.
+4. **Read digits from `tables[].cells`** with `cell_ref` + `bbox`; right row label, current-period column, right concept (e.g. *Kas* ≠ cash and cash equivalents).
+5. **Set `statement` and `period_type`** on every fact.
+6. **Verbatim narratives** (`text_original` copied from `source_page`; `text_en` may translate).
+7. **Omissions only when truly absent**, with the pages actually read.
+8. **Micro-payloads to `submit_draft_extraction`** per module; fix every error except missing-KPI errors for modules not yet sent; then submit the full consolidated payload until `VALID` (≤ 3 attempts, then `ingest_review_queue`).
+9. **`commit_verified_report`** with the validated payload; expect `COMMITTED`.
 
-1. **Inspect Document (`inspect_document`):**
-   - Call `inspect_document(file_path, ticker, fiscal_period)`.
-   - If status is `ALREADY_PROCESSED`, terminate immediately with 0 tokens spent.
-   - If status is `NEEDS_METADATA`, resolve `fiscal_period` (e.g. `"2025Q4"`) and re-call `inspect_document`.
-   - Note the returned `doc_id`.
-
-2. **Retrieve Extraction Contract (`get_extraction_contract`):**
-   - Call `get_extraction_contract(doc_id)`.
-   - Inspect the returned `sector`, `required_facts`, `granular_note_modules`, and `scaling_rules`.
-
-3. **Retrieve Targeted Spans per Module (`get_routed_pages`):**
-   - For core statements: `get_routed_pages(doc_id, "BALANCE_SHEET")`, `get_routed_pages(doc_id, "INCOME_STATEMENT")`, `get_routed_pages(doc_id, "CASH_FLOW")`.
-   - For sector note modules: call `get_routed_pages(doc_id, module.name)` for each applicable module in `contract.granular_note_modules` (e.g. `BANK_LOANS_NPL`, `DEPOSITS_FUNDING`, `PLANTATION_AREA`, `REVENUE_BREAKDOWN`, `MDA`).
-
-4. **Parse Grid Cells & Ground Facts:**
-   - Extract facts from `tables[].cells`:
-     - Match cell numeric values multiplied by scale.
-     - Attach `cell_ref={"table_index": table.table_index, "row": cell.row, "col": cell.col}` and `bbox=cell.bbox`.
-     - Assign `statement`: `"BS"` for Balance Sheet, `"IS"` for Income Statement, `"CF"` for Cash Flow, `"NOTE"` for disclosure notes.
-   - For breakdown items (segments, bank placements, loan matrices): provide `segment` dict (e.g. `{"segment": "Kredit Modal Kerja", "type": "loan_facility"}`) and cite the specific physical note `source_page`.
-
-5. **Mandatory Operational KPIs & Omission Handling:**
-   - Extract required metrics specified in the contract.
-   - If a mandatory metric is genuinely absent from this PDF, explicitly declare it in `omitted_kpis`:
-     ```json
-     {
-       "metric_id": "idx:CostOfCredit",
-       "reason": "NOT_DISCLOSED_IN_REPORT",
-       "explanation": "No cost of credit disclosure provided in annual audited notes",
-       "search_pages_checked": [12, 13, 14]
-     }
-     ```
-
-6. **Submit Draft Validation (`submit_draft_extraction`):**
-   - Submit per-module or consolidated micro-payloads to `submit_draft_extraction`.
-   - Include `usage: {"input_tokens": ..., "output_tokens": ..., "pages_read": ...}`.
-   - If validation status is `INVALID`, inspect `report.issues`:
-     - Examine ONLY the `target_pages` indicated in the feedback issues.
-     - Correct column offsets, scale errors, or sum discrepancies.
-     - Retry (up to 3 attempts).
-
-7. **Commit Verified Extraction (`commit_verified_report`):**
-   - When report status is `VALID`, call `commit_verified_report(payload_json, usage=...)`.
-   - Confirm returned status is `COMMITTED`.
+### Preparing a batch and checking it
+```bash
+# pick real statements (never ESG / checklists / cover letters), copy to ../EmiMind-Extraction/m9_stage,
+# inspect -> index pages -> embed pages (bge-m3). Resumable.
+uv run python scripts/m9_batch.py prepare --priority lq45 --limit 20 --period 2025Q4
+# ... the agent extracts each staged file per AGENTS.md ...
+# per-document status + acceptance gate over the batch window -> eval/reports/m9_batch_<date>.json
+uv run python scripts/m9_batch.py report
+# gate for specific filings, or any window
+uv run python eval/deep_extraction_gate.py --tickers BMRI,LSIP --out eval/reports/m9_gate.json
+uv run python eval/deep_extraction_gate.py --aggregate --since 2026-09-29T00:00:00+07:00
+# router recall + precision on the held-out gold set
+uv run python eval/router_recall.py --gold eval/router_gold/heldout/ --out eval/reports/router_recall_heldout.json
+```
+The gate fails (exit 1) when any input is missing: migration 025/026 columns, `ROUTED` logs with `chars`, the PDF on disk, the contract, or the router recall report.

@@ -137,6 +137,25 @@ async def get_routed_pages(
         unique_pages = sorted(page_score_map.keys())
 
         if not unique_pages:
+            await log_event_fn(
+                conn,
+                action="ROUTED",
+                source="get_routed_pages",
+                file_name=Path(doc.get("minio_key") or "").name or f"{ticker}_{doc_id}.pdf",
+                ticker=ticker,
+                doc_id=str(doc_id),
+                doc_hash=doc.get("doc_hash"),
+                metadata={
+                    "module": module.upper(),
+                    "pages": [],
+                    "span_count": len(routed_spans),
+                    "chars": 0,
+                    "text_chars": 0,
+                    "table_chars": 0,
+                    "images": 0,
+                },
+            )
+            await conn.commit()
             return RoutedPages(
                 doc_id=str(doc_id),
                 module=module.upper(),
@@ -214,24 +233,6 @@ async def get_routed_pages(
         except Exception:
             pass
 
-        # Log event
-        file_name = Path(doc.get("minio_key") or "").name or f"{ticker}_{doc_id}.pdf"
-        await log_event_fn(
-            conn,
-            action="ROUTED",
-            source="get_routed_pages",
-            file_name=file_name,
-            ticker=ticker,
-            doc_id=str(doc_id),
-            doc_hash=doc.get("doc_hash"),
-            metadata={
-                "module": module.upper(),
-                "pages": unique_pages,
-                "span_count": len(routed_spans),
-            },
-        )
-        await conn.commit()
-
         routed_pages_list: list[RoutedPage] = []
         for p_idx in unique_pages:
             prec = page_records.get(p_idx, {})
@@ -246,6 +247,37 @@ async def get_routed_pages(
                     tables=tables_by_page.get(p_idx, []),
                 )
             )
+
+        text_chars = sum(len(rp.page_text or "") for rp in routed_pages_list)
+        table_chars = sum(
+            len(tbl.model_dump_json()) for rp in routed_pages_list for tbl in rp.tables
+        )
+        served_chars = text_chars + table_chars
+        images_served = sum(1 for rp in routed_pages_list if rp.image_url)
+
+        # Log event
+        file_name = Path(doc.get("minio_key") or "").name or f"{ticker}_{doc_id}.pdf"
+        await log_event_fn(
+            conn,
+            action="ROUTED",
+            source="get_routed_pages",
+            file_name=file_name,
+            ticker=ticker,
+            doc_id=str(doc_id),
+            doc_hash=doc.get("doc_hash"),
+            metadata={
+                "module": module.upper(),
+                "pages": unique_pages,
+                "span_count": len(routed_spans),
+                # Served-content size, used by eval/deep_extraction_gate.py to compute tokens
+                # server-side: tokens = chars / 4 + TOKENS_PER_PAGE_IMAGE x images.
+                "chars": served_chars,
+                "text_chars": text_chars,
+                "table_chars": table_chars,
+                "images": images_served,
+            },
+        )
+        await conn.commit()
 
         return RoutedPages(
             doc_id=str(doc_id),
