@@ -1,0 +1,15 @@
+# Held-out router gold set — labelled by the reviewer from note headings in the PDF (not router output).
+file: "LSIP_2025_AUDIT_RDF_LSIP_bilingual_31 des_2025_released.pdf"
+sha256: "ef2b593cacc00fe314b4d9ef51a6e97c18e1e2e6ba97bd1285bcf97db2fcf075"
+ticker: "LSIP"
+fiscal_period: "2025Q4"
+modules:
+  BALANCE_SHEET: [14, 15]
+  INCOME_STATEMENT: [16, 17]
+  CASH_FLOW: [19]
+  CASH_BANKS: [63, 64]                     # Note Kas dan setara kas
+  BIOLOGICAL_ASSETS_DETAIL: [68, 69]       # Note Aset biologis (incl. FFB production)
+  PLANTATION_AREA: [80, 81]                # Note 13 Fixed assets: bearer plants, planted hectares
+  REVENUE_BREAKDOWN: [100]                 # Note 21 Pendapatan by product
+  CUSTOMER_CONCENTRATION: [101]            # Note 21: customers exceeding 10%
+  COGS_BREAKDOWN: [101]                    # Note 22 Cost of goods sold

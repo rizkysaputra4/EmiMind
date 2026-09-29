@@ -1,0 +1,16 @@
+# Held-out router gold set — labelled by the reviewer from note headings in the PDF (not router output).
+file: "AALI_2021_TW1_RDF_AALI LK TW I 2021.pdf"
+sha256: "4a6387a4f6a67c7d050b328cbdf0e7436b6f8f0f95abd2d793f9b912cd82d6ff"
+ticker: "AALI"
+fiscal_period: "2021Q1"
+modules:
+  BALANCE_SHEET: [3, 4]
+  INCOME_STATEMENT: [5]
+  CASH_FLOW: [7]
+  CASH_BANKS: [28]                         # Note Kas dan setara kas
+  BIOLOGICAL_ASSETS_DETAIL: [41]           # Note 13 Aset biologis
+  PLANTATION_AREA: [15, 16, 36, 37]        # planted hectares (general info) + Note 11 Tanaman produktif
+  REVENUE_BREAKDOWN: [64]                  # Note 28 Net revenue
+  CUSTOMER_CONCENTRATION: [64]             # customers exceeding 10% of net revenue
+  COGS_BREAKDOWN: [64]                     # Note 29 Beban pokok pendapatan
+  DEBT_BY_LENDER: [53, 54, 55, 56, 57]     # Note 19 Pinjaman bank

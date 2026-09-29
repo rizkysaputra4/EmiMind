@@ -1,0 +1,15 @@
+# Held-out router gold set — labelled by the reviewer from note headings and table titles in the PDF
+# (not from router output). Physical PDF page indexes (1-based). The router was never tuned on this file.
+file: "BMRI_2025_AUDIT_RDF_LK PT Bank Mandiri-Desember 2025.pdf"
+sha256: "cdbe6456f548accb414eec209811d5eeaa903224e5d19b27df144d3b1fe12129"
+ticker: "BMRI"
+fiscal_period: "2025Q4"
+modules:
+  BALANCE_SHEET: [22, 23, 24, 25, 26, 27, 28, 29]      # Laporan posisi keuangan konsolidasian
+  INCOME_STATEMENT: [30, 31, 32]                       # Laporan laba rugi dan penghasilan komprehensif lain
+  CASH_FLOW: [35, 36, 37, 38]                          # Laporan arus kas konsolidasian
+  CASH_BANKS: [183, 184, 185]                          # Note 5 Giro pada bank lain
+  BANK_LOANS_NPL: [217, 218, 219, 220, 221, 222, 223, 224, 225, 226]   # Note 12 Kredit yang diberikan
+  BANK_LOAN_QUALITY_NPL: [507, 512, 513]               # Note 65: loans by type & collectability (POJK); NPL ratio
+  BANK_LOANS_BY_SEGMENT: [507, 508, 509]               # Note 65: by type; by economic sector & collectability
+  DEBT_BY_LENDER: [305, 306, 307, 308, 309, 310]       # Note 36 Pinjaman yang diterima (start of note)
