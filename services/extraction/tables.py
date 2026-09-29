@@ -13,6 +13,7 @@ from typing import Any
 
 import camelot
 import pdfplumber
+import pymupdf
 from pydantic import BaseModel, Field
 
 from services.shared.logging import get_logger
@@ -387,9 +388,24 @@ def _remove_temp_pdf(path: Path) -> None:
     log.debug("temp pdf still locked; left for OS temp cleanup", path=str(path))
 
 
+def without_owner_encryption(pdf_bytes: bytes) -> bytes:
+    """Returns an unencrypted copy of a PDF that opens without a password.
+
+    Some IDX filings are AES-encrypted with an owner password only (anyone can open them) and
+    permission flags that forbid text extraction. pdfminer, and so Camelot, enforces those
+    flags and refuses every page, while the text layer the indexer already read is the same.
+    PDFs that need a user password are returned unchanged.
+    """
+    with pymupdf.open(stream=pdf_bytes, filetype="pdf") as doc:  # type: ignore[no-untyped-call]
+        if not doc.metadata or not doc.metadata.get("encryption") or doc.needs_pass:
+            return pdf_bytes
+        return bytes(doc.tobytes(encryption=pymupdf.PDF_ENCRYPT_NONE, garbage=0))  # type: ignore[attr-defined]
+
+
 def extract_page_grids(pdf_bytes: bytes, pages: list[PageContent]) -> list[PageGrid]:
     """Runs lattice -> stream -> pdfplumber independently for every text-layer page."""
     grids: list[PageGrid] = []
+    pdf_bytes = without_owner_encryption(pdf_bytes)
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
         tmp.write(pdf_bytes)
         tmp_path = Path(tmp.name)

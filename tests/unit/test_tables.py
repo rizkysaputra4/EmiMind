@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
+import pymupdf
+
 from services.extraction.pdf import parse_pdf
 from services.extraction.tables import (
     _camelot_cell_bbox,
@@ -17,6 +19,7 @@ from services.extraction.tables import (
     parse_numeric_value,
     split_mixed_cell,
     tables_to_facts,
+    without_owner_encryption,
 )
 from tests.fixtures.m9.build_fixtures import build_fs_small
 
@@ -222,3 +225,39 @@ def test_fs_small_grids_have_real_bboxes(tmp_path: Path) -> None:
         assert found >= 5
     finally:
         doc.close()
+
+
+def _owner_encrypted(pdf_bytes: bytes) -> bytes:
+    """Like some IDX filings: AES-256, owner password only, text extraction not permitted."""
+    with pymupdf.open(stream=pdf_bytes, filetype="pdf") as doc:
+        return bytes(
+            doc.tobytes(
+                encryption=pymupdf.PDF_ENCRYPT_AES_256,
+                owner_pw="owner-secret",
+                permissions=pymupdf.PDF_PERM_PRINT,
+            )
+        )
+
+
+def test_owner_encrypted_pdf_still_yields_grids(tmp_path: Path) -> None:
+    pdf_path = tmp_path / "fs_small.pdf"
+    build_fs_small(pdf_path)
+    encrypted = _owner_encrypted(pdf_path.read_bytes())
+    pages = parse_pdf(encrypted)
+
+    decrypted = without_owner_encryption(encrypted)
+    with pymupdf.open(stream=decrypted, filetype="pdf") as doc:
+        assert not doc.metadata.get("encryption")
+
+    grids = extract_page_grids(encrypted, pages)
+    p2 = [g for g in grids if g.page_index == 2]
+    assert p2 and any(c.value == 100000.0 for c in p2[0].cells)
+    # pdfminer (hence Camelot) refuses the encrypted original; only the decrypted copy gets here
+    assert p2[0].extraction_method.startswith("camelot_")
+
+
+def test_without_owner_encryption_leaves_plain_pdfs_alone(tmp_path: Path) -> None:
+    pdf_path = tmp_path / "fs_small.pdf"
+    build_fs_small(pdf_path)
+    plain = pdf_path.read_bytes()
+    assert without_owner_encryption(plain) is plain
