@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -129,3 +130,13 @@ def test_page_text_with_ocr_short_output_is_ocr_failed(monkeypatch: pytest.Monke
     monkeypatch.setattr(ip, "ocr_page", lambda _page: "Laporan posisi keuangan " * 5)
     text, source, err = ip._page_text_with_ocr(None, "", 50)  # type: ignore[arg-type]
     assert source == "ocr" and err is None and text.startswith("Laporan")
+
+
+def test_nul_characters_are_stripped_before_storage() -> None:
+    # Postgres TEXT/JSONB reject U+0000; TAPG FY2025 had one in a Camelot cell
+    nul = chr(0)
+    assert ip._strip_nul(f"Kas{nul} 1.000") == "Kas 1.000"
+    cells = [{"row": 0, "col": 0, "text": f"a{nul}b", "value": None}, {"row": 0, "col": 1}]
+    cleaned = ip._clean_cells(cells)
+    assert cleaned == [{"row": 0, "col": 0, "text": "ab", "value": None}, {"row": 0, "col": 1}]
+    assert chr(92) + "u0000" not in json.dumps(cleaned)

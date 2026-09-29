@@ -314,7 +314,7 @@ async def _index_document(
                     "doc_id": doc_id,
                     "page_index": page_index,
                     "page_label": page_label,
-                    "page_text": page_text,
+                    "page_text": _strip_nul(page_text),
                     "text_source": text_source,
                     "language": page_lang,
                     "image_key": image_key,
@@ -356,7 +356,7 @@ async def _index_document(
                     "extraction_method": grid["extraction_method"],
                     "confidence": grid["confidence"],
                     "unit_hint": grid["unit_hint"],
-                    "cells": json.dumps(grid["cells"]),
+                    "cells": json.dumps(_clean_cells(grid["cells"])),
                 },
             )
             n_grids += 1
@@ -372,6 +372,18 @@ async def _index_document(
         "tables": n_grids,
         "elapsed_s": round(time.perf_counter() - t0, 2),
     }
+
+
+def _strip_nul(value: str) -> str:
+    """Drop NUL characters: Postgres TEXT and JSONB cannot store them (some PDFs' text layers,
+    and Camelot's cell text, contain them)."""
+    return value.replace("\x00", "")
+
+
+def _clean_cells(cells: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {**c, "text": _strip_nul(c["text"])} if isinstance(c.get("text"), str) else c for c in cells
+    ]
 
 
 async def index_pages_task(
