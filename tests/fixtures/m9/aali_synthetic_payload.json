@@ -9,7 +9,8 @@
       "value_numeric": 1000,
       "source_page": 3,
       "statement": "IS",
-      "source_label_original": "Pendapatan Bersih"
+      "source_label_original": "Pendapatan Bersih",
+      "period_type": "duration_ytd"
     },
     {
       "concept_id": "ifrs:Revenue",
@@ -20,7 +21,8 @@
       "segment": {
         "segment": "Primary Operations",
         "type": "product"
-      }
+      },
+      "period_type": "duration_ytd"
     },
     {
       "concept_id": "ifrs:Revenue",
@@ -31,7 +33,8 @@
       "segment": {
         "segment": "Other Operations",
         "type": "product"
-      }
+      },
+      "period_type": "duration_ytd"
     }
   ]
 }

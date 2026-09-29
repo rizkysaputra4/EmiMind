@@ -1,18 +1,49 @@
-"""Multi-tier accounting validation and actionable feedback generator for EMIMIND MCP Server."""
+"""Multi-tier accounting validation and actionable feedback generator for EMIMIND MCP Server.
+
+The validator is pure (no DB access). Its callers load page evidence, metric definitions and
+cross-issuer narrative hashes and pass them in. Without page evidence nothing is validated:
+the report is INVALID with ``DOCUMENT_NOT_INDEXED``.
+"""
 
 from __future__ import annotations
 
-import hashlib
-import re
+import json
 import uuid
+from collections.abc import Iterable
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 
-from services.mcp.grounding import check_cell_grounding, check_text_grounding, resolve_scale
+from services.mcp.fact_semantics import (
+    BUILTIN_CONCEPTS,
+    check_concept_label,
+    find_metric_mentions,
+    label_is_segment_member,
+    metric_search_terms,
+    resolve_period_type,
+    segment_strings,
+)
+from services.mcp.grounding import (
+    GroundingOutcome,
+    dominant_scale,
+    ground_fact,
+    scale_from_rules,
+)
+from services.mcp.narrative_checks import (
+    boilerplate_match,
+    is_verbatim,
+    issuer_anchor,
+    load_boilerplate,
+    narrative_md5,
+    normalize_for_match,
+    normalize_narrative_text,
+)
+from services.mcp.periods import normalize_period, period_end_for
 from services.mcp.types import (
+    ConceptDefinition,
     DraftSubmissionPayload,
     ExtractedFactItem,
     ExtractionContract,
@@ -23,6 +54,17 @@ from services.mcp.types import (
     ValidationIssue,
     ValidationReport,
 )
+
+__all__ = [
+    "CONCEPT_ALIASES",
+    "fact_identity",
+    "load_narrative_boilerplate_hashes",
+    "load_tie_out_rules",
+    "narrative_md5",
+    "normalize_narrative_text",
+    "resolve_payload_period_end",
+    "validate_draft_submission",
+]
 
 # Common concept ID aliases mapping (case-insensitive)
 CONCEPT_ALIASES: dict[str, str] = {
@@ -57,48 +99,47 @@ ONLY_CHILD_PLACEHOLDER_LABELS: set[str] = {
     "lainnya",
     "others",
     "other",
-    "lain-lain",
+    "lain lain",
 }
 
+# A child share within this many percentage points of a multiple of 5% counts as "round".
+ROUND_FRACTION_TOLERANCE_PP = Decimal("0.5")
 
-def _extract_segment_label(f: ExtractedFactItem) -> str:
-    if f.segment and isinstance(f.segment, dict):
-        for key in ("segment", "label", "name"):
-            val = f.segment.get(key)
-            if isinstance(val, str) and val.strip():
-                return val.strip()
-    if f.source_label_original and f.source_label_original.strip():
-        return f.source_label_original.strip()
-    return ""
+_GROUNDED_KINDS = ("cell", "text")
+ERROR = IssueSeverity.ERROR
+WARNING = IssueSeverity.WARNING
+
+
+def _normalize_concept(cid: str) -> str:
+    """Returns canonical concept ID if alias exists, otherwise returns original."""
+    return CONCEPT_ALIASES.get(cid.lower(), cid)
+
+
+def resolve_payload_period_end(fiscal_period: str) -> date | None:
+    """period_end of a payload period ('2025Q3', '2025FY', '2025H1'); None when unparseable."""
+    try:
+        return period_end_for(fiscal_period)
+    except ValueError:
+        pass
+    try:
+        return period_end_for(normalize_period(fiscal_period))
+    except ValueError:
+        return None
+
+
+def fact_identity(f: ExtractedFactItem, period_type: str | None) -> tuple[str, str, str]:
+    """The DB identity of a fact within one (ticker, fiscal_period): concept, period type, segment."""
+    seg = json.dumps(f.segment, sort_keys=True, default=str) if f.segment else "{}"
+    return (_normalize_concept(f.concept_id), period_type or "", seg)
 
 
 def _is_round_fraction(child_val: Decimal, parent_val: Decimal) -> bool:
+    """Is the child share within ±0.5 pp of a multiple of 5% (strictly between 0 and 100)?"""
     if parent_val == 0:
         return False
     pct = (child_val / parent_val) * Decimal(100)
-    rounded_pct = round(pct)
-    if (
-        abs(pct - rounded_pct) < Decimal("1e-4")
-        and int(rounded_pct) % 5 == 0
-        and 0 < int(rounded_pct) < 100
-    ):
-        return True
-    return False
-
-
-def _is_child_grounded(
-    c: ExtractedFactItem,
-    evidence: dict[int, PageEvidence] | None,
-    default_scale: Decimal,
-) -> bool:
-    if evidence is None or c.source_page is None or c.source_page not in evidence:
-        return False
-    page_ev = evidence[c.source_page]
-    if c.cell_ref is not None:
-        is_g, _, _, _ = check_cell_grounding(c, page_ev, default_scale=default_scale)
-        return is_g
-    is_g, _ = check_text_grounding(c, page_ev, default_scale=default_scale)
-    return is_g
+    nearest = (pct / 5).to_integral_value() * 5
+    return 0 < nearest < 100 and abs(pct - nearest) <= ROUND_FRACTION_TOLERANCE_PP
 
 
 _TIE_OUT_RULES: list[dict[str, Any]] | None = None
@@ -120,47 +161,9 @@ def load_tie_out_rules() -> list[dict[str, Any]]:
     return _TIE_OUT_RULES
 
 
-def normalize_narrative_text(text: str) -> str:
-    """Normalizes narrative text: lowercase, whitespace-collapsed, digits kept."""
-    return re.sub(r"\s+", " ", text.lower()).strip()
-
-
-def narrative_md5(text: str) -> str:
-    """Computes MD5 hash of normalized narrative text."""
-    norm = normalize_narrative_text(text)
-    return hashlib.md5(norm.encode("utf-8"), usedforsecurity=False).hexdigest()
-
-
-_BOILERPLATE_HASHES: set[str] | None = None
-
-
 def load_narrative_boilerplate_hashes() -> set[str]:
-    """Loads and caches boilerplate narrative MD5 hashes from db/seeds/narrative_boilerplate.txt."""
-    global _BOILERPLATE_HASHES
-    if _BOILERPLATE_HASHES is None:
-        hashes: set[str] = set()
-        txt_path = (
-            Path(__file__).resolve().parents[2] / "db" / "seeds" / "narrative_boilerplate.txt"
-        )
-        if not txt_path.is_file():
-            txt_path = Path("db/seeds/narrative_boilerplate.txt").resolve()
-        if txt_path.is_file():
-            with open(txt_path, encoding="utf-8") as f:
-                for line in f:
-                    line_s = line.strip()
-                    if not line_s or line_s.startswith("#"):
-                        continue
-                    if len(line_s) == 32 and all(c in "0123456789abcdefABCDEF" for c in line_s):
-                        hashes.add(line_s.lower())
-                    else:
-                        hashes.add(narrative_md5(line_s))
-        _BOILERPLATE_HASHES = hashes
-    return _BOILERPLATE_HASHES
-
-
-def _normalize_concept(cid: str) -> str:
-    """Returns canonical concept ID if alias exists, otherwise returns original."""
-    return CONCEPT_ALIASES.get(cid.lower(), cid)
+    """MD5 hashes of the boilerplate list (kept for callers of the old API)."""
+    return load_boilerplate()[0]
 
 
 def _hint_search_pages(rule: ExtractionFactRule, contract: ExtractionContract) -> list[str]:
@@ -184,6 +187,62 @@ def _hint_search_pages(rule: ExtractionFactRule, contract: ExtractionContract) -
     return hints
 
 
+def _metric_is_ratio(
+    rule: ExtractionFactRule, cdef: ConceptDefinition | None = None
+) -> bool | None:
+    """True for percent/ratio metrics, False for monetary ones, None when neither (volumes...).
+
+    The ontology definition wins over the contract rule (whose unit defaults to IDR)."""
+    unit = ((cdef.unit if cdef else None) or rule.unit or "").upper()
+    vtype = ((cdef.value_type if cdef else None) or rule.value_type or "").upper()
+    if unit in ("PERCENT", "PERCENTAGE", "RATIO", "%") or vtype in ("PERCENTAGE", "RATIO"):
+        return True
+    if vtype == "MONETARY" or unit.startswith(("IDR", "USD")):
+        return False
+    return None
+
+
+def _pages_overlap(
+    rule: ExtractionFactRule, searched_pages: list[int], contract: ExtractionContract
+) -> bool:
+    """A perfunctory search scope (< 2 pages) is rejected. Whether the metric is really absent
+    is verified separately against every indexed page (OMISSION_CONTRADICTED)."""
+    return len(searched_pages) >= 2
+
+
+def _issue(
+    severity: IssueSeverity,
+    category: str,
+    message: str,
+    pages: Iterable[int | None] = (),
+    *,
+    concept_id: str | None = None,
+    details: dict[str, Any] | None = None,
+    equation: str | None = None,
+) -> ValidationIssue:
+    return ValidationIssue(
+        severity=severity,
+        category=category,
+        concept_id=concept_id,
+        equation=equation,
+        details=details or {},
+        feedback_message=message,
+        target_pages=sorted({p for p in pages if p is not None}),
+    )
+
+
+def _sev(level: str) -> IssueSeverity:
+    return IssueSeverity(level) if level in IssueSeverity.__members__ else IssueSeverity.ERROR
+
+
+def _segment_signature(seg: dict[str, Any]) -> str:
+    """Children belong to the same breakdown when they share the same set of (string) segment
+    keys and the same declared dimension; numeric annotations such as pct_total are ignored."""
+    keys = sorted(k for k, v in seg.items() if isinstance(v, (str, list)))
+    dim = seg.get("type") or seg.get("dimension") or ""
+    return f"{'+'.join(keys)}|{dim}"
+
+
 def validate_draft_submission(
     payload: DraftSubmissionPayload,
     *,
@@ -194,80 +253,171 @@ def validate_draft_submission(
     retry_attempt: int = 1,
     previous_attempt_misses: list[str] | None = None,
     cross_issuer_narrative_hashes: dict[str, str] | None = None,
+    concept_defs: dict[str, ConceptDefinition] | None = None,
+    document_text: dict[int, str] | None = None,
 ) -> ValidationReport:
-    """Performs rigorous multi-tier accounting validation on draft financial extraction payload.
+    """Performs multi-tier validation of a draft extraction payload.
 
-    Callers must build the contract via services.mcp.contracts.build_extraction_contract
-    and pass it here so the validator uses the same source-of-truth ontology snapshot as
-    the LLM did during priming.
+    Args:
+        evidence: page evidence for every cited page. ``None`` means the document is not
+            indexed (or evidence could not be loaded): the report is INVALID.
+        concept_defs: metric_definitions rows for the payload's concepts (by metric_id). When
+            given, concept<->label and flow/stock checks run; unknown concepts get a WARNING.
+        document_text: text of EVERY indexed page, used to verify omissions. Falls back to the
+            cited-page evidence when not supplied.
+
+    Callers must build the contract via services.mcp.contracts.build_extraction_contract.
     """
     submission_id = f"sub_{uuid.uuid4().hex[:8]}"
     issues: list[ValidationIssue] = []
+    add = issues.append
 
-    # Map concepts to both all facts and unsegmented total facts
+    period_end = resolve_payload_period_end(payload.fiscal_period)
+    if period_end is None:
+        add(
+            _issue(
+                ERROR,
+                "SCHEMA",
+                f"fiscal_period '{payload.fiscal_period}' is not a valid period (expected e.g. "
+                f"'2025Q3'); column/period checks cannot run.",
+            )
+        )
+
+    if evidence is None:
+        add(
+            _issue(
+                ERROR,
+                "DOCUMENT_NOT_INDEXED",
+                f"Document {payload.doc_id} has no page index (document_pages) or its page evidence "
+                f"could not be loaded, so no fact, omission or narrative can be verified. Index the "
+                f"document first (index_pages), then re-submit.",
+            )
+        )
+
+    def cdef_for(cid: str) -> ConceptDefinition | None:
+        norm = _normalize_concept(cid)
+        if concept_defs is not None:
+            found = concept_defs.get(cid) or concept_defs.get(norm)
+            if found is not None:
+                return found
+        return BUILTIN_CONCEPTS.get(norm) or BUILTIN_CONCEPTS.get(cid)
+
+    # -------------------------------------------------------------
+    # LEVEL 1: Schema, period types, concept semantics, identity
+    # -------------------------------------------------------------
+    valid_statements = {"BS", "IS", "CF", "EQ", "NOTE"}
+    resolved_pt: dict[int, str | None] = {}
+    seen_identity: dict[tuple[str, str, str], int] = {}
+    for idx, f in enumerate(payload.facts):
+        pages = [f.source_page]
+        if not f.statement or f.statement not in valid_statements:
+            add(
+                _issue(
+                    ERROR,
+                    "SCHEMA",
+                    f"Fact '{f.concept_id}' missing required 'statement'. "
+                    f"Expected one of: {sorted(valid_statements)}.",
+                    pages,
+                    concept_id=f.concept_id,
+                )
+            )
+
+        cdef = cdef_for(f.concept_id)
+        verdict = resolve_period_type(f, cdef)
+        resolved_pt[idx] = verdict.resolved
+        if verdict.category:
+            add(_issue(ERROR, verdict.category, verdict.message, pages, concept_id=f.concept_id))
+
+        label = (f.source_label_original or "").strip()
+        if not label:
+            add(
+                _issue(
+                    ERROR,
+                    "SCHEMA",
+                    f"Fact '{f.concept_id}' has no 'source_label_original'. Give the row label exactly "
+                    f"as printed next to the number (prefix the section header for sub-rows).",
+                    pages,
+                    concept_id=f.concept_id,
+                )
+            )
+        elif concept_defs is not None:
+            if cdef is None:
+                add(
+                    _issue(
+                        WARNING,
+                        "CONCEPT_NOT_IN_ONTOLOGY",
+                        f"Concept '{f.concept_id}' is not in metric_definitions; its label and "
+                        f"flow/stock type cannot be checked. Prefer an ontology concept, or propose "
+                        f"it via submit_discovered_metric.",
+                        pages,
+                        concept_id=f.concept_id,
+                    )
+                )
+            else:
+                seg_words = segment_strings(f.segment)
+                cl_verdict = check_concept_label(label, cdef, seg_words)
+                if not cl_verdict.ok and not (
+                    f.segment and label_is_segment_member(label, seg_words)
+                ):
+                    add(
+                        _issue(
+                            ERROR,
+                            "CONCEPT_LABEL_MISMATCH",
+                            f"Fact '{f.concept_id}' has label '{label}', which does not denote this "
+                            f"concept: {cl_verdict.reason}. Pick the concept that matches the printed line, or "
+                            f"cite the line that is this concept.",
+                            pages,
+                            concept_id=f.concept_id,
+                        )
+                    )
+
+        key = fact_identity(f, verdict.resolved)
+        if key in seen_identity:
+            first = payload.facts[seen_identity[key]]
+            add(
+                _issue(
+                    ERROR,
+                    "DUPLICATE_FACT",
+                    f"Fact '{f.concept_id}' (period_type {verdict.resolved}, segment "
+                    f"{f.segment or '{}'}) appears twice in this payload (p.{first.source_page} "
+                    f"value {first.value_numeric:,} and p.{f.source_page} value "
+                    f"{f.value_numeric:,}). One identity may be submitted once; drop the duplicate or "
+                    f"distinguish it with a segment.",
+                    [first.source_page, f.source_page],
+                    concept_id=f.concept_id,
+                )
+            )
+        else:
+            seen_identity[key] = idx
+
+    # Concept lookups (first unsegmented fact per concept wins; any fact counts as present)
     all_facts_by_concept: dict[str, ExtractedFactItem] = {}
     unsegmented_facts_by_concept: dict[str, ExtractedFactItem] = {}
-
     for f in payload.facts:
         norm_cid = _normalize_concept(f.concept_id)
-        if norm_cid not in all_facts_by_concept:
-            all_facts_by_concept[norm_cid] = f
-        if f.concept_id not in all_facts_by_concept:
-            all_facts_by_concept[f.concept_id] = f
-
+        all_facts_by_concept.setdefault(norm_cid, f)
+        all_facts_by_concept.setdefault(f.concept_id, f)
         if not f.segment:
-            unsegmented_facts_by_concept[norm_cid] = f
-            unsegmented_facts_by_concept[f.concept_id] = f
-
+            unsegmented_facts_by_concept.setdefault(norm_cid, f)
+            unsegmented_facts_by_concept.setdefault(f.concept_id, f)
     facts_by_concept: dict[str, ExtractedFactItem] = {
         **all_facts_by_concept,
         **unsegmented_facts_by_concept,
     }
 
     # -------------------------------------------------------------
-    # LEVEL 1: Schema & Completeness Validation
+    # Coverage and omissions
     # -------------------------------------------------------------
-    valid_statements = {"BS", "IS", "CF", "EQ", "NOTE"}
-    valid_period_types = {
-        "instant",
-        "duration_qtd",
-        "duration_ytd",
-        "duration_q",
-        "duration_12m",
-        "duration",
-    }
-    for f in payload.facts:
-        if not f.statement or f.statement not in valid_statements:
-            issues.append(
-                ValidationIssue(
-                    category="SCHEMA",
-                    severity=IssueSeverity.ERROR,
-                    feedback_message=(
-                        f"Fact '{f.concept_id}' missing required 'statement'. "
-                        f"Expected one of: {sorted(valid_statements)}."
-                    ),
-                    target_pages=[f.source_page] if f.source_page else [],
-                )
-            )
-
-        if f.period_type is not None and f.period_type not in valid_period_types:
-            issues.append(
-                ValidationIssue(
-                    category="SCHEMA",
-                    severity=IssueSeverity.ERROR,
-                    feedback_message=(
-                        f"Fact '{f.concept_id}' has invalid period_type '{f.period_type}'. "
-                        f"Expected one of: {sorted(valid_period_types)}."
-                    ),
-                    target_pages=[f.source_page] if f.source_page else [],
-                )
-            )
-
     omitted_by_concept = {}
     for item in payload.omitted_kpis:
-        norm_id = _normalize_concept(item.metric_id)
-        omitted_by_concept[norm_id] = item
+        omitted_by_concept[_normalize_concept(item.metric_id)] = item
         omitted_by_concept[item.metric_id] = item
+
+    search_pages: dict[int, str] = (
+        document_text
+        if document_text is not None
+        else {p: ev.page_text for p, ev in (evidence or {}).items()}
+    )
 
     coverage = ExtractionCoverage()
     bucket_map = {
@@ -277,9 +427,7 @@ def validate_draft_submission(
     }
 
     for rule in contract.required_facts:
-        # Only EXTRACTED_RAW metrics count toward extraction coverage. Derived
-        # (CALCULATED_DETERMINISTIC) and computed-with-fallback (HYBRID_FALLBACK)
-        # metrics are handled by the derive pipeline, not the LLM.
+        # Only EXTRACTED_RAW metrics count toward extraction coverage.
         if rule.extraction_mode != "EXTRACTED_RAW":
             continue
 
@@ -299,113 +447,122 @@ def validate_draft_submission(
             continue
 
         if not rule.required:
-            # Optional metrics: neither found nor omitted is fine
             continue
 
-        if is_declared_omitted:
-            omitted_item = (
-                omitted_by_concept.get(norm_rule_id) or omitted_by_concept[rule.concept_id]
-            )
-            expl_lower = omitted_item.explanation.lower()
-            hints = _hint_search_pages(rule, contract)
-            hints_str = "; ".join(hints) if hints else "(no additional hints)"
-
-            if len(omitted_item.explanation.strip()) < 15:
-                issues.append(
-                    ValidationIssue(
-                        severity=IssueSeverity.ERROR,
-                        category="INSUFFICIENT_OMISSION_EXPLANATION",
-                        concept_id=rule.concept_id,
-                        feedback_message=(
-                            f"Omission explanation for '{rule.label}' ({rule.concept_id}) is too brief "
-                            f"('{omitted_item.explanation}'). Please provide a substantive explanation, and "
-                            f"re-check these locations first: {hints_str}."
-                        ),
-                        target_pages=omitted_item.search_pages_checked,
-                    )
-                )
-                bucket.missing.append(rule.concept_id)
-            elif not omitted_item.search_pages_checked:
-                issues.append(
-                    ValidationIssue(
-                        severity=IssueSeverity.ERROR,
-                        category="MISSING_SEARCH_PAGES_AUDIT",
-                        concept_id=rule.concept_id,
-                        feedback_message=(
-                            f"Omission entry for '{rule.label}' ({rule.concept_id}) must specify "
-                            f"'search_pages_checked' as a list of page numbers you searched. "
-                            f"Typical locations for this metric: {hints_str}."
-                        ),
-                        target_pages=[],
-                    )
-                )
-                bucket.missing.append(rule.concept_id)
-            elif any(
-                kw in expl_lower
-                for kw in [
-                    "disclosed in md&a",
-                    "in md&a",
-                    "in highlights",
-                    "disclosed in highlights",
-                    "is reported in",
-                    "available on page",
-                ]
-            ):
-                issues.append(
-                    ValidationIssue(
-                        severity=IssueSeverity.ERROR,
-                        category="CONTRADICTORY_OMISSION",
-                        concept_id=rule.concept_id,
-                        feedback_message=(
-                            f"Contradictory Omission for '{rule.label}' ({rule.concept_id}): the explanation "
-                            f"says the metric is disclosed ('{omitted_item.explanation}'). Any metric found in "
-                            f"the report — including MD&A / Operational Highlights — MUST be extracted into "
-                            f"the 'facts' array with exact value, unit, and source_page, NOT declared in "
-                            f"omitted_kpis. Re-extract from: {hints_str}."
-                        ),
-                        target_pages=omitted_item.search_pages_checked,
-                    )
-                )
-                bucket.missing.append(rule.concept_id)
-            elif hints and not _pages_overlap(rule, omitted_item.search_pages_checked, contract):
-                # The LLM claimed to have searched, but their pages don't include ANY hinted locations.
-                issues.append(
-                    ValidationIssue(
-                        severity=IssueSeverity.ERROR,
-                        category="INSUFFICIENT_SEARCH_SCOPE",
-                        concept_id=rule.concept_id,
-                        feedback_message=(
-                            f"Omission for '{rule.label}' ({rule.concept_id}) claims pages "
-                            f"{omitted_item.search_pages_checked} were searched, but none of the typical "
-                            f"locations for this metric were checked. Search these first: {hints_str}."
-                        ),
-                        target_pages=omitted_item.search_pages_checked,
-                    )
-                )
-                bucket.missing.append(rule.concept_id)
-            else:
-                bucket.omitted_with_justification += 1
-        else:
-            hints = _hint_search_pages(rule, contract)
-            hints_str = "; ".join(hints) if hints else "(no additional hints)"
+        hints = _hint_search_pages(rule, contract)
+        hints_str = "; ".join(hints) if hints else "(no additional hints)"
+        if not is_declared_omitted:
             is_critical = rule.importance == "CRITICAL"
             severity_label = "CRITICAL" if is_critical else "HIGH-priority"
-            issues.append(
-                ValidationIssue(
-                    severity=IssueSeverity.ERROR if is_critical else IssueSeverity.WARNING,
-                    category="MISSING_MANDATORY_METRIC_OR_EXPLANATION",
+            add(
+                _issue(
+                    ERROR if is_critical else WARNING,
+                    "MISSING_MANDATORY_METRIC_OR_EXPLANATION",
+                    f"Missing {severity_label} metric '{rule.label}' ({rule.concept_id}). "
+                    f"Typical locations: {hints_str}. "
+                    f"Extract it into 'facts' with source_page; or, if truly not disclosed, add to "
+                    f"'omitted_kpis' with 'reason', a 15+ char 'explanation', and "
+                    f"'search_pages_checked' proving you looked at the hinted locations.",
                     concept_id=rule.concept_id,
-                    feedback_message=(
-                        f"Missing {severity_label} metric '{rule.label}' ({rule.concept_id}). "
-                        f"Typical locations: {hints_str}. "
-                        f"Extract it into 'facts' with source_page; or, if truly not disclosed, add to "
-                        f"'omitted_kpis' with 'reason', a 15+ char 'explanation', and "
-                        f"'search_pages_checked' proving you looked at the hinted locations."
-                    ),
-                    target_pages=[],
                 )
             )
             bucket.missing.append(rule.concept_id)
+            continue
+
+        omitted_item = omitted_by_concept.get(norm_rule_id) or omitted_by_concept[rule.concept_id]
+        expl_lower = omitted_item.explanation.lower()
+        checked = omitted_item.search_pages_checked
+        out_of_range = [p for p in checked if p < 1 or (page_count is not None and p > page_count)]
+        omission_error: ValidationIssue | None = None
+        if len(omitted_item.explanation.strip()) < 15:
+            omission_error = _issue(
+                ERROR,
+                "INSUFFICIENT_OMISSION_EXPLANATION",
+                f"Omission explanation for '{rule.label}' ({rule.concept_id}) is too brief "
+                f"('{omitted_item.explanation}'). Please provide a substantive explanation, and "
+                f"re-check these locations first: {hints_str}.",
+                checked,
+                concept_id=rule.concept_id,
+            )
+        elif not checked:
+            omission_error = _issue(
+                ERROR,
+                "MISSING_SEARCH_PAGES_AUDIT",
+                f"Omission entry for '{rule.label}' ({rule.concept_id}) must specify "
+                f"'search_pages_checked' as a list of page numbers you searched. "
+                f"Typical locations for this metric: {hints_str}.",
+                concept_id=rule.concept_id,
+            )
+        elif out_of_range:
+            omission_error = _issue(
+                ERROR,
+                "PROVENANCE",
+                f"Omission for '{rule.label}' ({rule.concept_id}) claims pages {out_of_range[:10]} "
+                f"were searched, which are outside the document (valid: 1..{page_count}).",
+                concept_id=rule.concept_id,
+            )
+        elif any(
+            kw in expl_lower
+            for kw in [
+                "disclosed in md&a",
+                "in md&a",
+                "in highlights",
+                "disclosed in highlights",
+                "is reported in",
+                "available on page",
+            ]
+        ):
+            omission_error = _issue(
+                ERROR,
+                "CONTRADICTORY_OMISSION",
+                f"Contradictory Omission for '{rule.label}' ({rule.concept_id}): the explanation "
+                f"says the metric is disclosed ('{omitted_item.explanation}'). Any metric found in "
+                f"the report — including MD&A / Operational Highlights — MUST be extracted into "
+                f"the 'facts' array with exact value, unit, and source_page, NOT declared in "
+                f"omitted_kpis. Re-extract from: {hints_str}.",
+                checked,
+                concept_id=rule.concept_id,
+            )
+        elif hints and not _pages_overlap(rule, checked, contract):
+            omission_error = _issue(
+                ERROR,
+                "INSUFFICIENT_SEARCH_SCOPE",
+                f"Omission for '{rule.label}' ({rule.concept_id}) claims pages {checked} were "
+                f"searched, but none of the typical locations for this metric were checked. "
+                f"Search these first: {hints_str}.",
+                checked,
+                concept_id=rule.concept_id,
+            )
+        else:
+            names = [rule.label, *rule.synonyms_id, *rule.synonyms_en]
+            terms = metric_search_terms(cdef_for(rule.concept_id), names)
+            mentions = (
+                find_metric_mentions(
+                    terms,
+                    search_pages,
+                    want_percent=_metric_is_ratio(rule, cdef_for(rule.concept_id)),
+                )
+                if terms
+                else []
+            )
+            if mentions:
+                shown = "; ".join(f"p.{m.page}: '{m.line}'" for m in mentions[:3])
+                omission_error = _issue(
+                    ERROR,
+                    "OMISSION_CONTRADICTED",
+                    f"Omission for '{rule.label}' ({rule.concept_id}) is contradicted by the document: "
+                    f"its caption appears next to a reported number on page(s) "
+                    f"{sorted({m.page for m in mentions})} ({shown}). Extract the value from there "
+                    f"instead of declaring it not disclosed.",
+                    [m.page for m in mentions],
+                    concept_id=rule.concept_id,
+                    details={"pages": sorted({m.page for m in mentions})},
+                )
+        if omission_error is not None:
+            add(omission_error)
+            bucket.missing.append(rule.concept_id)
+        else:
+            bucket.omitted_with_justification += 1
 
     # Check Granular Segment Breakdown Requirement for Revenue
     if "ifrs:Revenue" in facts_by_concept:
@@ -417,338 +574,310 @@ def validate_draft_submission(
             and "REVENUE_BREAKDOWN" not in omitted_by_concept
             and "ifrs:Revenue_SEGMENTS" not in omitted_by_concept
         ):
-            issues.append(
-                ValidationIssue(
-                    severity=IssueSeverity.WARNING,
-                    category="MISSING_GRANULAR_REVENUE_BREAKDOWN",
+            add(
+                _issue(
+                    WARNING,
+                    "MISSING_GRANULAR_REVENUE_BREAKDOWN",
+                    "Revenue was submitted only as an unsegmented total. Extract the product line / "
+                    "division breakdown from the 'Segment Information' note as ExtractedFactItems "
+                    "with segment={'segment': '<Product/Service>', 'type': 'product'}. If the issuer "
+                    "operates in a single line with no breakdown, declare this in 'omitted_kpis'.",
+                    [facts_by_concept["ifrs:Revenue"].source_page],
                     concept_id="ifrs:Revenue",
-                    feedback_message=(
-                        "Revenue was submitted only as an unsegmented total. Extract the product line / division "
-                        "breakdown from the 'Segment Information' note as ExtractedFactItems with "
-                        "segment={'segment': '<Product/Service>', 'type': 'product'}. If the issuer operates in a "
-                        "single line with no breakdown, declare this in 'omitted_kpis'."
-                    ),
-                    target_pages=[facts_by_concept["ifrs:Revenue"].source_page],
                 )
             )
 
-    default_contract_scale = resolve_scale(None, getattr(contract, "scaling_rules", None))
+    # -------------------------------------------------------------
+    # Provenance + grounding (one scale, right row, right column)
+    # -------------------------------------------------------------
+    doc_scale = dominant_scale(evidence) if evidence else None
+    contract_scale = scale_from_rules(getattr(contract, "scaling_rules", None))
+    outcomes: dict[int, GroundingOutcome] = {}
 
-    for f in payload.facts:
+    for idx, f in enumerate(payload.facts):
         if f.segment and (f.source_page is None or f.source_page <= 0):
-            issues.append(
-                ValidationIssue(
-                    severity=IssueSeverity.ERROR,
-                    category="SEGMENT_PROVENANCE",
+            add(
+                _issue(
+                    ERROR,
+                    "SEGMENT_PROVENANCE",
+                    f"Segmented fact '{f.concept_id}' must cite its own disclosure note source_page "
+                    f"(got {f.source_page}).",
                     concept_id=f.concept_id,
-                    feedback_message=(
-                        f"Segmented fact '{f.concept_id}' must cite its own disclosure note source_page (got {f.source_page})."
-                    ),
-                    target_pages=[],
                 )
             )
             continue
-
         if (
             f.source_page is None
             or f.source_page < 1
             or (page_count is not None and f.source_page > page_count)
         ):
-            issues.append(
-                ValidationIssue(
-                    severity=IssueSeverity.ERROR,
-                    category="PROVENANCE",
+            add(
+                _issue(
+                    ERROR,
+                    "PROVENANCE",
+                    f"Fact '{f.concept_id}' source_page {f.source_page} is out of document bounds "
+                    f"(valid: 1..{page_count or 'N/A'}).",
+                    [f.source_page],
                     concept_id=f.concept_id,
-                    feedback_message=(
-                        f"Fact '{f.concept_id}' source_page {f.source_page} is out of document bounds "
-                        f"(valid: 1..{page_count or 'N/A'})."
-                    ),
-                    target_pages=[f.source_page] if f.source_page else [],
                 )
             )
             continue
-
-        if evidence is not None:
-            if f.source_page not in evidence:
-                issues.append(
-                    ValidationIssue(
-                        severity=IssueSeverity.ERROR,
-                        category="PROVENANCE",
-                        concept_id=f.concept_id,
-                        feedback_message=(
-                            f"Fact '{f.concept_id}' cites source_page {f.source_page} which has no evidence loaded."
-                        ),
-                        target_pages=[f.source_page],
-                    )
+        if evidence is None:
+            continue
+        if f.source_page not in evidence:
+            add(
+                _issue(
+                    ERROR,
+                    "PROVENANCE",
+                    f"Fact '{f.concept_id}' cites source_page {f.source_page}, which is not in the "
+                    f"document's page index.",
+                    [f.source_page],
+                    concept_id=f.concept_id,
                 )
-                continue
-
-            page_ev = evidence[f.source_page]
-            if f.cell_ref is not None:
-                is_grounded, err_msg, _conf, _bbox = check_cell_grounding(
-                    f, page_ev, default_scale=default_contract_scale
+            )
+            continue
+        out = ground_fact(
+            f,
+            evidence[f.source_page],
+            period_end=period_end,
+            doc_scale=doc_scale,
+            contract_scale=contract_scale,
+        )
+        outcomes[idx] = out
+        for sev, cat, msg in out.issues:
+            details = {"needs_review": True} if cat == "GROUNDING_OCR" else {}
+            add(
+                _issue(
+                    _sev(sev),
+                    cat,
+                    msg,
+                    [f.source_page],
+                    concept_id=f.concept_id,
+                    details=details,
                 )
-                if not is_grounded:
-                    issues.append(
-                        ValidationIssue(
-                            severity=IssueSeverity.ERROR,
-                            category="GROUNDING_CELL",
-                            concept_id=f.concept_id,
-                            feedback_message=err_msg
-                            or f"Fact '{f.concept_id}' failed cell grounding.",
-                            target_pages=[f.source_page],
-                        )
-                    )
-            elif page_ev.text_source == "pdf_text":
-                is_grounded, err_msg = check_text_grounding(
-                    f, page_ev, default_scale=default_contract_scale
-                )
-                if not is_grounded:
-                    issues.append(
-                        ValidationIssue(
-                            severity=IssueSeverity.ERROR,
-                            category="GROUNDING_TEXT",
-                            concept_id=f.concept_id,
-                            feedback_message=err_msg
-                            or f"Fact '{f.concept_id}' value not found in text on page {f.source_page}.",
-                            target_pages=[f.source_page],
-                        )
-                    )
-            elif page_ev.text_source == "ocr":
-                is_grounded, _ = check_text_grounding(
-                    f, page_ev, default_scale=default_contract_scale
-                )
-                if not is_grounded:
-                    issues.append(
-                        ValidationIssue(
-                            severity=IssueSeverity.WARNING,
-                            category="GROUNDING_OCR",
-                            concept_id=f.concept_id,
-                            details={"needs_review": True},
-                            feedback_message=(
-                                f"Fact '{f.concept_id}' on OCR page {f.source_page} could not be confirmed "
-                                f"in OCR text; flagged for review."
-                            ),
-                            target_pages=[f.source_page],
-                        )
-                    )
+            )
 
-    # Group facts by concept
-    facts_by_concept_grouped: dict[str, list[ExtractedFactItem]] = {}
-    for f in payload.facts:
-        facts_by_concept_grouped.setdefault(f.concept_id, []).append(f)
+    def grounded(idx: int) -> bool:
+        o = outcomes.get(idx)
+        return o is not None and o.ok and o.kind in _GROUNDED_KINDS
 
+    # -------------------------------------------------------------
     # Anti-synthetic rules: SYNTHETIC_LABEL and SYNTHETIC_SPLIT
-    if evidence is not None:
-        for cid, c_facts in facts_by_concept_grouped.items():
-            children = [f for f in c_facts if f.segment]
-            unsegmented = [f for f in c_facts if not f.segment]
+    # -------------------------------------------------------------
+    by_concept_pt: dict[tuple[str, str | None], list[int]] = {}
+    for idx, f in enumerate(payload.facts):
+        by_concept_pt.setdefault((_normalize_concept(f.concept_id), resolved_pt[idx]), []).append(
+            idx
+        )
 
-            # 1. SYNTHETIC_LABEL
-            for child in children:
-                seg_label = _extract_segment_label(child)
-                norm_label = seg_label.lower().strip()
-                is_placeholder = norm_label in PLACEHOLDER_SEGMENT_LABELS
-                if (
-                    not is_placeholder
-                    and len(children) == 1
-                    and norm_label in ONLY_CHILD_PLACEHOLDER_LABELS
-                ):
-                    is_placeholder = True
+    for (cid, _pt), idxs in by_concept_pt.items():
+        children = [i for i in idxs if payload.facts[i].segment]
+        unsegmented = [i for i in idxs if not payload.facts[i].segment]
 
-                if is_placeholder:
-                    verbatim_found = False
-                    if child.source_page is not None and child.source_page in evidence:
-                        page_text = evidence[child.source_page].page_text
-                        if norm_label in page_text.lower():
-                            verbatim_found = True
-
-                    if not verbatim_found:
-                        issues.append(
-                            ValidationIssue(
-                                severity=IssueSeverity.ERROR,
-                                category="SYNTHETIC_LABEL",
-                                concept_id=cid,
-                                feedback_message=(
-                                    f"Placeholder segment label '{seg_label}' on '{cid}' is rejected "
-                                    f"unless found verbatim on source page {child.source_page}."
-                                ),
-                                target_pages=[child.source_page] if child.source_page else [],
-                            )
-                        )
-
-            # 2. SYNTHETIC_SPLIT
-            if len(children) >= 2:
-                parent_val = (
-                    unsegmented[0].value_numeric
-                    if unsegmented
-                    else sum((c.value_numeric for c in children), Decimal(0))
+        for ci in children:
+            child = payload.facts[ci]
+            labels = [normalize_for_match(s) for s in segment_strings(child.segment)]
+            placeholder = next((lb for lb in labels if lb in PLACEHOLDER_SEGMENT_LABELS), None)
+            if placeholder is None and len(children) == 1:
+                placeholder = next(
+                    (lb for lb in labels if lb in ONLY_CHILD_PLACEHOLDER_LABELS), None
                 )
-                if parent_val != 0:
-                    all_round = all(
-                        _is_round_fraction(c.value_numeric, parent_val) for c in children
-                    )
-                    if all_round:
-                        any_grounded = any(
-                            _is_child_grounded(c, evidence, default_contract_scale)
-                            for c in children
+            if placeholder is None:
+                continue
+            row_label = normalize_for_match(child.source_label_original or "")
+            if grounded(ci) and placeholder in row_label:
+                continue  # the placeholder is the printed row label next to the grounded number
+            add(
+                _issue(
+                    ERROR,
+                    "SYNTHETIC_LABEL",
+                    f"Placeholder segment label '{placeholder}' on '{cid}' is rejected unless it is the "
+                    f"printed row label next to the grounded number on source page {child.source_page}.",
+                    [child.source_page],
+                    concept_id=cid,
+                )
+            )
+
+        if len(children) >= 2:
+            parent_val = (
+                payload.facts[unsegmented[0]].value_numeric
+                if unsegmented
+                else sum((payload.facts[c].value_numeric for c in children), Decimal(0))
+            )
+            if parent_val != 0 and all(
+                _is_round_fraction(payload.facts[c].value_numeric, parent_val) for c in children
+            ):
+                ungrounded = [c for c in children if not grounded(c)]
+                if ungrounded:
+                    add(
+                        _issue(
+                            ERROR,
+                            "SYNTHETIC_SPLIT",
+                            f"Breakdown for concept '{cid}' rejected as synthetic split: all "
+                            f"{len(children)} children are round multiples of 5% (±0.5 pp) of the total "
+                            f"({parent_val:,.0f}) and {len(ungrounded)} of them are not grounded in page "
+                            f"evidence. Every child of a round split must be cell- or text-grounded.",
+                            [payload.facts[c].source_page for c in children],
+                            concept_id=cid,
                         )
-                        if not any_grounded:
-                            issues.append(
-                                ValidationIssue(
-                                    severity=IssueSeverity.ERROR,
-                                    category="SYNTHETIC_SPLIT",
-                                    concept_id=cid,
-                                    feedback_message=(
-                                        f"Breakdown for concept '{cid}' rejected as synthetic split: "
-                                        f"all {len(children)} children are exact round multiples of 5% of total ({parent_val:,.0f}) "
-                                        f"and none is grounded in page evidence."
-                                    ),
-                                    target_pages=list(
-                                        {c.source_page for c in children if c.source_page}
-                                    ),
-                                )
-                            )
+                    )
 
-    boilerplate_hashes = load_narrative_boilerplate_hashes()
-
-    # Pre-extract anchors for MDA generic checks
-    product_anchors: set[str] = set()
-    for f in payload.facts:
-        if f.segment and isinstance(f.segment, dict):
-            for v in f.segment.values():
-                if isinstance(v, str) and len(v.strip()) >= 2:
-                    v_clean = v.strip().lower()
-                    product_anchors.add(v_clean)
-                    for word in re.split(r"[/\-, ]+", v_clean):
-                        if len(word) >= 4 and word not in ("type", "segment", "item"):
-                            product_anchors.add(word)
-        if f.source_label_original and len(f.source_label_original.strip()) >= 2:
-            s_clean = f.source_label_original.strip().lower()
-            product_anchors.add(s_clean)
-            for word in re.split(r"[/\-, ]+", s_clean):
-                if len(word) >= 4:
-                    product_anchors.add(word)
-
-    period_pattern = re.compile(
-        r"\b(20\d\d|19\d\d|q[1-4]|tw[1-4]|fy|1h|2h|semester|triwulan|tahunan|annual)\b",
-        re.IGNORECASE,
+    # -------------------------------------------------------------
+    # Narratives, guidance and causal links: verbatim quotes on the cited page
+    # -------------------------------------------------------------
+    segment_names = sorted(
+        {s for f in payload.facts for s in segment_strings(f.segment) if len(s) >= 3}
     )
+    seen_narratives: set[str] = set()
+
+    def page_text_for(page: int, what: str) -> str | None:
+        if page < 1 or (page_count is not None and page > page_count):
+            add(
+                _issue(
+                    ERROR,
+                    "PROVENANCE",
+                    f"{what} source_page {page} is out of document bounds "
+                    f"(valid: 1..{page_count or 'N/A'}).",
+                    [page],
+                )
+            )
+            return None
+        if evidence is None:
+            return None
+        if page not in evidence:
+            add(
+                _issue(
+                    ERROR,
+                    "PROVENANCE",
+                    f"{what} cites source_page {page}, which is not in the document's page index.",
+                    [page],
+                )
+            )
+            return None
+        return evidence[page].page_text
 
     for n in payload.narratives:
-        if n.source_page < 1 or (page_count is not None and n.source_page > page_count):
-            issues.append(
-                ValidationIssue(
-                    severity=IssueSeverity.ERROR,
-                    category="PROVENANCE",
-                    feedback_message=f"Narrative source_page {n.source_page} is out of document bounds.",
-                    target_pages=[n.source_page],
-                )
-            )
-        elif evidence is not None and n.source_page not in evidence:
-            issues.append(
-                ValidationIssue(
-                    severity=IssueSeverity.ERROR,
-                    category="PROVENANCE",
-                    feedback_message=f"Narrative cites source_page {n.source_page} which has no evidence loaded.",
-                    target_pages=[n.source_page],
-                )
-            )
-
+        page_text = page_text_for(n.source_page, "Narrative")
+        snippet = n.text_original[:80]
         n_hash = narrative_md5(n.text_original)
 
-        # 1. NARRATIVE_BOILERPLATE
-        if n_hash in boilerplate_hashes:
-            issues.append(
-                ValidationIssue(
-                    severity=IssueSeverity.ERROR,
-                    category="NARRATIVE_BOILERPLATE",
-                    feedback_message=(
-                        f"Narrative chunk on page {n.source_page} matches known boilerplate / disclaimer text: "
-                        f"'{n.text_original[:80]}...'."
-                    ),
-                    target_pages=[n.source_page] if n.source_page else [],
+        bp = boilerplate_match(n.text_original)
+        if bp is not None:
+            add(
+                _issue(
+                    ERROR,
+                    "NARRATIVE_BOILERPLATE",
+                    f"Narrative chunk on page {n.source_page} matches known boilerplate / disclaimer "
+                    f"text: '{snippet}...'.",
+                    [n.source_page],
                 )
             )
 
-        # 2. NARRATIVE_DUPLICATE (cross-issuer)
+        if page_text is not None:
+            ok, score = is_verbatim(n.text_original, page_text)
+            if not ok:
+                add(
+                    _issue(
+                        ERROR,
+                        "NARRATIVE_NOT_VERBATIM",
+                        f"Narrative chunk cited on page {n.source_page} is not a verbatim quote of that "
+                        f"page (best match {score:.0f}/100, need ≥90): '{snippet}...'. text_original "
+                        f"must be copied from the page; put any translation in text_en.",
+                        [n.source_page],
+                        details={"match_score": round(score, 1)},
+                    )
+                )
+
+        if n_hash in seen_narratives:
+            add(
+                _issue(
+                    WARNING,
+                    "NARRATIVE_DUPLICATE_IN_PAYLOAD",
+                    f"Narrative chunk on page {n.source_page} is repeated in this payload; it will be "
+                    f"stored once.",
+                    [n.source_page],
+                )
+            )
+        seen_narratives.add(n_hash)
+
         if cross_issuer_narrative_hashes and n_hash in cross_issuer_narrative_hashes:
             committed_ticker = cross_issuer_narrative_hashes[n_hash]
-            if committed_ticker != payload.ticker:
-                issues.append(
-                    ValidationIssue(
-                        severity=IssueSeverity.ERROR,
-                        category="NARRATIVE_DUPLICATE",
-                        feedback_message=(
-                            f"Narrative chunk on page {n.source_page} duplicates committed narrative from "
-                            f"different issuer '{committed_ticker}'."
-                        ),
-                        target_pages=[n.source_page] if n.source_page else [],
+            if committed_ticker != payload.ticker.upper():
+                add(
+                    _issue(
+                        ERROR,
+                        "NARRATIVE_DUPLICATE",
+                        f"Narrative chunk on page {n.source_page} duplicates committed narrative from "
+                        f"different issuer '{committed_ticker}'.",
+                        [n.source_page],
                     )
                 )
 
-        # 3. NARRATIVE_GENERIC (for MDA chunks)
         if n.section.upper() == "MDA":
-            has_digit = bool(re.search(r"\d", n.text_original))
-            has_period = bool(period_pattern.search(n.text_original))
-            if payload.fiscal_period and payload.fiscal_period.lower() in n.text_original.lower():
-                has_period = True
-            has_product = any(anchor in n.text_original.lower() for anchor in product_anchors)
-            has_ticker = payload.ticker.lower() in n.text_original.lower()
-            has_company = False
-            if contract and getattr(contract, "company_name", None):
-                clean_name = re.sub(r"[^\w\s]", " ", contract.company_name.lower())
-                clean_name = re.sub(r"\b(pt|tbk|persero)\b", "", clean_name)
-                clean_name = re.sub(r"\s+", " ", clean_name).strip()
-                clean_text = re.sub(r"[^\w\s]", " ", n.text_original.lower())
-                clean_text = re.sub(r"\s+", " ", clean_text).strip()
-                if len(clean_name) >= 3 and clean_name in clean_text:
-                    has_company = True
-
-            if not (has_digit or has_period or has_product or has_ticker or has_company):
-                issues.append(
-                    ValidationIssue(
-                        severity=IssueSeverity.ERROR,
-                        category="NARRATIVE_GENERIC",
-                        feedback_message=(
-                            f"MD&A narrative chunk on page {n.source_page} lacks any issuer anchor "
-                            f"(no numbers, no named products/segments, and no period references): "
-                            f"'{n.text_original[:80]}...'."
-                        ),
-                        target_pages=[n.source_page] if n.source_page else [],
+            anchor = issuer_anchor(n.text_original, page_text or "", segment_names)
+            if anchor is None:
+                add(
+                    _issue(
+                        ERROR,
+                        "NARRATIVE_GENERIC",
+                        f"MD&A narrative chunk on page {n.source_page} lacks any issuer anchor that also "
+                        f"appears on the cited page (a reported number, a named segment/product, or a "
+                        f"proper name): '{snippet}...'.",
+                        [n.source_page],
                     )
                 )
+
+    for g in payload.guidance:
+        page_text = page_text_for(g.source_page, f"Guidance '{g.metric}'")
+        if page_text is not None and g.context_statement:
+            ok, score = is_verbatim(g.context_statement, page_text)
+            if not ok:
+                add(
+                    _issue(
+                        ERROR,
+                        "GUIDANCE_NOT_VERBATIM",
+                        f"Guidance '{g.metric}' context_statement is not a verbatim quote of page "
+                        f"{g.source_page} (best match {score:.0f}/100, need ≥90).",
+                        [g.source_page],
+                    )
+                )
+
+    for link in payload.causal_links:
+        page_text_for(link.source_page, f"Causal link for '{link.metric_affected}'")
 
     # -------------------------------------------------------------
     # LEVEL 2: Accounting Math Equations & Tie-Outs
     # -------------------------------------------------------------
+    unit_tol = contract_scale if contract_scale is not None else Decimal(1)
 
-    # 1. Segment sum-to-parent tie-out (SUM_MISMATCH)
-    for cid, c_facts in facts_by_concept_grouped.items():
-        children = [f for f in c_facts if f.segment]
-        unsegmented = [f for f in c_facts if not f.segment]
-        if not children or not unsegmented:
+    # 1. Segment sum-to-parent (SUM_MISMATCH), per concept + period type + breakdown signature
+    for (cid, _pt), idxs in by_concept_pt.items():
+        child_facts = [payload.facts[i] for i in idxs if payload.facts[i].segment]
+        parent_facts = [payload.facts[i] for i in idxs if not payload.facts[i].segment]
+        if not child_facts or not parent_facts:
             continue
-
-        parent_fact = unsegmented[0]
+        parent_fact = parent_facts[0]
         parent_val = parent_fact.value_numeric
 
-        # Group children by dimension
-        children_by_dim: dict[str, list[ExtractedFactItem]] = {}
-        for child in children:
-            seg = child.segment or {}
-            dim = seg.get("type") or seg.get("dimension") or "default"
-            children_by_dim.setdefault(str(dim), []).append(child)
+        groups: dict[str, list[ExtractedFactItem]] = {}
+        for child_fact in child_facts:
+            groups.setdefault(_segment_signature(child_fact.segment or {}), []).append(child_fact)
 
-        for dim, dim_children in children_by_dim.items():
+        for dim, dim_children in groups.items():
             dim_sum = sum((c.value_numeric for c in dim_children), Decimal(0))
-            tol = max(default_contract_scale, Decimal("0.001") * abs(parent_val))
+            tol = max(unit_tol, Decimal("0.001") * abs(parent_val))
             diff = dim_sum - parent_val
             if abs(diff) > tol:
-                issues.append(
-                    ValidationIssue(
-                        severity=IssueSeverity.ERROR,
-                        category="SUM_MISMATCH",
+                child_pages = sorted({c.source_page for c in dim_children if c.source_page})
+                add(
+                    _issue(
+                        ERROR,
+                        "SUM_MISMATCH",
+                        f"Children of '{cid}' for segment dimension '{dim}' sum to {dim_sum:,.0f} IDR, "
+                        f"which does not match parent total ({parent_val:,.0f} IDR from "
+                        f"p.{parent_fact.source_page}). Difference: {diff:+,.0f} IDR (tolerance: "
+                        f"{tol:,.0f} IDR). Please re-check the breakdown rows on pages {child_pages}.",
+                        [*child_pages, parent_fact.source_page],
                         concept_id=cid,
                         details={
                             "parent_value": float(parent_val),
@@ -756,85 +885,58 @@ def validate_draft_submission(
                             "discrepancy": float(diff),
                             "dimension": dim,
                         },
-                        feedback_message=(
-                            f"Children of '{cid}' for segment dimension '{dim}' sum to {dim_sum:,.0f} IDR, "
-                            f"which does not match parent total ({parent_val:,.0f} IDR from p.{parent_fact.source_page}). "
-                            f"Difference: {diff:+,.0f} IDR (tolerance: {tol:,.0f} IDR). "
-                            f"Please re-check the breakdown rows on pages {sorted({c.source_page for c in dim_children if c.source_page})}."
-                        ),
-                        target_pages=list(
-                            {c.source_page for c in dim_children if c.source_page}
-                            | ({parent_fact.source_page} if parent_fact.source_page else set())
-                        ),
                     )
                 )
 
-    # 2. Cross-statement tie-out validation from YAML (TIE_OUT)
-    tie_out_rules = load_tie_out_rules()
-    for to_rule in tie_out_rules:
+    # 2. Cross-statement tie-outs from YAML, regardless of the submitted `statement` label
+    for to_rule in load_tie_out_rules():
         src_cid = _normalize_concept(to_rule["source_concept"])
         tgt_cid = _normalize_concept(to_rule["target_concept"])
-        src_stmt = to_rule.get("source_statement")
-        tgt_stmt = to_rule.get("target_statement")
-
-        src_candidates = [
-            f
-            for f in payload.facts
-            if _normalize_concept(f.concept_id) == src_cid
-            and not f.segment
-            and (src_stmt is None or f.statement == src_stmt)
-        ]
-        tgt_candidates = [
-            f
-            for f in payload.facts
-            if _normalize_concept(f.concept_id) == tgt_cid
-            and not f.segment
-            and (tgt_stmt is None or f.statement == tgt_stmt)
-        ]
-
-        if src_candidates and tgt_candidates:
-            src_fact = src_candidates[0]
-            tgt_fact = tgt_candidates[0]
-            if src_fact is tgt_fact:
-                continue
-
-            tol = max(
-                default_contract_scale,
-                Decimal("0.001") * max(abs(src_fact.value_numeric), abs(tgt_fact.value_numeric)),
-            )
-            diff = src_fact.value_numeric - tgt_fact.value_numeric
-            if abs(diff) > tol:
-                issues.append(
-                    ValidationIssue(
-                        severity=IssueSeverity.ERROR,
-                        category="TIE_OUT",
-                        concept_id=src_fact.concept_id,
-                        details={
-                            "source_concept": src_fact.concept_id,
-                            "source_value": float(src_fact.value_numeric),
-                            "target_concept": tgt_fact.concept_id,
-                            "target_value": float(tgt_fact.value_numeric),
-                            "difference": float(diff),
-                        },
-                        feedback_message=(
-                            f"Cross-statement tie-out failure: '{src_fact.concept_id}' ({src_fact.statement or 'NOTE'}, "
-                            f"{src_fact.value_numeric:,.0f} IDR from p.{src_fact.source_page}) does not match "
-                            f"'{tgt_fact.concept_id}' ({tgt_fact.statement or 'BS'}, {tgt_fact.value_numeric:,.0f} IDR from p.{tgt_fact.source_page}). "
-                            f"Difference: {diff:+,.0f} IDR. Check you used the current-period column."
-                        ),
-                        target_pages=list(
-                            {
-                                p
-                                for p in (src_fact.source_page, tgt_fact.source_page)
-                                if p is not None
-                            }
-                        ),
-                    )
+        if src_cid == tgt_cid:
+            continue  # same concept twice is a DUPLICATE_FACT, checked above
+        src_fact = unsegmented_facts_by_concept.get(src_cid)
+        tgt_fact = unsegmented_facts_by_concept.get(tgt_cid)
+        if src_fact is None or tgt_fact is None:
+            continue
+        tol = max(
+            unit_tol,
+            Decimal("0.001") * max(abs(src_fact.value_numeric), abs(tgt_fact.value_numeric)),
+        )
+        diff = src_fact.value_numeric - tgt_fact.value_numeric
+        if abs(diff) > tol:
+            add(
+                _issue(
+                    ERROR,
+                    "TIE_OUT",
+                    f"Cross-statement tie-out failure ({to_rule.get('name', to_rule.get('id'))}): "
+                    f"'{src_fact.concept_id}' ({src_fact.statement or 'NOTE'}, "
+                    f"{src_fact.value_numeric:,.0f} IDR from p.{src_fact.source_page}) does not match "
+                    f"'{tgt_fact.concept_id}' ({tgt_fact.statement or 'BS'}, "
+                    f"{tgt_fact.value_numeric:,.0f} IDR from p.{tgt_fact.source_page}). "
+                    f"Difference: {diff:+,.0f} IDR. Check you used the current-period column.",
+                    [src_fact.source_page, tgt_fact.source_page],
+                    concept_id=src_fact.concept_id,
+                    details={
+                        "rule": to_rule.get("id"),
+                        "source_concept": src_fact.concept_id,
+                        "source_value": float(src_fact.value_numeric),
+                        "target_concept": tgt_fact.concept_id,
+                        "target_value": float(tgt_fact.value_numeric),
+                        "difference": float(diff),
+                    },
                 )
-    assets = facts_by_concept.get("ifrs:Assets")
-    liabilities = facts_by_concept.get("ifrs:Liabilities")
-    equity = facts_by_concept.get("ifrs:Equity")
-    syirkah = facts_by_concept.get("idx:TemporarySyirkahFunds") or facts_by_concept.get("idx:SyirkahFunds")
+            )
+
+    assets = unsegmented_facts_by_concept.get("ifrs:Assets")
+    liabilities = unsegmented_facts_by_concept.get("ifrs:Liabilities")
+    equity = unsegmented_facts_by_concept.get("ifrs:Equity")
+    is_bank = "BANK" in sector.upper()
+    syirkah = (
+        unsegmented_facts_by_concept.get("idx:TemporarySyirkahFunds")
+        or unsegmented_facts_by_concept.get("idx:SyirkahFunds")
+        if is_bank
+        else None
+    )
     syirkah_v = syirkah.value_numeric if syirkah else Decimal("0")
 
     if assets and liabilities and equity:
@@ -849,25 +951,33 @@ def validate_draft_submission(
             is_scale_error = False
             if abs(ast_v - (liab_v + eq_v * Decimal("1000"))) <= tol:
                 feedback = (
-                    f"Scale Mismatch Detected: Total Equity appears to be extracted in thousands instead of millions. "
-                    f"Assets: {ast_v:,.0f} IDR (p.{assets.source_page}), Liabilities: {liab_v:,.0f} IDR (p.{liabilities.source_page}), "
-                    f"Equity: {eq_v:,.0f} IDR (p.{equity.source_page}). Multiply Equity by 1,000 to match full IDR scale."
+                    f"Scale Mismatch Detected: Total Equity appears to be extracted in thousands "
+                    f"instead of millions. Assets: {ast_v:,.0f} IDR (p.{assets.source_page}), "
+                    f"Liabilities: {liab_v:,.0f} IDR (p.{liabilities.source_page}), Equity: "
+                    f"{eq_v:,.0f} IDR (p.{equity.source_page}). Multiply Equity by 1,000 to match "
+                    f"full IDR scale."
                 )
                 is_scale_error = True
             elif abs(ast_v - (liab_v * Decimal("1000") + eq_v * Decimal("1000"))) <= tol:
                 feedback = (
-                    f"Scale Mismatch Detected: Liabilities and Equity are 1,000x smaller than Total Assets. "
-                    f"Assets: {ast_v:,.0f} IDR (p.{assets.source_page}), Liab+Eq: {rhs:,.0f} IDR. "
-                    f"Please apply uniform scaling across all Balance Sheet pages."
+                    f"Scale Mismatch Detected: Liabilities and Equity are 1,000x smaller than Total "
+                    f"Assets. Assets: {ast_v:,.0f} IDR (p.{assets.source_page}), Liab+Eq: "
+                    f"{rhs:,.0f} IDR. Please apply uniform scaling across all Balance Sheet pages."
                 )
                 is_scale_error = True
             else:
                 feedback = (
-                    f"Balance Sheet Unbalanced: Total Assets ({ast_v:,.0f} IDR from p.{assets.source_page}) "
-                    f"does not equal Total Liabilities ({liab_v:,.0f} IDR from p.{liabilities.source_page}) + "
-                    f"Total Equity ({eq_v:,.0f} IDR from p.{equity.source_page})"
-                    + (f" + Dana Syirkah Temporer ({syirkah_v:,.0f} IDR from p.{syirkah.source_page})" if syirkah else "")
-                    + f". Discrepancy: {diff:+,.0f} IDR. Please re-check the Balance Sheet on pages {assets.source_page}, {liabilities.source_page}, {equity.source_page}."
+                    f"Balance Sheet Unbalanced: Total Assets ({ast_v:,.0f} IDR from "
+                    f"p.{assets.source_page}) does not equal Total Liabilities ({liab_v:,.0f} IDR "
+                    f"from p.{liabilities.source_page}) + Total Equity ({eq_v:,.0f} IDR from "
+                    f"p.{equity.source_page})"
+                    + (
+                        f" + Dana Syirkah Temporer ({syirkah_v:,.0f} IDR from p.{syirkah.source_page})"
+                        if syirkah
+                        else ""
+                    )
+                    + f". Discrepancy: {diff:+,.0f} IDR. Please re-check the Balance Sheet on pages "
+                    f"{assets.source_page}, {liabilities.source_page}, {equity.source_page}."
                 )
 
             eq_formula = (
@@ -875,14 +985,17 @@ def validate_draft_submission(
                 if syirkah is None
                 else "Total Assets == Total Liabilities + Dana Syirkah Temporer + Total Equity"
             )
-            target_pgs = {assets.source_page, liabilities.source_page, equity.source_page}
-            if syirkah and syirkah.source_page:
-                target_pgs.add(syirkah.source_page)
-
-            issues.append(
-                ValidationIssue(
-                    severity=IssueSeverity.ERROR,
-                    category="BALANCE_SHEET_UNBALANCED" if not is_scale_error else "SCALE_MISMATCH",
+            add(
+                _issue(
+                    ERROR,
+                    "BALANCE_SHEET_UNBALANCED" if not is_scale_error else "SCALE_MISMATCH",
+                    feedback,
+                    [
+                        assets.source_page,
+                        liabilities.source_page,
+                        equity.source_page,
+                        syirkah.source_page if syirkah else None,
+                    ],
                     equation=eq_formula,
                     details={
                         "assets": float(ast_v),
@@ -891,13 +1004,11 @@ def validate_draft_submission(
                         "syirkah_funds": float(syirkah_v),
                         "discrepancy": float(diff),
                     },
-                    feedback_message=feedback,
-                    target_pages=list(target_pgs),
                 )
             )
 
-    ca = facts_by_concept.get("ifrs:CurrentAssets")
-    nca = facts_by_concept.get("ifrs:NonCurrentAssets")
+    ca = unsegmented_facts_by_concept.get("ifrs:CurrentAssets")
+    nca = unsegmented_facts_by_concept.get("ifrs:NonCurrentAssets")
     if assets and ca and nca:
         sum_ast = ca.value_numeric + nca.value_numeric
         diff_ast = assets.value_numeric - sum_ast
@@ -907,30 +1018,30 @@ def validate_draft_submission(
             else Decimal("1")
         )
         if abs(diff_ast) > tol_ast:
-            issues.append(
-                ValidationIssue(
-                    severity=IssueSeverity.ERROR,
-                    category="ASSET_SUM_MISMATCH",
+            add(
+                _issue(
+                    ERROR,
+                    "ASSET_SUM_MISMATCH",
+                    f"Current Assets ({ca.value_numeric:,.0f} IDR from p.{ca.source_page}) + "
+                    f"Non-Current Assets ({nca.value_numeric:,.0f} IDR from p.{nca.source_page}) = "
+                    f"{sum_ast:,.0f} IDR, which does not match Total Assets "
+                    f"({assets.value_numeric:,.0f} IDR from p.{assets.source_page}). Difference: "
+                    f"{diff_ast:+,.0f} IDR. Please re-verify line items on pages {ca.source_page} "
+                    f"and {nca.source_page}.",
+                    [ca.source_page, nca.source_page, assets.source_page],
                     equation="Current Assets + Non-Current Assets == Total Assets",
                     details={
                         "assets": float(assets.value_numeric),
                         "current_assets": float(ca.value_numeric),
                         "non_current_assets": float(nca.value_numeric),
                     },
-                    feedback_message=(
-                        f"Current Assets ({ca.value_numeric:,.0f} IDR from p.{ca.source_page}) + "
-                        f"Non-Current Assets ({nca.value_numeric:,.0f} IDR from p.{nca.source_page}) = {sum_ast:,.0f} IDR, "
-                        f"which does not match Total Assets ({assets.value_numeric:,.0f} IDR from p.{assets.source_page}). "
-                        f"Difference: {diff_ast:+,.0f} IDR. Please re-verify line items on pages {ca.source_page} and {nca.source_page}."
-                    ),
-                    target_pages=list({ca.source_page, nca.source_page, assets.source_page}),
                 )
             )
 
-    cl = facts_by_concept.get("ifrs:CurrentLiabilities")
-    ncl = facts_by_concept.get("ifrs:NonCurrentLiabilities")
-    if liabilities and cl and ncl:
-        sum_liab = cl.value_numeric + ncl.value_numeric
+    cl_f = unsegmented_facts_by_concept.get("ifrs:CurrentLiabilities")
+    ncl = unsegmented_facts_by_concept.get("ifrs:NonCurrentLiabilities")
+    if liabilities and cl_f and ncl:
+        sum_liab = cl_f.value_numeric + ncl.value_numeric
         diff_liab = liabilities.value_numeric - sum_liab
         tol_liab = (
             abs(liabilities.value_numeric) * Decimal("0.0005")
@@ -938,29 +1049,29 @@ def validate_draft_submission(
             else Decimal("1")
         )
         if abs(diff_liab) > tol_liab:
-            issues.append(
-                ValidationIssue(
-                    severity=IssueSeverity.ERROR,
-                    category="LIABILITY_SUM_MISMATCH",
+            add(
+                _issue(
+                    ERROR,
+                    "LIABILITY_SUM_MISMATCH",
+                    f"Current Liabilities ({cl_f.value_numeric:,.0f} IDR from p.{cl_f.source_page}) + "
+                    f"Non-Current Liabilities ({ncl.value_numeric:,.0f} IDR from p.{ncl.source_page}) "
+                    f"= {sum_liab:,.0f} IDR, which does not match Total Liabilities "
+                    f"({liabilities.value_numeric:,.0f} IDR from p.{liabilities.source_page}). "
+                    f"Difference: {diff_liab:+,.0f} IDR. Please re-verify liability rows on pages "
+                    f"{cl_f.source_page} and {ncl.source_page}.",
+                    [cl_f.source_page, ncl.source_page, liabilities.source_page],
                     equation="Current Liabilities + Non-Current Liabilities == Total Liabilities",
                     details={
                         "liabilities": float(liabilities.value_numeric),
-                        "current_liabilities": float(cl.value_numeric),
+                        "current_liabilities": float(cl_f.value_numeric),
                         "non_current_liabilities": float(ncl.value_numeric),
                     },
-                    feedback_message=(
-                        f"Current Liabilities ({cl.value_numeric:,.0f} IDR from p.{cl.source_page}) + "
-                        f"Non-Current Liabilities ({ncl.value_numeric:,.0f} IDR from p.{ncl.source_page}) = {sum_liab:,.0f} IDR, "
-                        f"which does not match Total Liabilities ({liabilities.value_numeric:,.0f} IDR from p.{liabilities.source_page}). "
-                        f"Difference: {diff_liab:+,.0f} IDR. Please re-verify liability rows on pages {cl.source_page} and {ncl.source_page}."
-                    ),
-                    target_pages=list({cl.source_page, ncl.source_page, liabilities.source_page}),
                 )
             )
 
-    rev = facts_by_concept.get("ifrs:Revenue")
-    cos = facts_by_concept.get("ifrs:CostOfSales")
-    gp = facts_by_concept.get("ifrs:GrossProfit")
+    rev = unsegmented_facts_by_concept.get("ifrs:Revenue")
+    cos = unsegmented_facts_by_concept.get("ifrs:CostOfSales")
+    gp = unsegmented_facts_by_concept.get("ifrs:GrossProfit")
     if rev and cos and gp:
         calc_gp = rev.value_numeric - abs(cos.value_numeric)
         diff_gp = gp.value_numeric - calc_gp
@@ -968,50 +1079,53 @@ def validate_draft_submission(
             abs(rev.value_numeric) * Decimal("0.0005") if rev.value_numeric != 0 else Decimal("1")
         )
         if abs(diff_gp) > tol_gp:
-            issues.append(
-                ValidationIssue(
-                    severity=IssueSeverity.ERROR,
-                    category="GROSS_PROFIT_MISMATCH",
+            add(
+                _issue(
+                    ERROR,
+                    "GROSS_PROFIT_MISMATCH",
+                    f"Gross Profit mismatch: Revenue ({rev.value_numeric:,.0f} IDR from "
+                    f"p.{rev.source_page}) - Cost of Sales ({cos.value_numeric:,.0f} IDR from "
+                    f"p.{cos.source_page}) = {calc_gp:,.0f} IDR, but extracted Gross Profit is "
+                    f"{gp.value_numeric:,.0f} IDR from p.{gp.source_page}. Please re-check the "
+                    f"Income Statement on pages {rev.source_page} and {gp.source_page}.",
+                    [rev.source_page, cos.source_page, gp.source_page],
                     equation="Revenue - Cost of Sales == Gross Profit",
                     details={
                         "revenue": float(rev.value_numeric),
                         "cost_of_sales": float(cos.value_numeric),
                         "gross_profit": float(gp.value_numeric),
                     },
-                    feedback_message=(
-                        f"Gross Profit mismatch: Revenue ({rev.value_numeric:,.0f} IDR from p.{rev.source_page}) - "
-                        f"Cost of Sales ({cos.value_numeric:,.0f} IDR from p.{cos.source_page}) = {calc_gp:,.0f} IDR, "
-                        f"but extracted Gross Profit is {gp.value_numeric:,.0f} IDR from p.{gp.source_page}. "
-                        f"Please re-check the Income Statement on pages {rev.source_page} and {gp.source_page}."
-                    ),
-                    target_pages=list({rev.source_page, cos.source_page, gp.source_page}),
                 )
             )
 
     # -------------------------------------------------------------
     # LEVEL 3: Sector Specific Constraints
     # -------------------------------------------------------------
-    if "BANK" in sector.upper():
-        deposits = facts_by_concept.get("idx:CustomerDeposits")
-        loans = facts_by_concept.get("idx:LoansAndAdvances")
+    if is_bank:
+        deposits = unsegmented_facts_by_concept.get("idx:CustomerDeposits")
+        loans = unsegmented_facts_by_concept.get("idx:LoansAndAdvances")
         if deposits and liabilities and deposits.value_numeric > liabilities.value_numeric:
-            issues.append(
-                ValidationIssue(
-                    severity=IssueSeverity.ERROR,
-                    category="BANKING_DEPOSITS_EXCEED_LIABILITIES",
+            add(
+                _issue(
+                    ERROR,
+                    "BANKING_DEPOSITS_EXCEED_LIABILITIES",
+                    f"Customer Deposits ({deposits.value_numeric:,.0f} IDR from "
+                    f"p.{deposits.source_page}) cannot exceed Total Liabilities "
+                    f"({liabilities.value_numeric:,.0f} IDR from p.{liabilities.source_page}).",
+                    [deposits.source_page, liabilities.source_page],
                     concept_id="idx:CustomerDeposits",
-                    feedback_message=f"Customer Deposits ({deposits.value_numeric:,.0f} IDR from p.{deposits.source_page}) cannot exceed Total Liabilities ({liabilities.value_numeric:,.0f} IDR from p.{liabilities.source_page}).",
-                    target_pages=[deposits.source_page, liabilities.source_page],
                 )
             )
         if loans and assets and loans.value_numeric > assets.value_numeric:
-            issues.append(
-                ValidationIssue(
-                    severity=IssueSeverity.ERROR,
-                    category="BANKING_LOANS_EXCEED_ASSETS",
+            add(
+                _issue(
+                    ERROR,
+                    "BANKING_LOANS_EXCEED_ASSETS",
+                    f"Loans and Advances ({loans.value_numeric:,.0f} IDR from p.{loans.source_page}) "
+                    f"cannot exceed Total Assets ({assets.value_numeric:,.0f} IDR from "
+                    f"p.{assets.source_page}).",
+                    [loans.source_page, assets.source_page],
                     concept_id="idx:LoansAndAdvances",
-                    feedback_message=f"Loans and Advances ({loans.value_numeric:,.0f} IDR from p.{loans.source_page}) cannot exceed Total Assets ({assets.value_numeric:,.0f} IDR from p.{assets.source_page}).",
-                    target_pages=[loans.source_page, assets.source_page],
                 )
             )
 
@@ -1026,27 +1140,24 @@ def validate_draft_submission(
         if still_missing:
             issues.insert(
                 0,
-                ValidationIssue(
-                    severity=IssueSeverity.ERROR,
-                    category="RETRY_STILL_MISSING",
-                    feedback_message=(
-                        f"Attempt {retry_attempt}/3. You still have not extracted: {', '.join(still_missing)}. "
-                        f"For each: re-read the hinted note sections, or explicitly justify with search_pages_checked."
-                    ),
-                    target_pages=[],
+                _issue(
+                    ERROR,
+                    "RETRY_STILL_MISSING",
+                    f"Attempt {retry_attempt}/3. You still have not extracted: "
+                    f"{', '.join(still_missing)}. For each: re-read the hinted note sections, or "
+                    f"explicitly justify with search_pages_checked.",
                 ),
             )
 
     errors = [i for i in issues if i.severity == IssueSeverity.ERROR]
     warnings = [i for i in issues if i.severity == IssueSeverity.WARNING]
 
-    # A submission is INVALID if any errors exist OR any CRITICAL metric is missing/unjustified.
-    # Exception: GENERIC_DISCLOSURE announcements have no CRITICAL fields (all HIGH) — accept
-    # partial extractions as long as there are no schema errors. Design §4.3.
+    # INVALID if any errors exist OR any CRITICAL metric is missing/unjustified.
+    # GENERIC_DISCLOSURE announcements have no CRITICAL fields (all HIGH). Design §4.3.
     is_generic_disclosure = getattr(contract, "sector", "").upper() == "UNIVERSAL" and not any(
         r.importance == "CRITICAL" for r in contract.required_facts
     )
-    unjustified_critical = [c for c in coverage.critical.missing]
+    unjustified_critical = list(coverage.critical.missing)
     if is_generic_disclosure:
         status = "VALID" if not errors else "INVALID"
     else:
@@ -1067,18 +1178,3 @@ def validate_draft_submission(
         coverage=coverage,
         previous_attempt_misses=prior_misses,
     )
-
-
-def _pages_overlap(
-    rule: ExtractionFactRule, searched_pages: list[int], contract: ExtractionContract
-) -> bool:
-    """Heuristic: does the LLM's searched-pages list include ANY location that hint text suggests?
-
-    Since we don't know the document's ToC page numbers, we treat non-empty searched_pages as
-    'attempted' and only flag INSUFFICIENT_SEARCH_SCOPE when the LLM claims very few pages
-    (< 2) or supplies obviously perfunctory input. This function is intentionally lenient
-    until we have per-document ToC data — better to accept a good-faith omission than nag.
-    """
-    if not searched_pages:
-        return False
-    return len(searched_pages) >= 2

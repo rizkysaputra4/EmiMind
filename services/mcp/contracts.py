@@ -29,11 +29,13 @@ def load_page_router_queries() -> dict[str, dict[str, Any]]:
     """Loads and caches page router query definitions from db/seeds/page_router_queries.yaml."""
     global _PAGE_ROUTER_QUERIES
     if _PAGE_ROUTER_QUERIES is None:
-        yaml_path = Path(__file__).resolve().parents[2] / "db" / "seeds" / "page_router_queries.yaml"
+        yaml_path = (
+            Path(__file__).resolve().parents[2] / "db" / "seeds" / "page_router_queries.yaml"
+        )
         if not yaml_path.is_file():
             yaml_path = Path("db/seeds/page_router_queries.yaml").resolve()
         if yaml_path.is_file():
-            with open(yaml_path, "r", encoding="utf-8") as f:
+            with open(yaml_path, encoding="utf-8") as f:
                 _PAGE_ROUTER_QUERIES = yaml.safe_load(f) or {}
         else:
             _PAGE_ROUTER_QUERIES = {}
@@ -84,13 +86,21 @@ def get_route_query(module_name: str, sector: str = "ALL") -> RouteQuery | None:
     )
 
 
+# Grounding reads ONE scale per fact, in this order: the cited table's unit_hint, the cited
+# page's header ("Disajikan dalam jutaan Rupiah"), the document's dominant header, and only then
+# `multiplier` here. The standard rule has no multiplier: a page that declares no unit is taken
+# at face value (full rupiah); it never tries every scale.
 _STANDARD_SCALING_RULES: dict[str, Any] = {
     "unit": "IDR",
+    "payload_unit": "IDR",
+    "scale_precedence": ["table_unit_hint", "page_header", "document_header", "multiplier"],
     "instructions": (
-        "All extracted monetary amounts must be converted to full IDR integer/decimal "
-        "value before submission. Inspect the top of each financial statement table for "
-        "'Disajikan dalam jutaan rupiah' (multiply by 1,000,000) or 'Disajikan dalam "
-        "ribuan rupiah' (multiply by 1,000)."
+        "Submit every monetary amount in full IDR (not in the printed unit). Read the unit from "
+        "the table/page header: 'Disajikan dalam jutaan Rupiah' / 'Expressed in millions of "
+        "Rupiah' → multiply by 1,000,000; 'miliar' / 'billions' → 1,000,000,000; 'ribuan' / "
+        "'thousands' → 1,000; 'Disajikan dalam Rupiah' / 'full Rupiah' → 1. The validator "
+        "checks the value at that ONE scale (±1 printed unit). Percentages and ratios are "
+        "never scaled: submit 19.36 or 0.1936 for '19,36%' with unit PERCENT. A '-' cell is 0."
     ),
 }
 
@@ -211,7 +221,11 @@ async def _load_granular_modules(conn: AsyncConnection, sector: str) -> list[Gra
                     name="BANK_LOANS_NPL",
                     description="Kolektibilitas kredit dan pencadangan kerugian (NPL, CKPN).",
                     typical_note_title="Catatan Kualitas Aset Produktif / Kolektibilitas Kredit",
-                    target_concepts=["idx:LoansAndAdvances", "idx:NonPerformingLoansGross", "idx:NPLCoverageRatio"],
+                    target_concepts=[
+                        "idx:LoansAndAdvances",
+                        "idx:NonPerformingLoansGross",
+                        "idx:NPLCoverageRatio",
+                    ],
                     expected_segment_fields=["segment", "type", "kol_rating", "npl_status"],
                     guideline="Extract loan quality and NPL per collectibility category.",
                     route_query=rq,
@@ -234,7 +248,9 @@ async def _load_granular_modules(conn: AsyncConnection, sector: str) -> list[Gra
     return modules
 
 
-async def _load_narrative_rules(conn: AsyncConnection, sector: str) -> list[ExtractionNarrativeRule]:
+async def _load_narrative_rules(
+    conn: AsyncConnection, sector: str
+) -> list[ExtractionNarrativeRule]:
     result = await conn.execute(
         text(
             """
@@ -266,11 +282,24 @@ async def _load_narrative_rules(conn: AsyncConnection, sector: str) -> list[Extr
 
 
 ANNOUNCEMENT_DOC_TYPES = {
-    "DIVIDEND", "RIGHTS_ISSUE", "RUPS_RESULT", "MATERIAL_INFO",
-    "BOND_ISSUE", "AFFILIATED_TX", "PRIVATE_PLACEMENT", "TENDER_OFFER",
-    "INSIDER_TX", "BOARD_CHANGE", "SHARE_BUYBACK", "SUSPEND_NOTICE",
-    "UNSUSPEND_NOTICE", "PUBLIC_EXPOSE", "ARTICLES_AMENDMENT",
-    "NAME_CHANGE", "LISTING_ACTION", "GENERIC_DISCLOSURE",
+    "DIVIDEND",
+    "RIGHTS_ISSUE",
+    "RUPS_RESULT",
+    "MATERIAL_INFO",
+    "BOND_ISSUE",
+    "AFFILIATED_TX",
+    "PRIVATE_PLACEMENT",
+    "TENDER_OFFER",
+    "INSIDER_TX",
+    "BOARD_CHANGE",
+    "SHARE_BUYBACK",
+    "SUSPEND_NOTICE",
+    "UNSUSPEND_NOTICE",
+    "PUBLIC_EXPOSE",
+    "ARTICLES_AMENDMENT",
+    "NAME_CHANGE",
+    "LISTING_ACTION",
+    "GENERIC_DISCLOSURE",
 }
 
 

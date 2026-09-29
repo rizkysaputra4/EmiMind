@@ -35,6 +35,7 @@ class DocumentInspectionResult(BaseModel):
 class DocumentSkipResult(BaseModel):
     """Return type of mark_document_skipped — confirms the skip was logged and
     the file archived out of the ingest queue."""
+
     doc_id: str
     ticker: str | None = None
     reason: str
@@ -108,11 +109,17 @@ class CellRef(BaseModel):
     col: int
 
 
+VALID_PERIOD_TYPES: frozenset[str] = frozenset({"instant", "duration_qtd", "duration_ytd"})
+
+
 class ExtractedFactItem(BaseModel):
     concept_id: str
     value_numeric: Decimal
     unit: str = "IDR"
-    period_type: str | None = None  # 'instant', 'duration_qtd', 'duration_ytd', 'duration_q', 'duration_12m', 'duration'
+    # None means "not supplied". The validator derives it from metric_definitions or the
+    # statement where that is unambiguous and rejects omission where it is not (NOTE facts).
+    # Allowed values: 'instant' | 'duration_qtd' | 'duration_ytd' (the DB CHECK set).
+    period_type: str | None = None
     source_page: int | None = None
     statement: Literal["BS", "IS", "CF", "EQ", "NOTE"] | None = None
     source_label_original: str | None = None
@@ -235,6 +242,21 @@ class CommitReport(BaseModel):
     profile_refreshed: bool
     live_valuation_computed: bool
     message: str
+    warnings: list[str] = Field(default_factory=list)
+
+
+class ConceptDefinition(BaseModel):
+    """Subset of a metric_definitions row the validator needs for concept/label/period checks."""
+
+    metric_id: str
+    name_id: str = ""
+    name_en: str = ""
+    synonyms_id: list[str] = Field(default_factory=list)
+    synonyms_en: list[str] = Field(default_factory=list)
+    flow_stock_type: str | None = None
+    unit: str | None = None
+    value_type: str | None = None
+    statement_type: str | None = None
 
 
 class MetricOntologyDefinition(BaseModel):
@@ -305,7 +327,7 @@ class PageTable(BaseModel):
 
 class PageEvidence(BaseModel):
     page_index: int
-    text_source: str = "pdf_text"  # 'pdf_text' | 'ocr'
+    text_source: str = "pdf_text"  # 'pdf_text' | 'ocr' | 'ocr_failed'
     page_text: str = ""
     tables: list[PageTable] = Field(default_factory=list)
 
@@ -326,4 +348,3 @@ class RoutedPages(BaseModel):
     total_pages_returned: int
     pages: list[RoutedPage] = Field(default_factory=list)
     spans: list[list[int]] = Field(default_factory=list)
-

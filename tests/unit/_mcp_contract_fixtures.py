@@ -7,12 +7,60 @@ minimum shape of what `build_extraction_contract` returns from the DB so that
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 from services.mcp.contracts import get_route_query
+from services.mcp.grounding import is_monetary_unit, is_percent_unit
 from services.mcp.types import (
+    ExtractedFactItem,
     ExtractionContract,
     ExtractionFactRule,
     GranularNoteModule,
+    PageEvidence,
 )
+
+MN = Decimal(1_000_000)
+PAGE_HEADER = "PT TEST Tbk\nLAPORAN KEUANGAN\n(Disajikan dalam jutaan Rupiah, kecuali dinyatakan lain)\n"
+
+
+def fmt_id(v: Decimal) -> str:
+    """Indonesian number formatting: 100000 -> '100.000', 5.25 -> '5,25'."""
+    if v == v.to_integral_value():
+        return f"{int(v):,}".replace(",", ".")
+    whole, frac = f"{v:f}".split(".")
+    return f"{int(whole):,}".replace(",", ".") + "," + frac
+
+
+def printed_value(f: ExtractedFactItem) -> str:
+    """How the fact's number is printed on a 'jutaan Rupiah' page."""
+    if is_percent_unit(f.unit):
+        return fmt_id(f.value_numeric) + "%"
+    if is_monetary_unit(f.unit):
+        return fmt_id(f.value_numeric / MN)
+    return fmt_id(f.value_numeric)
+
+
+def render_page_text(facts: list[ExtractedFactItem], page: int, extra: str = "") -> str:
+    lines = [
+        f"{f.source_label_original} {printed_value(f)}"
+        for f in facts
+        if f.source_page == page and f.cell_ref is None
+    ]
+    return PAGE_HEADER + "\n".join([*lines, *([extra] if extra else [])])
+
+
+def render_evidence(
+    facts: list[ExtractedFactItem], extra: dict[int, str] | None = None
+) -> dict[int, PageEvidence]:
+    """Page evidence with one "<label> <value in millions>" line per fact on its cited page."""
+    pages = {f.source_page for f in facts if f.source_page is not None and f.source_page > 0}
+    pages |= set(extra or {})
+    return {
+        p: PageEvidence(
+            page_index=p, text_source="pdf_text", page_text=render_page_text(facts, p, (extra or {}).get(p, ""))
+        )
+        for p in sorted(pages)
+    }
 
 _CORE_RULES: list[ExtractionFactRule] = [
     ExtractionFactRule(concept_id="ifrs:Assets", label="Total Assets", statement_type="BALANCE_SHEET", required=True, importance="CRITICAL"),
@@ -46,7 +94,7 @@ _BANK_RULES: list[ExtractionFactRule] = [
     ExtractionFactRule(concept_id="idx:LoanToDepositRatio", label="LDR", statement_type="OPERATIONAL_KPI", required=True, importance="HIGH"),
     ExtractionFactRule(
         concept_id="idx:NPLCoverageRatio", label="NPL Coverage Ratio", statement_type="OPERATIONAL_KPI",
-        required=True, importance="HIGH",
+        required=True, importance="HIGH", unit="PERCENT", value_type="PERCENTAGE",
         search_hints=["Catatan Cadangan Kerugian Penurunan Nilai (CKPN)"],
         synonyms_id=["Rasio Cakupan NPL", "Cakupan CKPN"],
     ),

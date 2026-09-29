@@ -43,9 +43,9 @@ async def test_m9_fact_segment_uniqueness() -> None:
             value_numeric, unit, segment, period_type, accounting_std, source_page, extraction_conf, extraction_method
         ) VALUES (
             :doc_id, :ticker, '2025-12-31', :period, 'NOTE', :concept_id, 'Kredit',
-            :val, 'IDR', CAST(:seg AS jsonb), 'instant', 'IFRS', 5, 0.95, 'llm_extract'
+            :val, 'IDR', CAST(:seg AS jsonb), :period_type, 'IFRS', 5, 0.95, 'llm_extract'
         )
-        ON CONFLICT (ticker, fiscal_period, concept_id, (coalesce(segment, '{}'::jsonb)))
+        ON CONFLICT (ticker, fiscal_period, concept_id, period_type, (coalesce(segment, '{}'::jsonb)))
         WHERE is_restated = false
         DO UPDATE SET
             value_numeric = EXCLUDED.value_numeric,
@@ -65,6 +65,7 @@ async def test_m9_fact_segment_uniqueness() -> None:
                 "concept_id": cid,
                 "val": float(Decimal("100.0")),
                 "seg": json.dumps(seg1),
+                "period_type": "instant",
             },
         )
 
@@ -78,6 +79,7 @@ async def test_m9_fact_segment_uniqueness() -> None:
                 "concept_id": cid,
                 "val": float(Decimal("50.0")),
                 "seg": json.dumps(seg2),
+                "period_type": "instant",
             },
         )
 
@@ -98,6 +100,7 @@ async def test_m9_fact_segment_uniqueness() -> None:
                 "concept_id": cid,
                 "val": float(Decimal("150.0")),
                 "seg": json.dumps(seg1),
+                "period_type": "instant",
             },
         )
 
@@ -118,6 +121,26 @@ async def test_m9_fact_segment_uniqueness() -> None:
             {"t": ticker, "p": period, "seg": json.dumps(seg1)},
         )
         assert val_res.scalar() == Decimal("150.0000")
+
+        # 4. Migration 026: period_type is part of the identity, so the same concept + segment as
+        #    a flow (duration_ytd) is a separate fact, not an overwrite of the instant row.
+        await conn.execute(
+            text(insert_sql),
+            {
+                "doc_id": doc_id,
+                "ticker": ticker,
+                "period": period,
+                "concept_id": cid,
+                "val": float(Decimal("7.0")),
+                "seg": json.dumps(seg1),
+                "period_type": "duration_ytd",
+            },
+        )
+        cnt_res3 = await conn.execute(
+            text("SELECT count(*) FROM financial_facts WHERE ticker = :t AND fiscal_period = :p"),
+            {"t": ticker, "p": period},
+        )
+        assert cnt_res3.scalar() == 3
 
         # Cleanup
         await conn.execute(text("DELETE FROM financial_facts WHERE ticker = :t"), {"t": ticker})

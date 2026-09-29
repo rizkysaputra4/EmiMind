@@ -1,34 +1,30 @@
 # Cross-statement tie-out rules
-# Verifies that disclosure note totals/lines tie out to primary financial statement lines when both are extracted.
+# When both concepts are submitted (unsegmented, any `statement` label), their values must agree
+# within max(1 unit of the contract scale, 0.1%). A mismatch is an ERROR `TIE_OUT` with the hint
+# "check you used the current-period column".
+#
+# Rules compare two DIFFERENT concepts. The same concept submitted twice (e.g. a note total and
+# the balance-sheet line, both as idx:LoansGross) is one fact identity and is rejected as
+# DUPLICATE_FACT, so same-concept rules are not needed.
+#
+# Removed 2026-09: "Cash in banks note -> Cash and cash equivalents". Cash in banks is only one
+# component of C&CE (cash on hand and time deposits are the others), so the two never tie.
 rules:
   - id: "loans_note_to_bs"
-    name: "Loans Note Total to Balance Sheet Loans"
+    name: "Loans note total to balance-sheet loans (gross)"
     source_concept: "idx:LoansGross"
     source_statement: "NOTE"
     target_concept: "idx:LoansAndAdvances"
     target_statement: "BS"
-    description: "Gross loans disclosure note total must tie out to Balance Sheet Loans and Advances"
+    description: "Gross loans in the loans note must equal balance-sheet Loans and Advances (gross)."
 
-  - id: "loans_gross_note_to_bs"
-    name: "Loans Gross Note to Balance Sheet Loans Gross"
-    source_concept: "idx:LoansGross"
-    source_statement: "NOTE"
-    target_concept: "idx:LoansGross"
-    target_statement: "BS"
-    description: "Gross loans note total must tie out to Balance Sheet Loans Gross"
-
-  - id: "cash_banks_to_bs_cash"
-    name: "Cash in Banks Note to Balance Sheet Cash"
-    source_concept: "idx:CashInBanks"
-    source_statement: "NOTE"
-    target_concept: "ifrs:CashAndCashEquivalents"
-    target_statement: "BS"
-    description: "Cash in banks note must tie out to Cash and Cash Equivalents on Balance Sheet"
-
-  - id: "deposits_note_to_bs_deposits"
-    name: "Customer Deposits Note to Balance Sheet Customer Deposits"
-    source_concept: "idx:CustomerDeposits"
-    source_statement: "NOTE"
-    target_concept: "idx:CustomerDeposits"
-    target_statement: "BS"
-    description: "Customer deposits note total must tie out to Balance Sheet Customer Deposits"
+  - id: "bs_cash_to_cf_ending_cash"
+    name: "Balance-sheet cash and cash equivalents to cash-flow ending cash"
+    source_concept: "ifrs:CashAndCashEquivalents"
+    source_statement: "BS"
+    target_concept: "idx:CashAtEndOfPeriod"
+    target_statement: "CF"
+    description: >-
+      Cash and cash equivalents on the statement of financial position must equal cash and cash
+      equivalents at the end of the period in the statement of cash flows. If the cash-flow figure
+      is net of bank overdrafts, do not submit it as idx:CashAtEndOfPeriod.

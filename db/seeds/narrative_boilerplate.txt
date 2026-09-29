@@ -21,3 +21,17 @@ Laporan auditor independen terlampir menyatakan bahwa laporan keuangan menyajika
 The accompanying independent auditors report states that the financial statements present fairly.
 Laporan keuangan konsolidasian telah diaudit oleh kantor akuntan publik independen.
 These consolidated financial statements have been audited by independent registered public accountants.
+
+# Interim / "tidak terpisahkan" variants (matched by containment after punctuation normalization)
+Catatan atas laporan keuangan konsolidasian interim terlampir merupakan bagian yang tidak terpisahkan dari laporan keuangan konsolidasian interim secara keseluruhan.
+Catatan atas laporan keuangan konsolidasian terlampir merupakan bagian yang tidak terpisahkan dari laporan keuangan konsolidasian secara keseluruhan.
+The accompanying notes to the interim consolidated financial statements form an integral part of these interim consolidated financial statements.
+The accompanying notes to the consolidated financial statements form an integral part of these consolidated financial statements.
+The original interim consolidated financial statements included herein are in Indonesian language.
+The original consolidated financial statements included herein are in Indonesian language.
+
+# Page-header captions (units / periods) that are not narrative
+Disajikan dalam jutaan Rupiah, kecuali dinyatakan lain
+Expressed in millions of Rupiah, unless otherwise stated
+Disajikan dalam Rupiah, kecuali dinyatakan lain
+Expressed in Rupiah, unless otherwise stated

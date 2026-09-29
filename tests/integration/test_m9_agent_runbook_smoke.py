@@ -195,7 +195,7 @@ async def test_m9_agent_runbook_smoke() -> None:
                 value_numeric=Decimal("20000000000"),
                 source_page=3,
                 statement="IS",
-                source_label_original="Pendapatan bunga dan operasional",
+                source_label_original="Pendapatan usaha",
                 cell_ref=CellRef(table_index=0, row=1, col=2),
             ),
             ExtractedFactItem(
@@ -203,7 +203,7 @@ async def test_m9_agent_runbook_smoke() -> None:
                 value_numeric=Decimal("12000000000"),
                 source_page=3,
                 statement="IS",
-                source_label_original="Beban bunga dan operasional",
+                source_label_original="Beban pokok pendapatan",
                 cell_ref=CellRef(table_index=0, row=2, col=2),
             ),
             ExtractedFactItem(
@@ -211,7 +211,7 @@ async def test_m9_agent_runbook_smoke() -> None:
                 value_numeric=Decimal("8000000000"),
                 source_page=3,
                 statement="IS",
-                source_label_original="Laba kotor / pendapatan bersih",
+                source_label_original="Laba kotor",
                 cell_ref=CellRef(table_index=0, row=3, col=2),
             ),
             ExtractedFactItem(
@@ -227,7 +227,7 @@ async def test_m9_agent_runbook_smoke() -> None:
                 value_numeric=Decimal("5000000000"),
                 source_page=3,
                 statement="IS",
-                source_label_original="Laba operasional",
+                source_label_original="Laba usaha",
                 cell_ref=CellRef(table_index=0, row=5, col=2),
             ),
             ExtractedFactItem(
@@ -235,12 +235,13 @@ async def test_m9_agent_runbook_smoke() -> None:
                 value_numeric=Decimal("4000000000"),
                 source_page=3,
                 statement="IS",
-                source_label_original="Laba bersih tahun berjalan",
+                source_label_original="Laba tahun berjalan",
                 cell_ref=CellRef(table_index=0, row=6, col=2),
             ),
             # Note 12: Loans and Collectibility (Page 5 and 6, Table 0, IDR_MN)
             ExtractedFactItem(
                 concept_id="idx:LoansGross",
+                period_type="instant",
                 value_numeric=Decimal("80000000000"),
                 source_page=6,
                 statement="NOTE",
@@ -250,6 +251,7 @@ async def test_m9_agent_runbook_smoke() -> None:
             # 5 Segmented collectibility items (>= 4 required by M9.5.1)
             ExtractedFactItem(
                 concept_id="idx:LoansGross",
+                period_type="instant",
                 value_numeric=Decimal("70000000000"),
                 source_page=5,
                 statement="NOTE",
@@ -259,6 +261,7 @@ async def test_m9_agent_runbook_smoke() -> None:
             ),
             ExtractedFactItem(
                 concept_id="idx:LoansGross",
+                period_type="instant",
                 value_numeric=Decimal("5000000000"),
                 source_page=5,
                 statement="NOTE",
@@ -268,6 +271,7 @@ async def test_m9_agent_runbook_smoke() -> None:
             ),
             ExtractedFactItem(
                 concept_id="idx:LoansGross",
+                period_type="instant",
                 value_numeric=Decimal("2000000000"),
                 source_page=5,
                 statement="NOTE",
@@ -277,6 +281,7 @@ async def test_m9_agent_runbook_smoke() -> None:
             ),
             ExtractedFactItem(
                 concept_id="idx:LoansGross",
+                period_type="instant",
                 value_numeric=Decimal("1000000000"),
                 source_page=6,
                 statement="NOTE",
@@ -286,6 +291,7 @@ async def test_m9_agent_runbook_smoke() -> None:
             ),
             ExtractedFactItem(
                 concept_id="idx:LoansGross",
+                period_type="instant",
                 value_numeric=Decimal("2000000000"),
                 source_page=6,
                 statement="NOTE",
@@ -319,7 +325,7 @@ async def test_m9_agent_runbook_smoke() -> None:
         narratives = [
             ExtractedNarrativeItem(
                 section="MDA",
-                text_original="Pada tahun 2025, PT Bank XXXX Tbk mencatatkan peningkatan pendapatan sebesar 11,1% menjadi Rp20.000 miliar.",
+                text_original="Pada tahun 2025, PT Contoh Tbk mencatatkan peningkatan pendapatan sebesar 11,1% menjadi Rp20.000 miliar",
                 source_page=7,
                 topic="FINANCIAL_PERFORMANCE",
             )

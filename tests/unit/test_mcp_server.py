@@ -1,8 +1,14 @@
-"""Unit and mock tests for EMIMIND MCP Ingestion Server tools."""
+"""Unit and mock tests for EMIMIND MCP Ingestion Server tools.
+
+No test here opens a real database connection (tests/unit/conftest.py forbids it): every DB
+interaction goes through `FakeDB`, which routes SQL by substring to canned rows and records
+every statement, so INSERT parameters can be asserted.
+"""
 
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -22,6 +28,7 @@ from services.mcp.types import (
     DraftSubmissionPayload,
     ExtractedCausalLink,
     ExtractedFactItem,
+    ExtractedGuidanceItem,
     ExtractedNarrativeItem,
     InspectionStatus,
     ProcessingUsage,
@@ -29,7 +36,191 @@ from services.mcp.types import (
     ValidationReport,
 )
 from tests.fixtures.m9.build_fixtures import build_fs_small
-from tests.unit._mcp_contract_fixtures import make_test_contract
+from tests.unit._mcp_contract_fixtures import make_test_contract, render_page_text
+
+# ---------------------------------------------------------------------------
+# Fake database
+# ---------------------------------------------------------------------------
+
+Rows = list[dict[str, Any]]
+
+
+class FakeResult:
+    def __init__(self, rows: Rows | None = None) -> None:
+        self.rows = rows or []
+
+    def mappings(self) -> FakeResult:
+        return self
+
+    def all(self) -> Rows:
+        return list(self.rows)
+
+    def first(self) -> dict[str, Any] | None:
+        return self.rows[0] if self.rows else None
+
+    def fetchall(self) -> list[tuple[Any, ...]]:
+        return [tuple(r.values()) for r in self.rows]
+
+    def __iter__(self) -> Any:
+        return iter(self.rows)
+
+    def scalar(self) -> Any:
+        return next(iter(self.rows[0].values())) if self.rows else None
+
+    def scalar_one(self) -> Any:
+        return self.scalar()
+
+
+class FakeDB:
+    """Routes SQL to canned rows by substring (first match wins) and records every call."""
+
+    def __init__(self, routes: dict[str, Rows | Callable[[dict[str, Any]], Rows]]) -> None:
+        self.routes = routes
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+        self._ids = 0
+        self.conn = AsyncMock()
+        self.conn.execute.side_effect = self._execute
+        self.conn.commit = AsyncMock()
+        self.conn.rollback = AsyncMock()
+        db = self
+
+        class _Ctx:
+            async def __aenter__(self) -> AsyncMock:
+                return db.conn
+
+            async def __aexit__(self, *args: Any) -> None:
+                return None
+
+        self.engine = MagicMock()
+        self.engine.connect.side_effect = _Ctx
+
+    async def _execute(self, sql: Any, params: dict[str, Any] | None = None) -> FakeResult:
+        sql_str = str(sql)
+        self.calls.append((sql_str, params or {}))
+        for key, value in self.routes.items():
+            if key in sql_str:
+                return FakeResult(value(params or {}) if callable(value) else value)
+        if "RETURNING" in sql_str:
+            self._ids += 1
+            return FakeResult([{"id": self._ids}])
+        return FakeResult([])
+
+    def inserts(self, table: str) -> list[dict[str, Any]]:
+        return [p for sql, p in self.calls if f"INSERT INTO {table}" in sql]
+
+    def sql_of(self, table: str) -> list[str]:
+        return [sql for sql, _p in self.calls if f"INSERT INTO {table}" in sql]
+
+
+def _page_rows(pages: dict[int, tuple[str, str]]) -> Callable[[dict[str, Any]], Rows]:
+    """document_pages rows for the requested page indexes: {page: (text_source, text)}."""
+
+    def rows(params: dict[str, Any]) -> Rows:
+        wanted = params.get("pages") or list(pages)
+        return [
+            {"page_index": p, "text_source": src, "page_text": txt}
+            for p, (src, txt) in pages.items()
+            if p in wanted
+        ]
+
+    return rows
+
+
+def extraction_db(
+    pages: dict[int, tuple[str, str]],
+    tables: Rows | None = None,
+    *,
+    indexed: bool = True,
+    metric_rows: Rows | None = None,
+    page_count: int = 10,
+) -> FakeDB:
+    return FakeDB(
+        {
+            "FROM peer_groups": [{"name": "PT Test Tbk", "sector": "GENERIC"}],
+            "SELECT doc_type, page_count FROM documents": [{"doc_type": "FS_ANNUAL", "page_count": page_count}],
+            "SELECT 1 FROM document_pages": [{"one": 1}] if indexed else [],
+            "SELECT page_index, page_text FROM document_pages": [
+                {"page_index": p, "page_text": t} for p, (_s, t) in pages.items()
+            ],
+            "SELECT page_index, text_source, page_text": _page_rows(pages),
+            "FROM document_page_tables": tables or [],
+            "FROM metric_definitions": metric_rows or [],
+            "narrative_chunks n ON n.text_hash": [],
+            "SELECT source_url FROM documents": [{"source_url": None}],
+        }
+    )
+
+
+def _open_contract() -> Any:
+    contract = make_test_contract("GENERIC")
+    for r in contract.required_facts:
+        r.required = False
+        r.importance = "OPTIONAL"
+    return contract
+
+
+def _commit_patches(db: FakeDB, contract: Any | None = None) -> Any:
+    from contextlib import ExitStack
+
+    stack = ExitStack()
+    stack.enter_context(patch("services.mcp.server.get_engine", return_value=db.engine))
+    stack.enter_context(
+        patch(
+            "services.mcp.server.build_extraction_contract",
+            new_callable=AsyncMock,
+            return_value=contract or _open_contract(),
+        )
+    )
+    stack.enter_context(patch("services.mcp.server._log_processing_event", new_callable=AsyncMock))
+    stack.enter_context(
+        patch("services.mcp.server.compute_for_document", new_callable=AsyncMock, return_value=MagicMock(computed=0))
+    )
+    stack.enter_context(patch("services.mcp.server.refresh_profile_task", new_callable=AsyncMock))
+    stack.enter_context(patch("services.mcp.server.calculate_valuation", new_callable=AsyncMock, return_value={}))
+    return stack
+
+
+# A balance-sheet page laid out like an IDX filing: current column 1, prior column 2.
+BS_TABLE: Rows = [
+    {
+        "page_index": 1,
+        "table_index": 0,
+        "extraction_method": "camelot_lattice",
+        "confidence": 0.95,
+        "unit_hint": "IDR_MN",
+        "cells": [
+            {"row": 0, "col": 1, "text": "31 Desember 2024", "value": None},
+            {"row": 0, "col": 2, "text": "31 Desember 2023", "value": None},
+            {"row": 1, "col": 0, "text": "Total aset", "value": None},
+            {"row": 1, "col": 1, "text": "100.000", "value": 100000.0, "bbox": [310.0, 220.0, 360.0, 231.0], "confidence": 0.92},
+            {"row": 1, "col": 2, "text": "90.000", "value": 90000.0, "bbox": [400.0, 220.0, 450.0, 231.0], "confidence": 0.92},
+        ],
+    }
+]
+BS_TEXT = (
+    "PT TEST Tbk\nLAPORAN POSISI KEUANGAN\n(Disajikan dalam jutaan Rupiah)\n"
+    "31 Desember 2024 31 Desember 2023\nTotal aset 100.000 90.000\n"
+)
+IS_TEXT = (
+    "LAPORAN LABA RUGI\n(Disajikan dalam jutaan Rupiah)\n2024 2023\n"
+    "Pendapatan 80.000 70.000\nLaba tahun berjalan 10.000 9.000\n"
+)
+
+
+def _fact(cid: str, value: str, page: int, stmt: str, label: str, **kw: Any) -> ExtractedFactItem:
+    return ExtractedFactItem(
+        concept_id=cid,
+        value_numeric=Decimal(value),
+        source_page=page,
+        statement=stmt,  # type: ignore[arg-type]
+        source_label_original=label,
+        **kw,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Inspection
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
@@ -41,125 +232,158 @@ async def test_inspect_nonexistent_file() -> None:
 
 @pytest.mark.asyncio
 async def test_inspect_document_real_fixture() -> None:
-    # Use real PDF fixture
-    fixture_path = "tests/fixtures/sample_bmri.pdf"
-    res = await inspect_document(fixture_path, ticker="BMRI", fiscal_period="2024Q4")
-    assert res.status in (InspectionStatus.AUTHORIZED, InspectionStatus.ALREADY_PROCESSED)
+    db = FakeDB(
+        {
+            "FROM documents WHERE doc_hash": [],
+            "FROM issuer_profile WHERE ticker": [{"name": "PT Bank Mandiri (Persero) Tbk", "sector": "BANK", "sub_sector": "BANK"}],
+        }
+    )
+    with patch("services.mcp.server.get_engine", return_value=db.engine):
+        res = await inspect_document("tests/fixtures/sample_bmri.pdf", ticker="BMRI", fiscal_period="2024Q4")
+    assert res.status in (InspectionStatus.AUTHORIZED, InspectionStatus.ALREADY_PROCESSED), res.message
     assert res.ticker == "BMRI"
     assert len(res.doc_hash) == 64
+    assert db.inserts("documents")
+
+
+# ---------------------------------------------------------------------------
+# Submit + commit end to end (mocked DB, realistic evidence)
+# ---------------------------------------------------------------------------
+
+MDA_SENTENCE = "Pendapatan naik 14% menjadi Rp80 miliar didorong volume penjualan CPO"
 
 
 @pytest.mark.asyncio
 async def test_mcp_submit_draft_extraction_and_commit() -> None:
-    # 0. Ensure document exists via inspect
-    insp = await inspect_document("tests/fixtures/sample_bmri.pdf", ticker="BMRI", fiscal_period="2024Q4")
-    assert insp.doc_id is not None
-    doc_id = insp.doc_id
-
-    facts = [
-        ExtractedFactItem(concept_id="ifrs:Assets", value_numeric=Decimal("2000000000000"), source_page=1, statement="BS"),
-        ExtractedFactItem(concept_id="ifrs:CurrentAssets", value_numeric=Decimal("800000000000"), source_page=1, statement="BS"),
-        ExtractedFactItem(concept_id="ifrs:NonCurrentAssets", value_numeric=Decimal("1200000000000"), source_page=1, statement="BS"),
-        ExtractedFactItem(concept_id="ifrs:Liabilities", value_numeric=Decimal("1500000000000"), source_page=2, statement="BS"),
-        ExtractedFactItem(concept_id="ifrs:CurrentLiabilities", value_numeric=Decimal("500000000000"), source_page=2, statement="BS"),
-        ExtractedFactItem(concept_id="ifrs:NonCurrentLiabilities", value_numeric=Decimal("1000000000000"), source_page=2, statement="BS"),
-        ExtractedFactItem(concept_id="ifrs:Equity", value_numeric=Decimal("500000000000"), source_page=2, statement="BS"),
-        ExtractedFactItem(concept_id="ifrs:CashAndCashEquivalents", value_numeric=Decimal("300000000000"), source_page=1, statement="BS"),
-        ExtractedFactItem(concept_id="ifrs:Revenue", value_numeric=Decimal("600000000000"), source_page=3, statement="IS"),
-        ExtractedFactItem(concept_id="ifrs:OperatingProfit", value_numeric=Decimal("200000000000"), source_page=3, statement="IS"),
-        ExtractedFactItem(concept_id="ifrs:ProfitLoss", value_numeric=Decimal("150000000000"), source_page=3, statement="IS"),
-        ExtractedFactItem(concept_id="ifrs:CashFlowsFromUsedInOperatingActivities", value_numeric=Decimal("180000000000"), source_page=3, statement="CF"),
-        ExtractedFactItem(concept_id="ifrs:EquityAttributableToOwnersOfParent", value_numeric=Decimal("480000000000"), source_page=2, statement="BS"),
-        ExtractedFactItem(concept_id="ifrs:ProfitLossAttributableToOwnersOfParent", value_numeric=Decimal("145000000000"), source_page=3, statement="IS"),
-        ExtractedFactItem(concept_id="idx:Capex", value_numeric=Decimal("40000000000"), source_page=3, statement="CF"),
-        ExtractedFactItem(concept_id="idx:LoansAndAdvances", value_numeric=Decimal("1400000000000"), source_page=1, statement="BS"),
-        ExtractedFactItem(concept_id="idx:CustomerDeposits", value_numeric=Decimal("1300000000000"), source_page=2, statement="BS"),
-        ExtractedFactItem(concept_id="idx:CASA", value_numeric=Decimal("950000000000"), source_page=2, statement="BS"),
-        ExtractedFactItem(concept_id="idx:NetInterestIncome", value_numeric=Decimal("250000000000"), source_page=3, statement="IS"),
-        ExtractedFactItem(concept_id="idx:NetInterestMargin", value_numeric=Decimal("5.35"), source_page=3, statement="NOTE"),
-        ExtractedFactItem(concept_id="idx:NonPerformingLoansGross", value_numeric=Decimal("15000000000"), source_page=3, statement="NOTE"),
-        ExtractedFactItem(concept_id="idx:CapitalAdequacyRatio", value_numeric=Decimal("21.5"), source_page=3, statement="NOTE"),
-        ExtractedFactItem(concept_id="idx:BOPO", value_numeric=Decimal("58.2"), source_page=3, statement="NOTE"),
-        ExtractedFactItem(concept_id="idx:CostOfCredit", value_numeric=Decimal("0.95"), source_page=3, statement="NOTE"),
-        ExtractedFactItem(concept_id="idx:LoanToDepositRatio", value_numeric=Decimal("84.2"), source_page=3, statement="NOTE"),
-        ExtractedFactItem(concept_id="idx:NPLCoverageRatio", value_numeric=Decimal("310.5"), source_page=3, statement="NOTE"),
-        ExtractedFactItem(concept_id="idx:ReturnOnAssetsBank", value_numeric=Decimal("3.15"), source_page=3, statement="NOTE"),
-        # Granular Segmented Fact Items
-        ExtractedFactItem(
-            concept_id="ifrs:Revenue",
-            value_numeric=Decimal("400000000000"),
-            source_page=3,
-            statement="IS",
-            segment={"segment": "Kredit Korporasi / Wholesale", "type": "product_segment", "pct_total": 66.7},
-        ),
-        ExtractedFactItem(
-            concept_id="ifrs:Revenue",
-            value_numeric=Decimal("200000000000"),
-            source_page=3,
-            statement="IS",
-            segment={"segment": "Kredit Ritel & Konsumer", "type": "product_segment", "pct_total": 33.3},
-        ),
-    ]
-
-    narratives = [
-        ExtractedNarrativeItem(
-            section="MDA",
-            text_original="PT Bank Mandiri (Persero) Tbk mencatatkan pertumbuhan penyaluran kredit...",
-            text_en="PT Bank Mandiri (Persero) Tbk recorded loan growth...",
-            source_page=3,
-            topic="Loan Growth Review",
-        )
-    ]
-
-    causal_links = [
-        ExtractedCausalLink(
-            metric_affected="idx:NetInterestIncome",
-            direction="INCREASED",
-            cause_category="VOLUME_GROWTH",
-            driver_description="Pertumbuhan volume kredit wholesale dan retail mendorong peningkatan pendapatan bunga bersih.",
-            source_page=3,
-            confidence=0.95,
-        )
-    ]
-
+    pages = {
+        1: ("pdf_text", BS_TEXT),
+        2: ("pdf_text", IS_TEXT),
+        3: ("pdf_text", "DISKUSI DAN ANALISIS MANAJEMEN\n" + MDA_SENTENCE + ".\nTarget pertumbuhan pendapatan 2025 sebesar 10% sampai 12%."),
+    }
+    db = extraction_db(pages, BS_TABLE)
     payload = DraftSubmissionPayload(
-        doc_id=doc_id,
-        ticker="BMRI",
+        doc_id="doc-e2e",
+        ticker="ASII",
         fiscal_period="2024Q4",
-        facts=facts,
-        narratives=narratives,
-        causal_links=causal_links,
+        facts=[
+            _fact("ifrs:Assets", "100000000000", 1, "BS", "Total aset", cell_ref=CellRef(table_index=0, row=1, col=1)),
+            _fact("ifrs:Revenue", "80000000000", 2, "IS", "Pendapatan"),
+            _fact("ifrs:ProfitLoss", "10000000000", 2, "IS", "Laba tahun berjalan"),
+        ],
+        narratives=[ExtractedNarrativeItem(section="MDA", text_original=MDA_SENTENCE, source_page=3)],
+        causal_links=[
+            ExtractedCausalLink(
+                metric_affected="ifrs:Revenue", direction="INCREASED", cause_category="VOLUME_GROWTH",
+                driver_description="Volume penjualan CPO", source_page=3,
+            )
+        ],
+        guidance=[
+            ExtractedGuidanceItem(
+                metric="ifrs:Revenue", target_period="2025Q4", target_low=Decimal("10"), target_high=Decimal("12"),
+                unit="PERCENT", source_page=3, context_statement="Target pertumbuhan pendapatan 2025 sebesar 10% sampai 12%.",
+            )
+        ],
     )
-
     payload_json = json.dumps(payload.model_dump(mode="json"))
 
-    # 1. Test validation endpoint
-    val_rep = await submit_draft_extraction(payload_json)
-    assert val_rep.status == "VALID"
-    assert val_rep.errors_count == 0
+    with _commit_patches(db):
+        val_rep = await submit_draft_extraction(payload_json)
+        assert val_rep.status == "VALID", val_rep.issues
+        commit_rep = await commit_verified_report(payload_json)
 
-    # 2. Test commit endpoint
-    commit_rep = await commit_verified_report(payload_json)
-    assert commit_rep.status == "COMMITTED"
-    assert commit_rep.facts_committed == len(facts)
+    assert commit_rep.status == "COMMITTED", commit_rep.message
+    assert commit_rep.facts_committed == 3
     assert commit_rep.narratives_committed == 1
-    assert commit_rep.derived_metrics_computed > 0
+    assert commit_rep.guidance_committed == 1
+    facts = db.inserts("financial_facts")
+    assert [f["grounding"] for f in facts] == ["cell", "text", "text"]
+    guidance = [p for sql, p in db.calls if "'GUIDANCE'" in sql]
+    assert json.loads(guidance[0]["payload"])["qualifier"] == "range"
+
+
+@pytest.mark.asyncio
+async def test_submit_unindexed_document_is_invalid() -> None:
+    db = extraction_db({}, indexed=False)
+    payload = DraftSubmissionPayload(
+        doc_id="doc-unindexed", ticker="ASII", fiscal_period="2024Q4",
+        facts=[_fact("ifrs:Assets", "100000000000", 1, "BS", "Total aset")],
+    )
+    with _commit_patches(db):
+        rep = await submit_draft_extraction(payload.model_dump_json())
+    assert rep.status == "INVALID"
+    assert any(i.category == "DOCUMENT_NOT_INDEXED" for i in rep.issues)
+
+
+@pytest.mark.asyncio
+async def test_commit_unindexed_document_rejected_no_insert() -> None:
+    db = extraction_db({}, indexed=False)
+    payload = DraftSubmissionPayload(
+        doc_id="doc-unindexed", ticker="ASII", fiscal_period="2024Q4",
+        facts=[_fact("ifrs:Assets", "100000000000", 1, "BS", "Total aset")],
+    )
+    with _commit_patches(db):
+        rep = await commit_verified_report(payload.model_dump_json())
+    assert rep.status == "REJECTED_VALIDATION_FAILED"
+    assert "page index" in rep.message
+    assert not db.inserts("financial_facts")
+
+
+@pytest.mark.asyncio
+async def test_evidence_load_failure_is_not_a_bypass() -> None:
+    db = extraction_db({1: ("pdf_text", BS_TEXT)}, BS_TABLE)
+
+    def boom(_params: dict[str, Any]) -> Rows:
+        raise RuntimeError("connection reset")
+
+    db.routes["FROM document_page_tables"] = boom
+    payload = DraftSubmissionPayload(
+        doc_id="doc-err", ticker="ASII", fiscal_period="2024Q4",
+        facts=[_fact("ifrs:Assets", "100000000000", 1, "BS", "Total aset")],
+    )
+    with _commit_patches(db):
+        rep = await commit_verified_report(payload.model_dump_json())
+    assert rep.status == "REJECTED_VALIDATION_FAILED"
+    assert not db.inserts("financial_facts")
+
+
+# ---------------------------------------------------------------------------
+# Ontology tools (mocked)
+# ---------------------------------------------------------------------------
+
+_ONTOLOGY_ROWS: Rows = [
+    {
+        "metric_id": "idx:LoansAndAdvances", "name_en": "Total Loans and Advances (Gross)",
+        "name_id": "Total Kredit yang Diberikan (Gross)", "category": "BALANCE_SHEET",
+        "sector_applicability": ["BANK"], "importance": "CRITICAL", "value_type": "MONETARY", "unit": "IDR",
+        "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "calculation_formula": None,
+        "dependencies": [], "source_priority": [], "synonyms_id": ["Kredit yang Diberikan"], "synonyms_en": [],
+    },
+    {
+        "metric_id": "idx:CASA", "name_en": "CASA (Current and Savings Account)", "name_id": "Dana Murah (CASA)",
+        "category": "BALANCE_SHEET", "sector_applicability": ["BANK"], "importance": "HIGH", "value_type": "MONETARY",
+        "unit": "IDR", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW",
+        "calculation_formula": None, "dependencies": [], "source_priority": [], "synonyms_id": [], "synonyms_en": [],
+    },
+]
 
 
 @pytest.mark.asyncio
 async def test_get_metric_ontology() -> None:
     from services.mcp.server import get_metric_ontology
 
-    # Query banking metrics
-    res = await get_metric_ontology(sector="BANK")
-    assert res.total_found > 0
-    concept_ids = [m.metric_id for m in res.metrics]
-    assert "idx:LoansAndAdvances" in concept_ids or "ifrs:Revenue" in concept_ids
+    def rows(params: dict[str, Any]) -> Rows:
+        q = str(params.get("q", "")).strip("%").lower()
+        return [r for r in _ONTOLOGY_ROWS if not q or q in r["metric_id"].lower() or q in r["name_en"].lower()]
 
-    # Query specific search keyword
-    query_res = await get_metric_ontology(query="CASA")
-    assert query_res.total_found > 0
-    assert any("CASA" in m.name_en or "CASA" in m.metric_id for m in query_res.metrics)
+    db = FakeDB({"FROM metric_definitions": rows})
+    with patch("services.mcp.server.get_engine", return_value=db.engine):
+        res = await get_metric_ontology(sector="BANK")
+        query_res = await get_metric_ontology(query="CASA")
+    assert res.total_found == 2
+    assert "idx:LoansAndAdvances" in [m.metric_id for m in res.metrics]
+    assert query_res.total_found == 1
+    assert query_res.metrics[0].metric_id == "idx:CASA"
+    assert any(p.get("sec") == "BANK" for _sql, p in db.calls)
 
 
 @pytest.mark.asyncio
@@ -180,75 +404,66 @@ async def test_submit_discovered_metric() -> None:
         sample_text="Total produksi listrik neto dari PLTP Wayang Windu dan Salak mencapai 2.450 GWh.",
         synonyms_id=["Produksi Listrik Bersih", "Net Power Generation"],
     )
-
-    res = await submit_discovered_metric(cand)
-    assert res.status in ("PROMOTED", "EXISTING")
+    new_db = FakeDB({"SELECT metric_id, name_en FROM metric_definitions": []})
+    with patch("services.mcp.server.get_engine", return_value=new_db.engine):
+        res = await submit_discovered_metric(cand)
+    assert res.status == "PROMOTED"
     assert res.metric_id == "idx:GeothermalGenerationGWh"
+    assert new_db.inserts("metric_definitions")[0]["id"] == "idx:GeothermalGenerationGWh"
+
+    existing_db = FakeDB({"SELECT metric_id, name_en FROM metric_definitions": [{"metric_id": cand.metric_id, "name_en": cand.name_en}]})
+    with patch("services.mcp.server.get_engine", return_value=existing_db.engine):
+        res2 = await submit_discovered_metric(cand)
+    assert res2.status == "EXISTING"
+    assert not existing_db.inserts("metric_definitions")
+
+
+# ---------------------------------------------------------------------------
+# Validator (pure) on a plantation contract
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
 async def test_segmented_facts_order_and_alias_validation() -> None:
-    """Verify that segmented facts before or after unsegmented facts do not break math equations."""
-    from services.mcp.types import DraftSubmissionPayload, ExtractedFactItem
+    """Segmented facts before or after unsegmented facts do not break math equations; aliases count."""
     from services.mcp.validator import validate_draft_submission
-    from tests.unit._mcp_contract_fixtures import make_test_contract
+    from tests.unit._mcp_contract_fixtures import render_evidence
 
     contract = make_test_contract("CPO", doc_id="doc_1", ticker="LSIP", fiscal_period="2025FY")
     required_cids = {r.concept_id for r in contract.required_facts}
-    assert "idx:MaturePlantedArea" in required_cids
-    assert "idx:FfbProduction" in required_cids
-    assert "idx:CPOProductionVolume" in required_cids
+    assert {"idx:MaturePlantedArea", "idx:FfbProduction", "idx:CPOProductionVolume"} <= required_cids
 
-    # Segmented facts placed BEFORE unsegmented facts
+    def op(cid: str, value: str, label: str, unit: str) -> ExtractedFactItem:
+        return _fact(cid, value, 5, "NOTE", label, unit=unit, period_type="duration_ytd")
+
     facts = [
-        # Segmented revenue first
-        ExtractedFactItem(
-            concept_id="ifrs:Revenue",
-            value_numeric=Decimal("4000000000"),
-            source_page=10,
-            statement="IS",
-            segment={"segment": "CPO", "type": "product"},
-        ),
-        ExtractedFactItem(
-            concept_id="ifrs:Revenue",
-            value_numeric=Decimal("1000000000"),
-            source_page=10,
-            statement="IS",
-            segment={"segment": "PK", "type": "product"},
-        ),
-        # Unsegmented Core Facts
-        ExtractedFactItem(concept_id="ifrs:Assets", value_numeric=Decimal("10000000000"), source_page=1, statement="BS"),
-        ExtractedFactItem(concept_id="ifrs:CurrentAssets", value_numeric=Decimal("4000000000"), source_page=1, statement="BS"),
-        ExtractedFactItem(concept_id="ifrs:NonCurrentAssets", value_numeric=Decimal("6000000000"), source_page=1, statement="BS"),
-        ExtractedFactItem(concept_id="ifrs:Liabilities", value_numeric=Decimal("3000000000"), source_page=2, statement="BS"),
-        ExtractedFactItem(concept_id="ifrs:CurrentLiabilities", value_numeric=Decimal("1000000000"), source_page=2, statement="BS"),
-        ExtractedFactItem(concept_id="ifrs:NonCurrentLiabilities", value_numeric=Decimal("2000000000"), source_page=2, statement="BS"),
-        ExtractedFactItem(concept_id="ifrs:Equity", value_numeric=Decimal("7000000000"), source_page=2, statement="BS"),
-        ExtractedFactItem(concept_id="ifrs:CashAndCashEquivalents", value_numeric=Decimal("2000000000"), source_page=1, statement="BS"),
-        # Total Revenue (5,000,000,000)
-        ExtractedFactItem(concept_id="ifrs:Revenue", value_numeric=Decimal("5000000000"), source_page=3, statement="IS"),
-        ExtractedFactItem(concept_id="ifrs:CostOfSales", value_numeric=Decimal("3000000000"), source_page=3, statement="IS"),
-        ExtractedFactItem(concept_id="ifrs:GrossProfit", value_numeric=Decimal("2000000000"), source_page=3, statement="IS"),
-        ExtractedFactItem(concept_id="ifrs:OperatingProfit", value_numeric=Decimal("1500000000"), source_page=3, statement="IS"),
-        ExtractedFactItem(concept_id="ifrs:ProfitLoss", value_numeric=Decimal("1200000000"), source_page=3, statement="IS"),
-        ExtractedFactItem(concept_id="ifrs:CashFlowsFromUsedInOperatingActivities", value_numeric=Decimal("1800000000"), source_page=4, statement="CF"),
-        # CPO specific facts (testing alias idx:CpoProduction vs idx:CPOProductionVolume)
-        ExtractedFactItem(concept_id="idx:MaturePlantedArea", value_numeric=Decimal("90000"), unit="HECTARES", source_page=5, statement="NOTE"),
-        ExtractedFactItem(concept_id="idx:FfbProduction", value_numeric=Decimal("1000000"), unit="TONNES", source_page=5, statement="NOTE"),
-        ExtractedFactItem(concept_id="idx:CpoProduction", value_numeric=Decimal("250000"), unit="TONNES", source_page=5, statement="NOTE"),
-        ExtractedFactItem(concept_id="idx:OilExtractionRate", value_numeric=Decimal("22.5"), unit="PERCENT", source_page=5, statement="NOTE"),
-        ExtractedFactItem(concept_id="idx:CPOAveragePriceASP", value_numeric=Decimal("12500"), unit="IDR_PER_KG", source_page=5, statement="NOTE"),
-        ExtractedFactItem(concept_id="idx:CPOCashCostPerKg", value_numeric=Decimal("6500"), unit="IDR_PER_KG", source_page=5, statement="NOTE"),
+        _fact("ifrs:Revenue", "4000000000", 10, "NOTE", "CPO", period_type="duration_ytd", segment={"segment": "CPO", "type": "product"}),
+        _fact("ifrs:Revenue", "1000000000", 10, "NOTE", "Inti sawit", period_type="duration_ytd", segment={"segment": "Inti sawit", "type": "product"}),
+        _fact("ifrs:Assets", "10000000000", 1, "BS", "Total aset"),
+        _fact("ifrs:CurrentAssets", "4000000000", 1, "BS", "Total aset lancar"),
+        _fact("ifrs:NonCurrentAssets", "6000000000", 1, "BS", "Total aset tidak lancar"),
+        _fact("ifrs:Liabilities", "3000000000", 2, "BS", "Total liabilitas"),
+        _fact("ifrs:CurrentLiabilities", "1000000000", 2, "BS", "Total liabilitas jangka pendek"),
+        _fact("ifrs:NonCurrentLiabilities", "2000000000", 2, "BS", "Total liabilitas jangka panjang"),
+        _fact("ifrs:Equity", "7000000000", 2, "BS", "Total ekuitas"),
+        _fact("ifrs:CashAndCashEquivalents", "2000000000", 1, "BS", "Kas dan setara kas"),
+        _fact("ifrs:Revenue", "5000000000", 3, "IS", "Pendapatan"),
+        _fact("ifrs:CostOfSales", "3000000000", 3, "IS", "Beban pokok penjualan"),
+        _fact("ifrs:GrossProfit", "2000000000", 3, "IS", "Laba bruto"),
+        _fact("ifrs:OperatingProfit", "1500000000", 3, "IS", "Laba usaha"),
+        _fact("ifrs:ProfitLoss", "1200000000", 3, "IS", "Laba tahun berjalan"),
+        _fact("ifrs:CashFlowsFromUsedInOperatingActivities", "1800000000", 4, "CF", "Kas neto dari aktivitas operasi"),
+        _fact("idx:MaturePlantedArea", "90000", 5, "NOTE", "Tanaman menghasilkan", unit="HECTARES", period_type="instant"),
+        op("idx:FfbProduction", "1000000", "Produksi TBS", "TONNES"),
+        op("idx:CpoProduction", "250000", "Produksi CPO", "TONNES"),
+        op("idx:OilExtractionRate", "22.5", "Rendemen minyak sawit", "PERCENT"),
+        op("idx:CPOAveragePriceASP", "12500", "Harga jual rata-rata CPO", "IDR_PER_KG"),
+        op("idx:CPOCashCostPerKg", "6500", "Biaya kas per kg CPO", "IDR_PER_KG"),
     ]
-
-    payload = DraftSubmissionPayload(
-        doc_id="doc_1",
-        ticker="LSIP",
-        fiscal_period="2025FY",
-        facts=facts,
-    )
-
-    report = validate_draft_submission(payload, contract=contract, sector="CPO")
+    # Revenue segments: CPO 4.000 + Inti sawit 1.000 on the note page, which also prints the total.
+    evidence = render_evidence(facts, extra={10: "Total pendapatan 5.000"})
+    payload = DraftSubmissionPayload(doc_id="doc_1", ticker="LSIP", fiscal_period="2025FY", facts=facts)
+    report = validate_draft_submission(payload, contract=contract, sector="CPO", evidence=evidence, page_count=20)
     assert report.status == "VALID", f"Validation failed with issues: {report.issues}"
     assert report.errors_count == 0
 
@@ -359,135 +574,6 @@ async def test_inspect_document_needs_metadata(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_commit_no_invented_segment() -> None:
-    insert_params = None
-
-    class MockResult:
-        def mappings(self) -> MockResult:
-            return self
-
-        def first(self) -> dict[str, Any] | None:
-            return None
-
-        def fetchall(self) -> list[Any]:
-            return []
-
-        def __iter__(self) -> Any:
-            return iter([])
-
-    async def mock_execute(sql: Any, params: dict[str, Any] | None = None) -> MockResult:
-        nonlocal insert_params
-        if "INSERT INTO financial_facts" in str(sql):
-            insert_params = params
-        return MockResult()
-
-    mock_conn = AsyncMock()
-    mock_conn.execute.side_effect = mock_execute
-    mock_conn.commit = AsyncMock()
-
-    class MockConnectCtx:
-        async def __aenter__(self) -> AsyncMock:
-            return mock_conn
-
-        async def __aexit__(self, *args: Any) -> None:
-            pass
-
-    mock_engine = MagicMock()
-    mock_engine.connect.return_value = MockConnectCtx()
-
-    payload = DraftSubmissionPayload(
-        doc_id="doc_test_1",
-        ticker="LSIP",
-        fiscal_period="2024Q4",
-        facts=[
-            ExtractedFactItem(
-                concept_id="idx:CostOfGoodsSoldComponent",
-                value_numeric=Decimal("123000000"),
-                source_page=15,
-                statement="IS",
-                source_label_original="Beban pupuk",
-                segment=None,
-            )
-        ],
-    )
-    with (
-        patch("services.mcp.server.get_engine", return_value=mock_engine),
-        patch("services.mcp.server.compute_for_document", return_value=MagicMock(computed=0)),
-        patch("services.mcp.server.refresh_profile_task", return_value=None),
-        patch("services.mcp.server.calculate_valuation", return_value={}),
-    ):
-        res = await commit_verified_report(payload.model_dump_json())
-
-    assert res.status == "COMMITTED"
-    assert insert_params is not None
-    assert insert_params["seg"] is None
-
-
-@pytest.mark.asyncio
-async def test_commit_cashflow_statement_and_period_type() -> None:
-    insert_params = None
-
-    class MockResult:
-        def mappings(self) -> MockResult:
-            return self
-
-        def first(self) -> dict[str, Any] | None:
-            return None
-
-        def fetchall(self) -> list[Any]:
-            return [("ifrs:CashFlowsFromUsedInOperatingActivities", "FLOW_PERIOD")]
-
-        def __iter__(self) -> Any:
-            return iter([])
-
-    async def mock_execute(sql: Any, params: dict[str, Any] | None = None) -> MockResult:
-        nonlocal insert_params
-        if "INSERT INTO financial_facts" in str(sql):
-            insert_params = params
-        return MockResult()
-
-    mock_conn = AsyncMock()
-    mock_conn.execute.side_effect = mock_execute
-    mock_conn.commit = AsyncMock()
-
-    class MockConnectCtx:
-        async def __aenter__(self) -> AsyncMock:
-            return mock_conn
-
-        async def __aexit__(self, *args: Any) -> None:
-            pass
-
-    mock_engine = MagicMock()
-    mock_engine.connect.return_value = MockConnectCtx()
-
-    payload = DraftSubmissionPayload(
-        doc_id="doc_test_2",
-        ticker="BMRI",
-        fiscal_period="2024Q4",
-        facts=[
-            ExtractedFactItem(
-                concept_id="ifrs:CashFlowsFromOperatingActivities",
-                value_numeric=Decimal("500000000"),
-                source_page=4,
-                statement="CF",
-            )
-        ],
-    )
-    with (
-        patch("services.mcp.server.get_engine", return_value=mock_engine),
-        patch("services.mcp.server.compute_for_document", return_value=MagicMock(computed=0)),
-        patch("services.mcp.server.refresh_profile_task", return_value=None),
-        patch("services.mcp.server.calculate_valuation", return_value={}),
-    ):
-        res = await commit_verified_report(payload.model_dump_json())
-
-    assert res.status == "COMMITTED"
-    assert insert_params is not None
-    assert insert_params["statement"] == "CF"
-    assert insert_params["period_type"] == "duration_ytd"
-
-
-@pytest.mark.asyncio
 async def test_commit_invalid_fiscal_period_rejects() -> None:
     insert_executed = False
 
@@ -517,71 +603,6 @@ async def test_commit_invalid_fiscal_period_rejects() -> None:
     assert res.status == "ERROR"
     assert res.facts_committed == 0
     assert insert_executed is False
-
-
-@pytest.mark.asyncio
-async def test_commit_persists_bbox() -> None:
-    insert_params = None
-
-    class MockResult:
-        def mappings(self) -> MockResult:
-            return self
-
-        def first(self) -> dict[str, Any] | None:
-            return None
-
-        def fetchall(self) -> list[Any]:
-            return []
-
-        def __iter__(self) -> Any:
-            return iter([])
-
-    async def mock_execute(sql: Any, params: dict[str, Any] | None = None) -> MockResult:
-        nonlocal insert_params
-        if "INSERT INTO financial_facts" in str(sql):
-            insert_params = params
-        return MockResult()
-
-    mock_conn = AsyncMock()
-    mock_conn.execute.side_effect = mock_execute
-    mock_conn.commit = AsyncMock()
-
-    class MockConnectCtx:
-        async def __aenter__(self) -> AsyncMock:
-            return mock_conn
-
-        async def __aexit__(self, *args: Any) -> None:
-            pass
-
-    mock_engine = MagicMock()
-    mock_engine.connect.return_value = MockConnectCtx()
-
-    test_bbox = [10.5, 20.0, 100.2, 50.8]
-    payload = DraftSubmissionPayload(
-        doc_id="doc_test_4",
-        ticker="BMRI",
-        fiscal_period="2024Q4",
-        facts=[
-            ExtractedFactItem(
-                concept_id="ifrs:Assets",
-                value_numeric=Decimal("2000000000000"),
-                source_page=1,
-                statement="BS",
-                bbox=test_bbox,
-            )
-        ],
-    )
-    with (
-        patch("services.mcp.server.get_engine", return_value=mock_engine),
-        patch("services.mcp.server.compute_for_document", return_value=MagicMock(computed=0)),
-        patch("services.mcp.server.refresh_profile_task", return_value=None),
-        patch("services.mcp.server.calculate_valuation", return_value={}),
-    ):
-        res = await commit_verified_report(payload.model_dump_json())
-
-    assert res.status == "COMMITTED"
-    assert insert_params is not None
-    assert insert_params["source_bbox"] == json.dumps(test_bbox)
 
 
 @pytest.mark.asyncio
@@ -714,241 +735,172 @@ async def test_get_routed_pages_unknown_module() -> None:
     assert "BALANCE_SHEET" in err
 
 
+# ---------------------------------------------------------------------------
+# Commit path: what exactly is written
+# ---------------------------------------------------------------------------
+
+
+async def _commit(db: FakeDB, facts: list[ExtractedFactItem], **payload_kw: Any) -> Any:
+    payload = DraftSubmissionPayload(doc_id="doc-test-1", ticker="ASII", fiscal_period="2024Q4", facts=facts, **payload_kw)
+    with _commit_patches(db):
+        return await commit_verified_report(json.dumps(payload.model_dump(mode="json")))
+
+
+@pytest.mark.asyncio
+async def test_commit_no_invented_segment() -> None:
+    fact = _fact("idx:CostOfGoodsSoldComponent", "123000000", 15, "NOTE", "Beban pupuk", period_type="duration_ytd")
+    db = extraction_db({15: ("pdf_text", render_page_text([fact], 15))}, page_count=20)
+    rep = await _commit(db, [fact])
+    assert rep.status == "COMMITTED", rep.message
+    (ins,) = db.inserts("financial_facts")
+    assert ins["seg"] is None
+    assert ins["period_type"] == "duration_ytd"
+    assert any("CONCEPT_NOT_IN_ONTOLOGY" in w for w in rep.warnings)
+
+
+@pytest.mark.asyncio
+async def test_commit_cashflow_statement_and_period_type() -> None:
+    fact = _fact("ifrs:CashFlowsFromOperatingActivities", "500000000", 4, "CF", "Kas neto yang diperoleh dari aktivitas operasi")
+    metric_rows = [
+        {
+            "metric_id": "ifrs:CashFlowsFromUsedInOperatingActivities", "name_id": "Arus Kas Bersih dari Aktivitas Operasi",
+            "name_en": "Cash Flow from Operating Activities", "synonyms_id": ["Arus Kas Operasional"], "synonyms_en": [],
+            "flow_stock_type": "FLOW_PERIOD", "unit": "IDR", "value_type": "MONETARY", "statement_type": "CASH_FLOW",
+        }
+    ]
+    db = extraction_db({4: ("pdf_text", render_page_text([fact], 4))}, metric_rows=metric_rows)
+    rep = await _commit(db, [fact])
+    assert rep.status == "COMMITTED", rep.message
+    (ins,) = db.inserts("financial_facts")
+    assert ins["statement"] == "CF"
+    assert ins["period_type"] == "duration_ytd"
+    assert ins["grounding"] == "text"
+
+
+@pytest.mark.asyncio
+async def test_commit_on_conflict_uses_fact_identity_with_period_type() -> None:
+    fact = _fact("ifrs:Revenue", "80000000000", 2, "IS", "Pendapatan")
+    db = extraction_db({2: ("pdf_text", IS_TEXT)})
+    await _commit(db, [fact])
+    (sql,) = db.sql_of("financial_facts")
+    assert "ON CONFLICT (ticker, fiscal_period, concept_id, period_type, (coalesce(segment, '{}'::jsonb)))" in sql
+
+
+@pytest.mark.asyncio
+async def test_commit_persists_agent_bbox_for_text_fact() -> None:
+    test_bbox = [10.5, 20.0, 100.2, 50.8]
+    fact = _fact("ifrs:Revenue", "80000000000", 2, "IS", "Pendapatan", bbox=test_bbox)
+    db = extraction_db({2: ("pdf_text", IS_TEXT)})
+    rep = await _commit(db, [fact])
+    assert rep.status == "COMMITTED", rep.message
+    assert db.inserts("financial_facts")[0]["source_bbox"] == json.dumps(test_bbox)
+
+
 @pytest.mark.asyncio
 async def test_commit_uses_grounding_params_table_parser_llm_extract_and_ocr() -> None:
-    executed_inserts: list[dict[str, Any]] = []
-
-    class MockResult:
-        def __init__(self, data: list[dict[str, Any]] | None = None) -> None:
-            self.data = data or []
-
-        def mappings(self) -> MockResult:
-            return self
-
-        def first(self) -> dict[str, Any] | None:
-            return self.data[0] if self.data else None
-
-        def all(self) -> list[dict[str, Any]]:
-            return self.data
-
-        def fetchall(self) -> list[Any]:
-            return []
-
-    async def mock_execute(sql: Any, params: dict[str, Any] | None = None) -> MockResult:
-        sql_str = str(sql)
-        res_data: list[dict[str, Any]] = []
-        if "INSERT INTO financial_facts" in sql_str and params is not None:
-            executed_inserts.append(params)
-        elif "SELECT name, sector FROM peer_groups" in sql_str:
-            res_data = [{"name": "PT Astra Tbk", "sector": "GENERIC"}]
-        elif "SELECT doc_type, page_count FROM documents" in sql_str:
-            res_data = [{"doc_type": "FS_ANNUAL", "page_count": 10}]
-        elif "SELECT 1 FROM document_pages" in sql_str:
-            res_data = [{"1": 1}]
-        elif "SELECT page_index, text_source, page_text" in sql_str:
-            res_data = [
-                {"page_index": 1, "text_source": "pdf_text", "page_text": "Total aset 100.000"},
-                {"page_index": 2, "text_source": "pdf_text", "page_text": "Penjualan 80.000"},
-                {"page_index": 3, "text_source": "ocr", "page_text": "buram scan"},
-            ]
-        elif "SELECT page_index, table_index" in sql_str:
-            res_data = [
-                {
-                    "page_index": 1,
-                    "table_index": 0,
-                    "extraction_method": "camelot_lattice",
-                    "confidence": 0.95,
-                    "unit_hint": "jutaan rupiah",
-                    "cells": [
-                        {
-                            "row": 1,
-                            "col": 1,
-                            "text": "100.000",
-                            "value": 100000.0,
-                            "bbox": [10.0, 20.0, 30.0, 40.0],
-                            "confidence": 0.92,
-                        }
-                    ],
-                }
-            ]
-        return MockResult(res_data)
-
-    mock_conn = AsyncMock()
-    mock_conn.execute.side_effect = mock_execute
-    mock_conn.commit = AsyncMock()
-
-    class MockConnectCtx:
-        async def __aenter__(self) -> AsyncMock:
-            return mock_conn
-
-        async def __aexit__(self, *args: Any) -> None:
-            pass
-
-    mock_engine = MagicMock()
-    mock_engine.connect.return_value = MockConnectCtx()
-
-    contract = make_test_contract("GENERIC")
-    for r in contract.required_facts:
-        r.required = False
-        r.importance = "OPTIONAL"
-
+    pages = {
+        1: ("pdf_text", BS_TEXT),
+        2: ("pdf_text", IS_TEXT),
+        3: ("ocr", "LAPORAN LABA RUGI\nburam scan tanpa angka"),
+    }
+    db = extraction_db(pages, BS_TABLE)
     facts = [
-        ExtractedFactItem(
-            concept_id="ifrs:Assets",
-            value_numeric=Decimal("100000000000"),
-            source_page=1,
-            statement="BS",
-            cell_ref=CellRef(table_index=0, row=1, col=1),
-        ),
-        ExtractedFactItem(
-            concept_id="ifrs:Revenue",
-            value_numeric=Decimal("80000000000"),
-            source_page=2,
-            statement="IS",
-        ),
-        ExtractedFactItem(
-            concept_id="ifrs:ProfitLoss",
-            value_numeric=Decimal("10000000000"),
-            source_page=3,
-            statement="IS",
-        ),
+        _fact("ifrs:Assets", "100000000000", 1, "BS", "Total aset", cell_ref=CellRef(table_index=0, row=1, col=1)),
+        _fact("ifrs:Revenue", "80000000000", 2, "IS", "Pendapatan"),
+        _fact("ifrs:ProfitLoss", "10000000000", 3, "IS", "Laba tahun berjalan"),
     ]
+    rep = await _commit(db, facts)
+    assert rep.status == "COMMITTED", rep.message
+    f1, f2, f3 = db.inserts("financial_facts")
 
-    payload = DraftSubmissionPayload(doc_id="doc-test-1", ticker="ASII", fiscal_period="2024Q4", facts=facts)
+    # 1. Cell-grounded: table_parser, min(table 0.95, cell 0.92), the cell's real bbox
+    assert f1["method"] == "table_parser"
+    assert f1["conf"] == 0.92
+    assert f1["source_bbox"] == json.dumps([310.0, 220.0, 360.0, 231.0])
+    assert f1["grounding"] == "cell"
+    assert f1["needs_review"] is False
+    # 2. Text-grounded
+    assert (f2["method"], f2["conf"], f2["grounding"], f2["needs_review"]) == ("llm_extract", 0.75, "text", False)
+    # 3. OCR page, number not confirmed
+    assert (f3["method"], f3["conf"], f3["grounding"], f3["needs_review"]) == ("llm_extract", 0.65, "ocr_unverified", True)
 
-    with (
-        patch("services.mcp.server.get_engine", return_value=mock_engine),
-        patch("services.mcp.server.build_extraction_contract", new_callable=AsyncMock, return_value=contract),
-        patch("services.mcp.server._log_processing_event", new_callable=AsyncMock),
-        patch("services.mcp.server.compute_for_document", new_callable=AsyncMock, return_value=MagicMock(computed=5)),
-        patch("services.mcp.server.refresh_profile_task"),
-        patch("services.mcp.server.calculate_valuation", return_value={}),
-    ):
-        rep = await commit_verified_report(json.dumps(payload.model_dump(mode="json")))
-        assert rep.status == "COMMITTED"
-        assert len(executed_inserts) == 3
 
-        # 1. Cell-grounded fact
-        f1 = executed_inserts[0]
-        assert f1["method"] == "table_parser"
-        assert f1["conf"] == 0.92
-        assert f1["source_bbox"] == json.dumps([10.0, 20.0, 30.0, 40.0])
-        assert f1["needs_review"] is False
-
-        # 2. Text-grounded fact
-        f2 = executed_inserts[1]
-        assert f2["method"] == "llm_extract"
-        assert f2["conf"] == 0.75
-        assert f2["needs_review"] is False
-
-        # 3. OCR fact
-        f3 = executed_inserts[2]
-        assert f3["method"] == "llm_extract"
-        assert f3["conf"] == 0.65
-        assert f3["needs_review"] is True
+@pytest.mark.asyncio
+async def test_commit_min_table_confidence_and_synthetic_bbox_dropped() -> None:
+    table = json.loads(json.dumps(BS_TABLE))
+    table[0]["confidence"] = 0.8
+    table[0]["cells"][3]["bbox"] = [0.0, 15.0, 500.0, 30.0]  # legacy synthesized row box
+    db = extraction_db({1: ("pdf_text", BS_TEXT)}, table)
+    fact = _fact("ifrs:Assets", "100000000000", 1, "BS", "Total aset", cell_ref=CellRef(table_index=0, row=1, col=1))
+    rep = await _commit(db, [fact])
+    assert rep.status == "COMMITTED", rep.message
+    (ins,) = db.inserts("financial_facts")
+    assert ins["conf"] == 0.8
+    assert ins["source_bbox"] is None
 
 
 @pytest.mark.asyncio
 async def test_commit_fails_grounding_rejected_no_insert() -> None:
-    executed_inserts: list[dict[str, Any]] = []
+    db = extraction_db({1: ("pdf_text", BS_TEXT)}, BS_TABLE)
+    bad = _fact("ifrs:Assets", "999999999999", 1, "BS", "Total aset", cell_ref=CellRef(table_index=0, row=1, col=1))
+    rep = await _commit(db, [bad])
+    assert rep.status == "REJECTED_VALIDATION_FAILED"
+    assert rep.facts_committed == 0
+    assert not db.inserts("financial_facts")
 
-    class MockResult:
-        def __init__(self, data: list[dict[str, Any]] | None = None) -> None:
-            self.data = data or []
 
-        def mappings(self) -> MockResult:
-            return self
+@pytest.mark.asyncio
+async def test_commit_prior_year_cell_rejected() -> None:
+    db = extraction_db({1: ("pdf_text", BS_TEXT)}, BS_TABLE)
+    prior = _fact("ifrs:Assets", "90000000000", 1, "BS", "Total aset", cell_ref=CellRef(table_index=0, row=1, col=2))
+    rep = await _commit(db, [prior])
+    assert rep.status == "REJECTED_VALIDATION_FAILED"
+    assert "column" in rep.message
+    assert not db.inserts("financial_facts")
 
-        def first(self) -> dict[str, Any] | None:
-            return self.data[0] if self.data else None
 
-        def all(self) -> list[dict[str, Any]]:
-            return self.data
+@pytest.mark.asyncio
+async def test_commit_without_narratives_stores_none() -> None:
+    """The old auto-chunk fallback (chunking the whole PDF into narratives) is gone."""
+    db = extraction_db({2: ("pdf_text", IS_TEXT)})
+    rep = await _commit(db, [_fact("ifrs:Revenue", "80000000000", 2, "IS", "Pendapatan")])
+    assert rep.status == "COMMITTED", rep.message
+    assert rep.narratives_committed == 0
+    assert not db.inserts("narrative_chunks")
 
-        def fetchall(self) -> list[Any]:
-            return []
 
-        def __iter__(self) -> Any:
-            return iter([])
+@pytest.mark.asyncio
+async def test_commit_narrative_dedupe_counts_only_inserted_rows() -> None:
+    page = "DISKUSI DAN ANALISIS\n" + MDA_SENTENCE + "."
+    db = extraction_db({2: ("pdf_text", IS_TEXT), 3: ("pdf_text", page)})
+    # The unique (source_doc_id, text_hash) index swallowed the insert: RETURNING gives no row.
+    db.routes = {"INSERT INTO narrative_chunks": [], **db.routes}
+    narr = ExtractedNarrativeItem(section="MDA", text_original=MDA_SENTENCE, source_page=3)
+    rep = await _commit(db, [_fact("ifrs:Revenue", "80000000000", 2, "IS", "Pendapatan")], narratives=[narr, narr])
+    assert rep.status == "COMMITTED", rep.message
+    assert len(db.inserts("narrative_chunks")) == 1  # in-payload duplicate skipped before SQL
+    assert "ON CONFLICT (source_doc_id, text_hash) DO NOTHING" in db.sql_of("narrative_chunks")[0]
+    assert rep.narratives_committed == 0
 
-    async def mock_execute(sql: Any, params: dict[str, Any] | None = None) -> MockResult:
-        sql_str = str(sql)
-        res_data: list[dict[str, Any]] = []
-        if "INSERT INTO financial_facts" in sql_str and params is not None:
-            executed_inserts.append(params)
-        elif "SELECT name, sector FROM peer_groups" in sql_str:
-            res_data = [{"name": "PT Astra Tbk", "sector": "GENERIC"}]
-        elif "SELECT doc_type, page_count FROM documents" in sql_str:
-            res_data = [{"doc_type": "FS_ANNUAL", "page_count": 10}]
-        elif "SELECT 1 FROM document_pages" in sql_str:
-            res_data = [{"1": 1}]
-        elif "SELECT page_index, text_source, page_text" in sql_str:
-            res_data = [{"page_index": 1, "text_source": "pdf_text", "page_text": "Total aset 100.000"}]
-        elif "SELECT page_index, table_index" in sql_str:
-            res_data = [
-                {
-                    "page_index": 1,
-                    "table_index": 0,
-                    "extraction_method": "camelot_lattice",
-                    "confidence": 0.95,
-                    "unit_hint": "jutaan rupiah",
-                    "cells": [
-                        {
-                            "row": 1,
-                            "col": 1,
-                            "text": "100.000",
-                            "value": 100000.0,
-                            "bbox": [10.0, 20.0, 30.0, 40.0],
-                            "confidence": 0.92,
-                        }
-                    ],
-                }
-            ]
-        return MockResult(res_data)
 
-    mock_conn = AsyncMock()
-    mock_conn.execute.side_effect = mock_execute
-    mock_conn.commit = AsyncMock()
+@pytest.mark.asyncio
+async def test_submit_cross_issuer_lookup_is_by_hash() -> None:
+    from services.mcp.narrative_checks import narrative_md5
 
-    class MockConnectCtx:
-        async def __aenter__(self) -> AsyncMock:
-            return mock_conn
-
-        async def __aexit__(self, *args: Any) -> None:
-            pass
-
-    mock_engine = MagicMock()
-    mock_engine.connect.return_value = MockConnectCtx()
-
-    contract = make_test_contract("GENERIC")
-    for r in contract.required_facts:
-        r.required = False
-        r.importance = "OPTIONAL"
-
-    # Bad fact with cell value mismatch (fails grounding)
-    bad_facts = [
-        ExtractedFactItem(
-            concept_id="ifrs:Assets",
-            value_numeric=Decimal("999999999999"),
-            source_page=1,
-            statement="BS",
-            cell_ref=CellRef(table_index=0, row=1, col=1),
-        )
-    ]
-    bad_payload = DraftSubmissionPayload(doc_id="doc-test-1", ticker="ASII", fiscal_period="2024Q4", facts=bad_facts)
-
-    with (
-        patch("services.mcp.server.get_engine", return_value=mock_engine),
-        patch("services.mcp.server.build_extraction_contract", new_callable=AsyncMock, return_value=contract),
-        patch("services.mcp.server._log_processing_event", new_callable=AsyncMock),
-        patch("services.mcp.server.compute_for_document", new_callable=AsyncMock, return_value=MagicMock(computed=5)),
-        patch("services.mcp.server.refresh_profile_task"),
-        patch("services.mcp.server.calculate_valuation", return_value={}),
-    ):
-        bad_rep = await commit_verified_report(json.dumps(bad_payload.model_dump(mode="json")))
-        assert bad_rep.status == "REJECTED_VALIDATION_FAILED"
-        assert bad_rep.facts_committed == 0
-        assert len(executed_inserts) == 0
+    page = "DISKUSI DAN ANALISIS\n" + MDA_SENTENCE + "."
+    db = extraction_db({3: ("pdf_text", page)})
+    db.routes["narrative_chunks n ON n.text_hash"] = [{"ord": 1, "ticker": "AALI"}]
+    payload = DraftSubmissionPayload(
+        doc_id="doc-x", ticker="ASII", fiscal_period="2024Q4", facts=[],
+        narratives=[ExtractedNarrativeItem(section="MDA", text_original=MDA_SENTENCE, source_page=3)],
+    )
+    with _commit_patches(db):
+        rep = await submit_draft_extraction(payload.model_dump_json())
+    assert any(i.category == "NARRATIVE_DUPLICATE" and "AALI" in i.feedback_message for i in rep.issues)
+    lookup = next(p for sql, p in db.calls if "n.text_hash" in sql)
+    assert lookup["texts"] == [MDA_SENTENCE]
+    assert "LIMIT" not in next(sql for sql, _p in db.calls if "n.text_hash" in sql)
+    assert narrative_md5(MDA_SENTENCE)  # same normalization as the SQL twin
 
 
 @pytest.mark.asyncio
@@ -1026,10 +978,3 @@ async def test_mcp_usage_logging_in_processing_log() -> None:
     assert c_meta.get("input_tokens") == 15000
     assert c_meta.get("output_tokens") == 900
     assert c_meta.get("pages_read") == 14
-
-
-
-
-
-
-
