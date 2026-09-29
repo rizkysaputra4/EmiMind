@@ -114,7 +114,7 @@ To add a new sector (e.g., `PROPERTY` or `HEALTHCARE`):
 The agent-facing runbook is `../EmiMind-Extraction/AGENTS.md` (read by Claude Code / Codex / Gemini in that workspace). This section is the operator's summary of the same loop; if the two ever disagree, fix both.
 
 ### Core rules
-1. Never read a whole 150+ page PDF: work from `get_routed_pages` output. Tokens are measured server-side from the pages and characters it serves (`document_processing_log` `ROUTED` rows: `chars/4 + 1,600 per page image`), budget ≤ 15 % of `page_count × 2,000`.
+1. Never read a whole 150+ page PDF: work from `get_routed_pages` output. Tokens are measured server-side from the pages and characters it serves (`document_processing_log` `ROUTED` rows: `chars/4 + 1,600 per page image`), budget ≤ max(15 % of `page_count × 2,000`, 50,000 tokens); the floor covers short filings.
 2. `source_page` is always the **1-based physical PDF page index** (`page_index`), never the printed folio (`page_label`). Same for `search_pages_checked`.
 3. Digits come from the table grids `tables[].rows[r][c]` (printed cell text): cite `cell_ref {table_index,row,col}` and scale by the table `unit_hint`. The server resolves the cell's parsed value and bbox from `cell_ref`, so the agent sends no `bbox`. Page images are served only with `include_images=true`, and are for layout only.
 4. Every fact carries an explicit `statement` (`BS`/`IS`/`CF`/`EQ`/`NOTE`) and `period_type` (`instant` / `duration_ytd` / `duration_qtd`); IS and CF facts are never `instant`.

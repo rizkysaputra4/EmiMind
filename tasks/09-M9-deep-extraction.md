@@ -456,7 +456,7 @@ Each task has: **Files**, **Depends on**, **What**, **Target**, **Done when**.
   | Grounding | `extraction_method='table_parser'` or text-grounded, among facts on `pdf_text` pages | 100% |
   | Narrative genuineness | cross-ticker duplicate md5 of `text_original`; boilerplate hits | 0 and 0 |
   | Provenance | facts with NULL `source_page`, or `source_page > documents.page_count` | 0 |
-  | Token efficiency | `input_tokens` from the log vs `page_count × 2000` (whole-book estimate) | ≤ 15% |
+  | Token efficiency | served tokens from the `ROUTED` log (`chars/4 + 1,600` per page image) vs `page_count × 2000` (whole-book estimate) | ≤ max(15%, 50,000 tokens): the floor covers short filings, whose fixed contract needs 20–30 pages (decided 2026-09-29) |
   | Period correctness | lighthouse docs `fiscal_period='2025Q4'`, `period_end='2025-12-31'`, `page_count` = PyMuPDF count | 100% |
 - **Done when:**
   - `uv run python eval/deep_extraction_gate.py --tickers BMRI,LSIP --out eval/reports/m9_gate.json` **exits 0**.

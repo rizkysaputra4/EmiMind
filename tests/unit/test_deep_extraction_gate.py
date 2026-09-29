@@ -111,7 +111,11 @@ FAILURES: list[tuple[str, dict[str, Any], str]] = [
     ("narrative in-doc dup", {"in_doc_duplicates": 1}, "Narratives"),
     ("narratives required but none", {"narrative_count": 0}, "Narratives"),
     ("provenance", {"bad_provenance_count": 1}, "Provenance"),
-    ("tokens over budget", {"routed_tokens": 30_001}, "Token efficiency"),
+    # 100 pages: 15% of 200k = 30k < the 50k floor, so the floor is the budget
+    ("tokens over floor budget", {"routed_tokens": 50_001}, "Token efficiency"),
+    # 600 pages: 15% of 1.2M = 180k > floor
+    ("tokens over 15% budget", {"whole_book_est": 1_200_000, "routed_tokens": 180_001},
+     "Token efficiency"),
     ("tokens missing", {"routed_tokens": None}, "Token efficiency"),
     ("wrong period", {"fiscal_period": "2025Q3"}, "Period correctness"),
     ("wrong period_end", {"period_end": "2024-12-31"}, "Period correctness"),
@@ -276,3 +280,19 @@ def test_main_wires_since_and_aggregate(monkeypatch: pytest.MonkeyPatch) -> None
     m["routed_tokens"] = None
     monkeypatch.setattr(gate, "run_gate", lambda **_kw: ([m], {}))
     assert gate.main(["--tickers", "BMRI"]) == 1
+
+
+@pytest.mark.parametrize(
+    ("whole_book_est", "tokens"),
+    [(200_000, 50_000), (138_000, 31_724), (1_200_000, 180_000)],
+    ids=["at floor", "short filing under floor", "long filing at 15%"],
+)
+def test_token_budget_floor_passes(whole_book_est: int, tokens: int) -> None:
+    m = {**passing_metric(), "whole_book_est": whole_book_est, "routed_tokens": tokens}
+    _ok, results, _summary = evaluate_gate([m], False, "2025Q4")
+    assert "Token efficiency" not in _failed(results)
+
+
+def test_token_budget_is_max_of_ratio_and_floor() -> None:
+    assert gate.token_budget(138_000) == gate.TOKEN_BUDGET_FLOOR
+    assert gate.token_budget(1_074_000) == 161_100

@@ -15,7 +15,8 @@ server-side evidence; nothing the extraction agent typed in is trusted.
 | Grounding          | `financial_facts.grounding` (migration 026)             | 100% cell/text on pdf_text pages|
 | Narratives         | verbatim on cited page, cross-ticker md5, boilerplate   | 100%, 0, 0, 0 in-doc duplicates |
 | Provenance         | source_page in 1..page_count                            | 0 bad                           |
-| Token efficiency   | ROUTED logs: chars/4 + 1,600 per page image             | <= 15% of page_count x 2,000    |
+| Token efficiency   | ROUTED logs: chars/4 + 1,600 per page image             | <= max(15% of page_count x 2,000,|
+|                    |                                                         |        50,000 tokens)           |
 | Period correctness | fiscal_period, period_end, PyMuPDF page count of the PDF| exact; PDF must exist           |
 | Embeddings         | `document_pages.embedding_model` (migration 025)        | every page 'BAAI/bge-m3'        |
 
@@ -54,6 +55,10 @@ EXPECTED_EMBEDDING_MODEL = "BAAI/bge-m3"
 TOKENS_PER_PAGE_IMAGE = 1600
 WHOLE_BOOK_TOKENS_PER_PAGE = 2000
 TOKEN_BUDGET_RATIO = 0.15
+# What a contract needs (3 statements + ~7-10 note modules, 20-30 pages) is fixed, not
+# proportional to book length, so short filings get a floor. It binds below ~167 pages and still
+# fails a whole-book read (a 70-page filing served in full is ~100k tokens).
+TOKEN_BUDGET_FLOOR = 50_000
 KPI_EXTRACTED_MIN = 0.80
 SEGMENTED_MIN = 25
 RECALL_CORE_MIN = 0.90
@@ -157,6 +162,11 @@ def depth_threshold(
         else f"no baseline for {ticker}; {sector_key} min {sector_min}"
     )
     return threshold, basis
+
+
+def token_budget(whole_book_est: int) -> int:
+    """Token budget for one document: 15% of the whole-book estimate, never below the floor."""
+    return max(int(whole_book_est * TOKEN_BUDGET_RATIO), TOKEN_BUDGET_FLOOR)
 
 
 def tokens_from_routed_logs(rows: Sequence[dict[str, Any]]) -> tuple[int | None, str]:
@@ -673,14 +683,17 @@ def evaluate_document(  # noqa: PLR0912
     est = int(m.get("whole_book_est", 0))
     if tokens is None or est <= 0:
         _check(
-            results, m, "Token efficiency", False, "missing", f"<= {TOKEN_BUDGET_RATIO:.0%}",
+            results, m, "Token efficiency", False, "missing",
+            f"<= max({TOKEN_BUDGET_RATIO:.0%}, {TOKEN_BUDGET_FLOOR:,} tokens)",
             str(m.get("token_detail")),
         )  # fmt: skip
     else:
-        ratio = int(tokens) / est
+        budget = token_budget(est)
         _check(
-            results, m, "Token efficiency", ratio <= TOKEN_BUDGET_RATIO, f"{ratio:.1%}",
-            f"<= {TOKEN_BUDGET_RATIO:.0%}", f"{tokens} tokens vs {est}; {m.get('token_detail')}",
+            results, m, "Token efficiency", int(tokens) <= budget,
+            f"{int(tokens):,} tokens ({int(tokens) / est:.1%})",
+            f"<= {budget:,} (max({TOKEN_BUDGET_RATIO:.0%} of {est:,}, {TOKEN_BUDGET_FLOOR:,}))",
+            str(m.get("token_detail")),
         )  # fmt: skip
 
     # 9. Period correctness (PDF must exist)
