@@ -195,3 +195,1424 @@ Saham Beredar Bebas,GENERIC,PSAK_72,idx:FreeFloat,1.00
 Dividen per Saham,GENERIC,PSAK_72,idx:DividendPerShare,1.00
 Dividend Per Share,GENERIC,PSAK_72,idx:DividendPerShare,1.00
 
+Penjualan Bersih,CPO,PSAK_72,ifrs:Revenue,1.00
+Pendapatan Bersih,CPO,PSAK_72,ifrs:Revenue,1.00
+Pendapatan Usaha,CPO,PSAK_72,ifrs:Revenue,1.00
+Revenue,CPO,PSAK_72,ifrs:Revenue,1.00
+Net Sales,CPO,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Penjualan,CPO,PSAK_72,ifrs:CostOfSales,1.00
+Cost of Goods Sold,CPO,PSAK_72,ifrs:CostOfSales,1.00
+COGS,CPO,PSAK_72,ifrs:CostOfSales,0.90
+Laba Kotor,CPO,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,CPO,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,CPO,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,CPO,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,CPO,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,CPO,PSAK_72,ifrs:ProfitLoss,1.00
+Net Profit,CPO,PSAK_72,ifrs:ProfitLoss,1.00
+Aset Biologis,CPO,PSAK_69,ifrs:PropertyPlantAndEquipment,0.75
+Biological Assets,CPO,PSAK_69,ifrs:PropertyPlantAndEquipment,0.75
+Tanaman Menghasilkan,CPO,PSAK_69,ifrs:PropertyPlantAndEquipment,0.75
+Mature Plantations,CPO,PSAK_69,ifrs:PropertyPlantAndEquipment,0.75
+Tanaman Belum Menghasilkan,CPO,PSAK_69,ifrs:PropertyPlantAndEquipment,0.75
+Immature Plantations,CPO,PSAK_69,ifrs:PropertyPlantAndEquipment,0.75
+Luas Areal Tertanam Menghasilkan,CPO,PSAK_69,idx:MaturePlantedArea,1.00
+Mature Planted Area,CPO,PSAK_69,idx:MaturePlantedArea,1.00
+Areal Menghasilkan,CPO,PSAK_69,idx:MaturePlantedArea,0.90
+Nucleus Mature Area (Ha),CPO,PSAK_69,idx:MaturePlantedArea,0.90
+Produksi TBS,CPO,PSAK_69,idx:FfbProduction,1.00
+Produksi Tandan Buah Segar,CPO,PSAK_69,idx:FfbProduction,1.00
+FFB Production,CPO,PSAK_69,idx:FfbProduction,1.00
+FFB Nucleus,CPO,PSAK_69,idx:FfbProduction,0.90
+Fresh Fruit Bunches Production,CPO,PSAK_69,idx:FfbProduction,1.00
+Produksi CPO,CPO,PSAK_69,idx:CPOProductionVolume,1.00
+CPO Production,CPO,PSAK_69,idx:CPOProductionVolume,1.00
+Crude Palm Oil Production,CPO,PSAK_69,idx:CPOProductionVolume,1.00
+Volume Produksi CPO,CPO,PSAK_69,idx:CPOProductionVolume,1.00
+Produksi Inti Sawit,CPO,PSAK_69,idx:PalmKernelProduction,1.00
+Palm Kernel Production,CPO,PSAK_69,idx:PalmKernelProduction,1.00
+PK Production,CPO,PSAK_69,idx:PalmKernelProduction,0.90
+Rendemen CPO,CPO,PSAK_69,idx:OilExtractionRate,1.00
+Oil Extraction Rate,CPO,PSAK_69,idx:OilExtractionRate,1.00
+OER,CPO,PSAK_69,idx:OilExtractionRate,0.90
+Extraction Rate CPO,CPO,PSAK_69,idx:OilExtractionRate,0.90
+Harga Jual Rata-rata CPO,CPO,PSAK_69,idx:CPOAveragePriceASP,1.00
+CPO ASP,CPO,PSAK_69,idx:CPOAveragePriceASP,1.00
+CPO Average Selling Price,CPO,PSAK_69,idx:CPOAveragePriceASP,1.00
+Biaya Kas Produksi CPO,CPO,PSAK_69,idx:CPOCashCostPerKg,1.00
+CPO Cash Cost per Kg,CPO,PSAK_69,idx:CPOCashCostPerKg,1.00
+Cash Cost CPO,CPO,PSAK_69,idx:CPOCashCostPerKg,0.90
+Kewajiban DMO,CPO,PSAK_72,idx:DomesticMarketObligationRatio,0.90
+DMO Ratio,CPO,PSAK_72,idx:DomesticMarketObligationRatio,0.90
+Total Aset,CPO,PSAK_1_REV,ifrs:Assets,1.00
+Total Assets,CPO,PSAK_1_REV,ifrs:Assets,1.00
+Penjualan Bersih,COAL,PSAK_72,ifrs:Revenue,1.00
+Pendapatan Usaha,COAL,PSAK_72,ifrs:Revenue,1.00
+Revenue,COAL,PSAK_72,ifrs:Revenue,1.00
+Net Sales,COAL,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Pendapatan,COAL,PSAK_72,ifrs:CostOfSales,1.00
+Cost of Revenue,COAL,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,COAL,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,COAL,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,COAL,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,COAL,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,COAL,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,COAL,PSAK_72,ifrs:ProfitLoss,1.00
+Net Profit,COAL,PSAK_72,ifrs:ProfitLoss,1.00
+Produksi Batubara,COAL,PSAK_72,idx:CoalProductionVolume,1.00
+Coal Production,COAL,PSAK_72,idx:CoalProductionVolume,1.00
+Coal Production Volume,COAL,PSAK_72,idx:CoalProductionVolume,1.00
+Volume Produksi Batubara,COAL,PSAK_72,idx:CoalProductionVolume,1.00
+Harga Jual Rata-rata Batubara,COAL,PSAK_72,idx:CoalAveragePriceASP,1.00
+Coal ASP,COAL,PSAK_72,idx:CoalAveragePriceASP,1.00
+Coal Average Selling Price,COAL,PSAK_72,idx:CoalAveragePriceASP,1.00
+ASP Batubara,COAL,PSAK_72,idx:CoalAveragePriceASP,0.90
+Biaya Kas per Ton,COAL,PSAK_72,idx:CoalCashCostPerTon,1.00
+Cash Cost per Ton,COAL,PSAK_72,idx:CoalCashCostPerTon,1.00
+Coal Cash Cost,COAL,PSAK_72,idx:CoalCashCostPerTon,0.90
+Nisbah Kupas,COAL,PSAK_72,idx:StripRatio,1.00
+Strip Ratio,COAL,PSAK_72,idx:StripRatio,1.00
+SR,COAL,PSAK_72,idx:StripRatio,0.75
+Pengupasan Tanah,COAL,PSAK_72,idx:OverburdenRemoval,1.00
+Overburden Removal,COAL,PSAK_72,idx:OverburdenRemoval,1.00
+OB Removal (BCM),COAL,PSAK_72,idx:OverburdenRemoval,0.90
+Cadangan Batubara,COAL,PSAK_72,idx:MiningReservesMt,1.00
+Coal Reserves,COAL,PSAK_72,idx:MiningReservesMt,1.00
+Mining Reserves (Mt),COAL,PSAK_72,idx:MiningReservesMt,1.00
+Kewajiban Pasar Domestik,COAL,PSAK_72,idx:DomesticMarketObligationRatio,1.00
+DMO,COAL,PSAK_72,idx:DomesticMarketObligationRatio,0.90
+DMO Ratio,COAL,PSAK_72,idx:DomesticMarketObligationRatio,1.00
+Royalti Pertambangan,COAL,PSAK_72,idx:MiningRoyalties,1.00
+Mining Royalties,COAL,PSAK_72,idx:MiningRoyalties,1.00
+Royalti dan Iuran,COAL,PSAK_72,idx:MiningRoyalties,0.90
+Total Aset,COAL,PSAK_1_REV,ifrs:Assets,1.00
+Kas dan Setara Kas,COAL,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Total Liabilitas,COAL,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,COAL,PSAK_1_REV,ifrs:Equity,1.00
+Penjualan Bersih,NICKEL,PSAK_72,ifrs:Revenue,1.00
+Pendapatan Usaha,NICKEL,PSAK_72,ifrs:Revenue,1.00
+Revenue,NICKEL,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Penjualan,NICKEL,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,NICKEL,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,NICKEL,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,NICKEL,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,NICKEL,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,NICKEL,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,NICKEL,PSAK_72,ifrs:ProfitLoss,1.00
+Net Profit,NICKEL,PSAK_72,ifrs:ProfitLoss,1.00
+Produksi Bijih Nikel,NICKEL,PSAK_72,idx:NickelOreProduction,1.00
+Nickel Ore Production,NICKEL,PSAK_72,idx:NickelOreProduction,1.00
+Volume Produksi Bijih Nikel,NICKEL,PSAK_72,idx:NickelOreProduction,1.00
+Saprolite Production,NICKEL,PSAK_72,idx:NickelOreProduction,0.90
+Limonite Production,NICKEL,PSAK_72,idx:NickelOreProduction,0.90
+Produksi MHP,NICKEL,PSAK_72,idx:MHPProduction,1.00
+MHP Production,NICKEL,PSAK_72,idx:MHPProduction,1.00
+Mixed Hydroxide Precipitate,NICKEL,PSAK_72,idx:MHPProduction,1.00
+Produksi Nickel Matte,NICKEL,PSAK_72,idx:MHPProduction,0.75
+Nickel Matte Production,NICKEL,PSAK_72,idx:MHPProduction,0.75
+Produksi Feronikel,NICKEL,PSAK_72,idx:FerroNickelOutput,1.00
+FerroNickel Output,NICKEL,PSAK_72,idx:FerroNickelOutput,1.00
+FeNi Production,NICKEL,PSAK_72,idx:FerroNickelOutput,0.90
+Ferronickel Production Volume,NICKEL,PSAK_72,idx:FerroNickelOutput,1.00
+Biaya Kas per Ton Nikel,NICKEL,PSAK_72,idx:NickelCashCostPerTon,1.00
+Nickel Cash Cost per Ton,NICKEL,PSAK_72,idx:NickelCashCostPerTon,1.00
+Cash Cost Ni,NICKEL,PSAK_72,idx:NickelCashCostPerTon,0.75
+Utilisasi Smelter,NICKEL,PSAK_72,idx:SmelterUtilizationRate,1.00
+Smelter Utilization Rate,NICKEL,PSAK_72,idx:SmelterUtilizationRate,1.00
+Smelter Utilisation,NICKEL,PSAK_72,idx:SmelterUtilizationRate,0.90
+Harga Jual Rata-rata,NICKEL,PSAK_72,idx:AverageSellingPrice,1.00
+ASP,NICKEL,PSAK_72,idx:AverageSellingPrice,0.90
+Total Aset,NICKEL,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,NICKEL,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,NICKEL,PSAK_1_REV,ifrs:Equity,1.00
+Cadangan Bijih Nikel,NICKEL,PSAK_72,idx:MiningReservesMt,0.90
+Nickel Reserves,NICKEL,PSAK_72,idx:MiningReservesMt,0.90
+Kas dan Setara Kas,NICKEL,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Penjualan Bersih,GOLD_COPPER,PSAK_72,ifrs:Revenue,1.00
+Pendapatan Usaha,GOLD_COPPER,PSAK_72,ifrs:Revenue,1.00
+Revenue,GOLD_COPPER,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Penjualan,GOLD_COPPER,PSAK_72,ifrs:CostOfSales,1.00
+Cost of Sales,GOLD_COPPER,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,GOLD_COPPER,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,GOLD_COPPER,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,GOLD_COPPER,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,GOLD_COPPER,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,GOLD_COPPER,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,GOLD_COPPER,PSAK_72,ifrs:ProfitLoss,1.00
+Produksi Emas,GOLD_COPPER,PSAK_72,idx:GoldProductionOz,1.00
+Gold Production,GOLD_COPPER,PSAK_72,idx:GoldProductionOz,1.00
+Gold Production (Oz),GOLD_COPPER,PSAK_72,idx:GoldProductionOz,1.00
+Volume Produksi Emas,GOLD_COPPER,PSAK_72,idx:GoldProductionOz,1.00
+Ounces of Gold Produced,GOLD_COPPER,PSAK_72,idx:GoldProductionOz,0.90
+Cadangan Emas,GOLD_COPPER,PSAK_72,idx:GoldReservesOz,1.00
+Gold Reserves,GOLD_COPPER,PSAK_72,idx:GoldReservesOz,1.00
+Produksi Katoda Tembaga,GOLD_COPPER,PSAK_72,idx:CopperCathodeOutputMT,1.00
+Copper Cathode Output,GOLD_COPPER,PSAK_72,idx:CopperCathodeOutputMT,1.00
+Copper Cathode Production,GOLD_COPPER,PSAK_72,idx:CopperCathodeOutputMT,1.00
+Kadar Konsentrat Tembaga,GOLD_COPPER,PSAK_72,idx:CopperConcentrateGrade,1.00
+Copper Concentrate Grade,GOLD_COPPER,PSAK_72,idx:CopperConcentrateGrade,1.00
+Cu Grade,GOLD_COPPER,PSAK_72,idx:CopperConcentrateGrade,0.75
+All-in Sustaining Cost,GOLD_COPPER,PSAK_72,idx:AllInSustainingCost,1.00
+AISC,GOLD_COPPER,PSAK_72,idx:AllInSustainingCost,1.00
+Biaya Kas Emas AISC,GOLD_COPPER,PSAK_72,idx:AllInSustainingCost,0.90
+Treatment and Refining Charges,GOLD_COPPER,PSAK_72,idx:SmelterTCRCDeductions,1.00
+TC/RC,GOLD_COPPER,PSAK_72,idx:SmelterTCRCDeductions,1.00
+Smelter TC/RC Deductions,GOLD_COPPER,PSAK_72,idx:SmelterTCRCDeductions,1.00
+Kredit By-product,GOLD_COPPER,PSAK_72,idx:ByProductCreditsUSDOz,0.90
+By-product Credits,GOLD_COPPER,PSAK_72,idx:ByProductCreditsUSDOz,1.00
+Total Aset,GOLD_COPPER,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,GOLD_COPPER,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,GOLD_COPPER,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,GOLD_COPPER,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Cadangan Tembaga,GOLD_COPPER,PSAK_72,idx:MiningReservesMt,0.75
+Pendapatan Usaha,OIL_GAS,PSAK_72,ifrs:Revenue,1.00
+Penjualan Bersih,OIL_GAS,PSAK_72,ifrs:Revenue,1.00
+Revenue,OIL_GAS,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Pendapatan,OIL_GAS,PSAK_72,ifrs:CostOfSales,1.00
+Cost of Revenue,OIL_GAS,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,OIL_GAS,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,OIL_GAS,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,OIL_GAS,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,OIL_GAS,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,OIL_GAS,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,OIL_GAS,PSAK_72,ifrs:ProfitLoss,1.00
+Cadangan Terbukti 2P,OIL_GAS,PSAK_72,idx:ProvedReserves2P,1.00
+2P Reserves,OIL_GAS,PSAK_72,idx:ProvedReserves2P,1.00
+Proved and Probable Reserves,OIL_GAS,PSAK_72,idx:ProvedReserves2P,1.00
+Produksi Minyak,OIL_GAS,PSAK_72,idx:OilProductionBOPD,1.00
+Oil Production,OIL_GAS,PSAK_72,idx:OilProductionBOPD,1.00
+Oil Production (BOPD),OIL_GAS,PSAK_72,idx:OilProductionBOPD,1.00
+Barrel of Oil per Day,OIL_GAS,PSAK_72,idx:OilProductionBOPD,0.90
+Produksi Gas,OIL_GAS,PSAK_72,idx:GasProductionMMSCFD,1.00
+Gas Production,OIL_GAS,PSAK_72,idx:GasProductionMMSCFD,1.00
+Gas Production (MMSCFD),OIL_GAS,PSAK_72,idx:GasProductionMMSCFD,1.00
+Biaya Lifting per BOE,OIL_GAS,PSAK_72,idx:LiftingCostPerBOE,1.00
+Lifting Cost per BOE,OIL_GAS,PSAK_72,idx:LiftingCostPerBOE,1.00
+Lifting Cost,OIL_GAS,PSAK_72,idx:LiftingCostPerBOE,0.90
+Realisasi ICP,OIL_GAS,PSAK_72,idx:RealizedICP,1.00
+Realized ICP,OIL_GAS,PSAK_72,idx:RealizedICP,1.00
+Indonesian Crude Price,OIL_GAS,PSAK_72,idx:RealizedICP,0.90
+Realisasi Harga Gas,OIL_GAS,PSAK_72,idx:RealizedGasASP,1.00
+Realized Gas ASP,OIL_GAS,PSAK_72,idx:RealizedGasASP,1.00
+Gas Selling Price,OIL_GAS,PSAK_72,idx:RealizedGasASP,0.90
+Utilisasi Rig,OIL_GAS,PSAK_72,idx:RigUtilization,1.00
+Rig Utilization,OIL_GAS,PSAK_72,idx:RigUtilization,1.00
+Reserve Replacement Ratio,OIL_GAS,PSAK_72,idx:ReserveReplacementRatio,1.00
+RRR,OIL_GAS,PSAK_72,idx:ReserveReplacementRatio,0.90
+Rasio Penggantian Cadangan,OIL_GAS,PSAK_72,idx:ReserveReplacementRatio,1.00
+Total Aset,OIL_GAS,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,OIL_GAS,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,OIL_GAS,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,OIL_GAS,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Belanja Modal,OIL_GAS,PSAK_72,idx:Capex,1.00
+Capital Expenditure,OIL_GAS,PSAK_72,idx:Capex,1.00
+Capex,OIL_GAS,PSAK_72,idx:Capex,1.00
+Pendapatan Usaha,RENEWABLE_ENERGY,PSAK_72,ifrs:Revenue,1.00
+Penjualan Listrik,RENEWABLE_ENERGY,PSAK_72,ifrs:Revenue,0.90
+Electricity Sales,RENEWABLE_ENERGY,PSAK_72,ifrs:Revenue,0.90
+Revenue,RENEWABLE_ENERGY,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Pendapatan,RENEWABLE_ENERGY,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,RENEWABLE_ENERGY,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,RENEWABLE_ENERGY,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,RENEWABLE_ENERGY,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,RENEWABLE_ENERGY,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,RENEWABLE_ENERGY,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,RENEWABLE_ENERGY,PSAK_72,ifrs:ProfitLoss,1.00
+Kapasitas Terpasang,RENEWABLE_ENERGY,PSAK_72,idx:InstalledCapacityMW,1.00
+Installed Capacity,RENEWABLE_ENERGY,PSAK_72,idx:InstalledCapacityMW,1.00
+Installed Capacity (MW),RENEWABLE_ENERGY,PSAK_72,idx:InstalledCapacityMW,1.00
+Kapasitas Terpasang (MW),RENEWABLE_ENERGY,PSAK_72,idx:InstalledCapacityMW,1.00
+Produksi Listrik Bersih,RENEWABLE_ENERGY,PSAK_72,idx:NetGenerationGWh,1.00
+Net Generation,RENEWABLE_ENERGY,PSAK_72,idx:NetGenerationGWh,1.00
+Net Generation (GWh),RENEWABLE_ENERGY,PSAK_72,idx:NetGenerationGWh,1.00
+Generasi Listrik Bersih,RENEWABLE_ENERGY,PSAK_72,idx:NetGenerationGWh,0.90
+Capacity Factor,RENEWABLE_ENERGY,PSAK_72,idx:CapacityFactor,1.00
+Faktor Kapasitas,RENEWABLE_ENERGY,PSAK_72,idx:CapacityFactor,1.00
+CF,RENEWABLE_ENERGY,PSAK_72,idx:CapacityFactor,0.75
+Tarif Listrik Realisasi,RENEWABLE_ENERGY,PSAK_72,idx:RealizedElectricityTariff,1.00
+Realized Electricity Tariff,RENEWABLE_ENERGY,PSAK_72,idx:RealizedElectricityTariff,1.00
+Tarif PPA,RENEWABLE_ENERGY,PSAK_72,idx:RealizedElectricityTariff,0.90
+PPA Tariff,RENEWABLE_ENERGY,PSAK_72,idx:RealizedElectricityTariff,0.90
+Produksi Uap,RENEWABLE_ENERGY,PSAK_72,idx:SteamProductionTonnes,1.00
+Steam Production,RENEWABLE_ENERGY,PSAK_72,idx:SteamProductionTonnes,1.00
+Steam Production (Tonnes),RENEWABLE_ENERGY,PSAK_72,idx:SteamProductionTonnes,1.00
+Cadangan Panas Bumi Terbukti,RENEWABLE_ENERGY,PSAK_72,idx:ProvenGeothermalReservesMWe,1.00
+Proven Geothermal Reserves,RENEWABLE_ENERGY,PSAK_72,idx:ProvenGeothermalReservesMWe,1.00
+Proven Geothermal Reserves (MWe),RENEWABLE_ENERGY,PSAK_72,idx:ProvenGeothermalReservesMWe,1.00
+Total Aset,RENEWABLE_ENERGY,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,RENEWABLE_ENERGY,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,RENEWABLE_ENERGY,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,RENEWABLE_ENERGY,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Belanja Modal,RENEWABLE_ENERGY,PSAK_72,idx:Capex,1.00
+Capex,RENEWABLE_ENERGY,PSAK_72,idx:Capex,1.00
+Pendapatan Usaha,PETROCHEMICAL,PSAK_72,ifrs:Revenue,1.00
+Penjualan Bersih,PETROCHEMICAL,PSAK_72,ifrs:Revenue,1.00
+Revenue,PETROCHEMICAL,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Penjualan,PETROCHEMICAL,PSAK_72,ifrs:CostOfSales,1.00
+Cost of Goods Sold,PETROCHEMICAL,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,PETROCHEMICAL,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,PETROCHEMICAL,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,PETROCHEMICAL,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,PETROCHEMICAL,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,PETROCHEMICAL,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,PETROCHEMICAL,PSAK_72,ifrs:ProfitLoss,1.00
+Utilisasi Naphtha Cracker,PETROCHEMICAL,PSAK_72,idx:NaphthaCrackerUtilization,1.00
+Naphtha Cracker Utilization,PETROCHEMICAL,PSAK_72,idx:NaphthaCrackerUtilization,1.00
+Cracker Utilization Rate,PETROCHEMICAL,PSAK_72,idx:NaphthaCrackerUtilization,0.90
+Produksi Poliolefin,PETROCHEMICAL,PSAK_72,idx:PolyolefinProductionMT,1.00
+Polyolefin Production,PETROCHEMICAL,PSAK_72,idx:PolyolefinProductionMT,1.00
+Polyethylene Production,PETROCHEMICAL,PSAK_72,idx:PolyolefinProductionMT,0.90
+Polypropylene Production,PETROCHEMICAL,PSAK_72,idx:PolyolefinProductionMT,0.90
+Produksi PE PP,PETROCHEMICAL,PSAK_72,idx:PolyolefinProductionMT,0.75
+Spread Polimer Naphtha,PETROCHEMICAL,PSAK_72,idx:PolymerNaphthaSpread,1.00
+Polymer-Naphtha Spread,PETROCHEMICAL,PSAK_72,idx:PolymerNaphthaSpread,1.00
+PE-Naphtha Spread,PETROCHEMICAL,PSAK_72,idx:PolymerNaphthaSpread,0.90
+Produksi Amonia,PETROCHEMICAL,PSAK_72,idx:AmmoniaProductionMT,1.00
+Ammonia Production,PETROCHEMICAL,PSAK_72,idx:AmmoniaProductionMT,1.00
+Produksi Urea,PETROCHEMICAL,PSAK_72,idx:UreaProductionMT,1.00
+Urea Production,PETROCHEMICAL,PSAK_72,idx:UreaProductionMT,1.00
+Plant Turnaround,PETROCHEMICAL,PSAK_72,idx:PlantTurnaroundEvent,1.00
+Turnaround Maintenance,PETROCHEMICAL,PSAK_72,idx:PlantTurnaroundEvent,0.90
+Kapasitas Pabrik per Produk,PETROCHEMICAL,PSAK_72,idx:PlantCapacityByProduct,1.00
+Plant Capacity by Product,PETROCHEMICAL,PSAK_72,idx:PlantCapacityByProduct,1.00
+Utilisasi Kapasitas,PETROCHEMICAL,PSAK_72,idx:CapacityUtilizationChem,1.00
+Capacity Utilization,PETROCHEMICAL,PSAK_72,idx:CapacityUtilizationChem,1.00
+Rasio Biaya Feedstock,PETROCHEMICAL,PSAK_72,idx:FeedstockCostRatio,1.00
+Feedstock Cost Ratio,PETROCHEMICAL,PSAK_72,idx:FeedstockCostRatio,1.00
+ASP Kimia per Ton,PETROCHEMICAL,PSAK_72,idx:AspChemicalPerTon,0.90
+Chemical ASP per Ton,PETROCHEMICAL,PSAK_72,idx:AspChemicalPerTon,1.00
+Total Aset,PETROCHEMICAL,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,PETROCHEMICAL,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,PETROCHEMICAL,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,PETROCHEMICAL,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Pendapatan Usaha,PULP_PAPER,PSAK_72,ifrs:Revenue,1.00
+Penjualan Bersih,PULP_PAPER,PSAK_72,ifrs:Revenue,1.00
+Revenue,PULP_PAPER,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Penjualan,PULP_PAPER,PSAK_72,ifrs:CostOfSales,1.00
+Cost of Goods Sold,PULP_PAPER,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,PULP_PAPER,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,PULP_PAPER,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,PULP_PAPER,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,PULP_PAPER,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,PULP_PAPER,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,PULP_PAPER,PSAK_72,ifrs:ProfitLoss,1.00
+Kapasitas Produksi Pulp,PULP_PAPER,PSAK_72,idx:PulpProductionCapacityMT,1.00
+Pulp Production Capacity,PULP_PAPER,PSAK_72,idx:PulpProductionCapacityMT,1.00
+Pulp Capacity (MT),PULP_PAPER,PSAK_72,idx:PulpProductionCapacityMT,1.00
+Volume Kertas dan Kemasan,PULP_PAPER,PSAK_72,idx:PaperPackagingVolumeMT,1.00
+Paper Packaging Volume,PULP_PAPER,PSAK_72,idx:PaperPackagingVolumeMT,1.00
+Paper and Packaging Volume,PULP_PAPER,PSAK_72,idx:PaperPackagingVolumeMT,1.00
+Produksi Kertas,PULP_PAPER,PSAK_72,idx:PaperPackagingVolumeMT,0.90
+Harga Ekspor Pulp,PULP_PAPER,PSAK_72,idx:PulpExportASPUSDMT,1.00
+Pulp Export ASP,PULP_PAPER,PSAK_72,idx:PulpExportASPUSDMT,1.00
+BHKP Price,PULP_PAPER,PSAK_72,idx:PulpExportASPUSDMT,0.75
+Swasembada Serat Kayu,PULP_PAPER,PSAK_72,idx:WoodFiberSelfSufficiency,1.00
+Wood Fiber Self-Sufficiency,PULP_PAPER,PSAK_72,idx:WoodFiberSelfSufficiency,1.00
+Fiber Self Sufficiency,PULP_PAPER,PSAK_72,idx:WoodFiberSelfSufficiency,0.90
+Biaya Kas Pulp,PULP_PAPER,PSAK_72,idx:PulpCashCostUSDMT,1.00
+Pulp Cash Cost,PULP_PAPER,PSAK_72,idx:PulpCashCostUSDMT,1.00
+Cash Cost per MT Pulp,PULP_PAPER,PSAK_72,idx:PulpCashCostUSDMT,0.90
+Aset Biologis Tanaman Hutan,PULP_PAPER,PSAK_69,ifrs:PropertyPlantAndEquipment,0.75
+Forest Plantation Assets,PULP_PAPER,PSAK_69,ifrs:PropertyPlantAndEquipment,0.75
+Total Aset,PULP_PAPER,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,PULP_PAPER,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,PULP_PAPER,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,PULP_PAPER,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Belanja Modal,PULP_PAPER,PSAK_72,idx:Capex,1.00
+Capex,PULP_PAPER,PSAK_72,idx:Capex,1.00
+Pendapatan Bersih,BASIC_MATERIALS,PSAK_72,ifrs:Revenue,1.00
+Penjualan Bersih,BASIC_MATERIALS,PSAK_72,ifrs:Revenue,1.00
+Pendapatan Usaha,BASIC_MATERIALS,PSAK_72,ifrs:Revenue,1.00
+Revenue,BASIC_MATERIALS,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Pendapatan,BASIC_MATERIALS,PSAK_72,ifrs:CostOfSales,1.00
+Cost of Revenue,BASIC_MATERIALS,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,BASIC_MATERIALS,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,BASIC_MATERIALS,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,BASIC_MATERIALS,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,BASIC_MATERIALS,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,BASIC_MATERIALS,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,BASIC_MATERIALS,PSAK_72,ifrs:ProfitLoss,1.00
+Volume Penjualan Semen,BASIC_MATERIALS,PSAK_72,idx:VolumePriceMixDecomp,0.75
+Cement Sales Volume,BASIC_MATERIALS,PSAK_72,idx:VolumePriceMixDecomp,0.75
+Volume Produksi Klinker,BASIC_MATERIALS,PSAK_72,idx:VolumePriceMixDecomp,0.75
+Clinker Production Volume,BASIC_MATERIALS,PSAK_72,idx:VolumePriceMixDecomp,0.75
+Bulk Cement Mix,BASIC_MATERIALS,PSAK_72,idx:VolumePriceMixDecomp,0.75
+Bagged Cement Mix,BASIC_MATERIALS,PSAK_72,idx:VolumePriceMixDecomp,0.75
+ASP Semen,BASIC_MATERIALS,PSAK_72,idx:AverageSellingPrice,0.90
+Cement ASP,BASIC_MATERIALS,PSAK_72,idx:AverageSellingPrice,0.90
+Harga Jual Rata-rata Semen,BASIC_MATERIALS,PSAK_72,idx:AverageSellingPrice,1.00
+Total Aset,BASIC_MATERIALS,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,BASIC_MATERIALS,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,BASIC_MATERIALS,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,BASIC_MATERIALS,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Aset Tetap,BASIC_MATERIALS,PSAK_16,ifrs:PropertyPlantAndEquipment,1.00
+Property Plant and Equipment,BASIC_MATERIALS,PSAK_16,ifrs:PropertyPlantAndEquipment,1.00
+Belanja Modal,BASIC_MATERIALS,PSAK_72,idx:Capex,1.00
+Capex,BASIC_MATERIALS,PSAK_72,idx:Capex,1.00
+Persediaan,BASIC_MATERIALS,PSAK_1_REV,ifrs:Inventories,1.00
+Inventories,BASIC_MATERIALS,PSAK_1_REV,ifrs:Inventories,1.00
+Pinjaman Jangka Panjang,BASIC_MATERIALS,PSAK_1_REV,ifrs:LongTermBorrowings,1.00
+Pinjaman Jangka Pendek,BASIC_MATERIALS,PSAK_1_REV,ifrs:ShortTermBorrowings,1.00
+Utang Bank,BASIC_MATERIALS,PSAK_1_REV,idx:BankLoans,1.00
+Total Utang,BASIC_MATERIALS,PSAK_1_REV,idx:TotalDebt,1.00
+Total Debt,BASIC_MATERIALS,PSAK_1_REV,idx:TotalDebt,1.00
+Pendapatan Usaha,TELCO,PSAK_72,ifrs:Revenue,1.00
+Pendapatan,TELCO,PSAK_72,ifrs:Revenue,1.00
+Revenue,TELCO,PSAK_72,ifrs:Revenue,1.00
+Operating Revenue,TELCO,PSAK_72,ifrs:Revenue,1.00
+Beban Operasi,TELCO,PSAK_72,idx:OperatingExpenses,1.00
+Operating Expenses,TELCO,PSAK_72,idx:OperatingExpenses,1.00
+Laba Usaha,TELCO,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,TELCO,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,TELCO,PSAK_72,idx:EBITDA,1.00
+EBITDA Margin,TELCO,PSAK_72,idx:EBITDA,0.75
+Laba Bersih,TELCO,PSAK_72,ifrs:ProfitLoss,1.00
+Net Profit,TELCO,PSAK_72,ifrs:ProfitLoss,1.00
+Jumlah Pelanggan Seluler,TELCO,PSAK_72,idx:MobileSubscribers,1.00
+Mobile Subscribers,TELCO,PSAK_72,idx:MobileSubscribers,1.00
+Total Subscribers,TELCO,PSAK_72,idx:MobileSubscribers,0.90
+Pelanggan Seluler,TELCO,PSAK_72,idx:MobileSubscribers,1.00
+ARPU,TELCO,PSAK_72,idx:BlendedARPU,1.00
+Blended ARPU,TELCO,PSAK_72,idx:BlendedARPU,1.00
+Average Revenue Per User,TELCO,PSAK_72,idx:BlendedARPU,1.00
+ARPU Blended,TELCO,PSAK_72,idx:BlendedARPU,0.90
+Trafik Data,TELCO,PSAK_72,idx:DataTrafficPetabytes,1.00
+Data Traffic,TELCO,PSAK_72,idx:DataTrafficPetabytes,1.00
+Data Traffic (PB),TELCO,PSAK_72,idx:DataTrafficPetabytes,1.00
+Data Payload,TELCO,PSAK_72,idx:DataTrafficPetabytes,0.90
+Total Aset,TELCO,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,TELCO,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,TELCO,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,TELCO,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Belanja Modal,TELCO,PSAK_72,idx:Capex,1.00
+Capex,TELCO,PSAK_72,idx:Capex,1.00
+Capital Expenditure,TELCO,PSAK_72,idx:Capex,1.00
+Free Cash Flow,TELCO,PSAK_72,idx:FreeCashFlow,1.00
+Arus Kas Bebas,TELCO,PSAK_72,idx:FreeCashFlow,1.00
+Beban Penyusutan dan Amortisasi,TELCO,PSAK_72,ifrs:DepreciationAndAmortisationExpense,1.00
+Depreciation and Amortisation,TELCO,PSAK_72,ifrs:DepreciationAndAmortisationExpense,1.00
+Pendapatan Data,TELCO,PSAK_72,ifrs:Revenue,0.75
+Data Revenue,TELCO,PSAK_72,ifrs:Revenue,0.75
+Pendapatan Usaha,TOWER,PSAK_72,ifrs:Revenue,1.00
+Pendapatan Sewa Menara,TOWER,PSAK_72,ifrs:Revenue,0.90
+Tower Leasing Revenue,TOWER,PSAK_72,ifrs:Revenue,0.90
+Revenue,TOWER,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Pendapatan,TOWER,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,TOWER,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,TOWER,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,TOWER,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,TOWER,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,TOWER,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,TOWER,PSAK_72,ifrs:ProfitLoss,1.00
+Jumlah Menara,TOWER,PSAK_72,idx:TowerCount,1.00
+Tower Count,TOWER,PSAK_72,idx:TowerCount,1.00
+Total Towers,TOWER,PSAK_72,idx:TowerCount,1.00
+Portofolio Menara,TOWER,PSAK_72,idx:TowerCount,0.90
+Jumlah Penyewa,TOWER,PSAK_72,idx:TenancyRatio,0.75
+Tenants,TOWER,PSAK_72,idx:TenancyRatio,0.75
+Rasio Kolokasi,TOWER,PSAK_72,idx:TenancyRatio,1.00
+Tenancy Ratio,TOWER,PSAK_72,idx:TenancyRatio,1.00
+Colocation Ratio,TOWER,PSAK_72,idx:TenancyRatio,1.00
+Total Aset,TOWER,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,TOWER,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,TOWER,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,TOWER,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Belanja Modal,TOWER,PSAK_72,idx:Capex,1.00
+Capex,TOWER,PSAK_72,idx:Capex,1.00
+Total Utang,TOWER,PSAK_1_REV,idx:TotalDebt,1.00
+Total Debt,TOWER,PSAK_1_REV,idx:TotalDebt,1.00
+Pinjaman Jangka Panjang,TOWER,PSAK_1_REV,ifrs:LongTermBorrowings,1.00
+Beban Bunga,TOWER,PSAK_72,ifrs:FinanceCosts,1.00
+Finance Costs,TOWER,PSAK_72,ifrs:FinanceCosts,1.00
+Beban Penyusutan,TOWER,PSAK_72,ifrs:DepreciationAndAmortisationExpense,1.00
+Depreciation and Amortisation,TOWER,PSAK_72,ifrs:DepreciationAndAmortisationExpense,1.00
+MSA Tenure,TOWER,PSAK_72,idx:TenancyRatio,0.75
+Master Service Agreement,TOWER,PSAK_72,idx:TenancyRatio,0.75
+Pendapatan Bersih,AUTOMOTIVE,PSAK_72,ifrs:Revenue,1.00
+Pendapatan Usaha,AUTOMOTIVE,PSAK_72,ifrs:Revenue,1.00
+Penjualan Bersih,AUTOMOTIVE,PSAK_72,ifrs:Revenue,1.00
+Revenue,AUTOMOTIVE,PSAK_72,ifrs:Revenue,1.00
+Net Revenue,AUTOMOTIVE,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Penjualan,AUTOMOTIVE,PSAK_72,ifrs:CostOfSales,1.00
+Cost of Goods Sold,AUTOMOTIVE,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,AUTOMOTIVE,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,AUTOMOTIVE,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,AUTOMOTIVE,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,AUTOMOTIVE,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,AUTOMOTIVE,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,AUTOMOTIVE,PSAK_72,ifrs:ProfitLoss,1.00
+Penjualan Wholesale Mobil,AUTOMOTIVE,PSAK_72,idx:CarWholesaleUnits,1.00
+Car Wholesale Units,AUTOMOTIVE,PSAK_72,idx:CarWholesaleUnits,1.00
+Wholesales Mobil,AUTOMOTIVE,PSAK_72,idx:CarWholesaleUnits,0.90
+Penjualan Retail Mobil,AUTOMOTIVE,PSAK_72,idx:CarRetailUnits,1.00
+Car Retail Units,AUTOMOTIVE,PSAK_72,idx:CarRetailUnits,1.00
+Retail Sales Mobil,AUTOMOTIVE,PSAK_72,idx:CarRetailUnits,0.90
+Penjualan Sepeda Motor,AUTOMOTIVE,PSAK_72,idx:MotorcycleUnitSales,1.00
+Motorcycle Unit Sales,AUTOMOTIVE,PSAK_72,idx:MotorcycleUnitSales,1.00
+Motorcycle Sales,AUTOMOTIVE,PSAK_72,idx:MotorcycleUnitSales,0.90
+Volume Sepeda Motor,AUTOMOTIVE,PSAK_72,idx:MotorcycleUnitSales,0.90
+Pangsa Pasar Gaikindo,AUTOMOTIVE,PSAK_72,idx:MarketShareGaikindo,1.00
+Market Share GAIKINDO,AUTOMOTIVE,PSAK_72,idx:MarketShareGaikindo,1.00
+Gaikindo Market Share,AUTOMOTIVE,PSAK_72,idx:MarketShareGaikindo,1.00
+Volume Ekspor Kendaraan,AUTOMOTIVE,PSAK_72,idx:ExportVolumeUnits,1.00
+Export Volume Units,AUTOMOTIVE,PSAK_72,idx:ExportVolumeUnits,1.00
+CBU Export,AUTOMOTIVE,PSAK_72,idx:ExportVolumeUnits,0.75
+Model Mix EV,AUTOMOTIVE,PSAK_72,idx:EVModelMixShare,1.00
+EV Model Mix Share,AUTOMOTIVE,PSAK_72,idx:EVModelMixShare,1.00
+Kontribusi Komponen per Kendaraan,AUTOMOTIVE,PSAK_72,idx:ComponentContentPerVehicle,1.00
+Component Content per Vehicle,AUTOMOTIVE,PSAK_72,idx:ComponentContentPerVehicle,1.00
+Total Aset,AUTOMOTIVE,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,AUTOMOTIVE,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,AUTOMOTIVE,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,AUTOMOTIVE,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Pendapatan Usaha,CONSUMER_STAPLES,PSAK_72,ifrs:Revenue,1.00
+Penjualan Bersih,CONSUMER_STAPLES,PSAK_72,ifrs:Revenue,1.00
+Pendapatan Bersih,CONSUMER_STAPLES,PSAK_72,ifrs:Revenue,1.00
+Revenue,CONSUMER_STAPLES,PSAK_72,ifrs:Revenue,1.00
+Net Sales,CONSUMER_STAPLES,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Penjualan,CONSUMER_STAPLES,PSAK_72,ifrs:CostOfSales,1.00
+Cost of Goods Sold,CONSUMER_STAPLES,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,CONSUMER_STAPLES,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,CONSUMER_STAPLES,PSAK_72,ifrs:GrossProfit,1.00
+Beban Penjualan,CONSUMER_STAPLES,PSAK_72,idx:SellingAndMarketingExpense,1.00
+Selling Expenses,CONSUMER_STAPLES,PSAK_72,idx:SellingAndMarketingExpense,1.00
+Laba Usaha,CONSUMER_STAPLES,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,CONSUMER_STAPLES,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,CONSUMER_STAPLES,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,CONSUMER_STAPLES,PSAK_72,ifrs:ProfitLoss,1.00
+Volume Produk Bermerek,CONSUMER_STAPLES,PSAK_72,idx:BrandedFoodVolumeMT,1.00
+Branded Food Volume,CONSUMER_STAPLES,PSAK_72,idx:BrandedFoodVolumeMT,1.00
+Volume Penjualan Kategori,CONSUMER_STAPLES,PSAK_72,idx:BrandedFoodVolumeMT,0.75
+Dekomposisi Volume Harga Mix,CONSUMER_STAPLES,PSAK_72,idx:VolumePriceMixDecomp,1.00
+Volume Price Mix,CONSUMER_STAPLES,PSAK_72,idx:VolumePriceMixDecomp,1.00
+Volume Price Mix Decomposition,CONSUMER_STAPLES,PSAK_72,idx:VolumePriceMixDecomp,1.00
+Modern Trade Channel,CONSUMER_STAPLES,PSAK_72,idx:DistributionChannelMix,0.90
+General Trade Channel,CONSUMER_STAPLES,PSAK_72,idx:DistributionChannelMix,0.90
+Kanal Distribusi MT GT,CONSUMER_STAPLES,PSAK_72,idx:DistributionChannelMix,0.90
+Bauran Kanal Distribusi,CONSUMER_STAPLES,PSAK_72,idx:DistributionChannelMix,0.90
+Distribution Channel Mix,CONSUMER_STAPLES,PSAK_72,idx:DistributionChannelMix,1.00
+Cukai Rokok,CONSUMER_STAPLES,PSAK_72,idx:GovernmentProjectMix,0.50
+Tobacco Excise,CONSUMER_STAPLES,PSAK_72,idx:GovernmentProjectMix,0.50
+Eksposur Bahan Baku Kedelai Jagung,CONSUMER_STAPLES,PSAK_72,idx:RawMaterialExposureSoyCorn,1.00
+Raw Material Exposure Soy Corn,CONSUMER_STAPLES,PSAK_72,idx:RawMaterialExposureSoyCorn,1.00
+Soy Corn Exposure,CONSUMER_STAPLES,PSAK_72,idx:RawMaterialExposureSoyCorn,0.75
+Total Aset,CONSUMER_STAPLES,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,CONSUMER_STAPLES,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,CONSUMER_STAPLES,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,CONSUMER_STAPLES,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Persediaan,CONSUMER_STAPLES,PSAK_1_REV,ifrs:Inventories,1.00
+Inventories,CONSUMER_STAPLES,PSAK_1_REV,ifrs:Inventories,1.00
+Piutang Usaha,CONSUMER_STAPLES,PSAK_1_REV,ifrs:TradeAndOtherReceivables,1.00
+Trade Receivables,CONSUMER_STAPLES,PSAK_1_REV,ifrs:TradeAndOtherReceivables,1.00
+Pendapatan Usaha,POULTRY,PSAK_72,ifrs:Revenue,1.00
+Penjualan Bersih,POULTRY,PSAK_72,ifrs:Revenue,1.00
+Revenue,POULTRY,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Penjualan,POULTRY,PSAK_72,ifrs:CostOfSales,1.00
+Cost of Goods Sold,POULTRY,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,POULTRY,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,POULTRY,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,POULTRY,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,POULTRY,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,POULTRY,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,POULTRY,PSAK_72,ifrs:ProfitLoss,1.00
+Volume Penjualan Pakan Ternak,POULTRY,PSAK_72,idx:FeedMillSalesVolumeMT,1.00
+Feed Mill Sales Volume,POULTRY,PSAK_72,idx:FeedMillSalesVolumeMT,1.00
+Feed Sales Volume,POULTRY,PSAK_72,idx:FeedMillSalesVolumeMT,0.90
+Volume Pakan,POULTRY,PSAK_72,idx:FeedMillSalesVolumeMT,0.90
+Volume DOC,POULTRY,PSAK_72,idx:DayOldChickVolume,1.00
+Day Old Chick Volume,POULTRY,PSAK_72,idx:DayOldChickVolume,1.00
+DOC Volume,POULTRY,PSAK_72,idx:DayOldChickVolume,1.00
+Volume Anak Ayam Umur Sehari,POULTRY,PSAK_72,idx:DayOldChickVolume,0.90
+Harga DOC Farmgate,POULTRY,PSAK_72,idx:DOCFarmgatePrice,1.00
+DOC Farmgate Price,POULTRY,PSAK_72,idx:DOCFarmgatePrice,1.00
+Harga Live Bird,POULTRY,PSAK_72,idx:LiveBirdPriceIDR,1.00
+Live Bird Price,POULTRY,PSAK_72,idx:LiveBirdPriceIDR,1.00
+Harga Ayam Hidup,POULTRY,PSAK_72,idx:LiveBirdPriceIDR,1.00
+Broiler Price,POULTRY,PSAK_72,idx:LiveBirdPriceIDR,0.90
+Eksposur Kedelai Jagung,POULTRY,PSAK_72,idx:RawMaterialExposureSoyCorn,1.00
+Raw Material Exposure Soy Corn,POULTRY,PSAK_72,idx:RawMaterialExposureSoyCorn,1.00
+Total Aset,POULTRY,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,POULTRY,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,POULTRY,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,POULTRY,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Persediaan,POULTRY,PSAK_1_REV,ifrs:Inventories,1.00
+Inventories,POULTRY,PSAK_1_REV,ifrs:Inventories,1.00
+Pendapatan Usaha,RETAIL,PSAK_72,ifrs:Revenue,1.00
+Penjualan Bersih,RETAIL,PSAK_72,ifrs:Revenue,1.00
+Revenue,RETAIL,PSAK_72,ifrs:Revenue,1.00
+Net Sales,RETAIL,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Penjualan,RETAIL,PSAK_72,ifrs:CostOfSales,1.00
+Cost of Goods Sold,RETAIL,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,RETAIL,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,RETAIL,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,RETAIL,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,RETAIL,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,RETAIL,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,RETAIL,PSAK_72,ifrs:ProfitLoss,1.00
+Pertumbuhan Penjualan Toko Sama,RETAIL,PSAK_72,idx:SameStoreSalesGrowth,1.00
+Same Store Sales Growth,RETAIL,PSAK_72,idx:SameStoreSalesGrowth,1.00
+SSSG,RETAIL,PSAK_72,idx:SameStoreSalesGrowth,1.00
+Penjualan per Meter Persegi,RETAIL,PSAK_72,idx:SalesPerSquareMeter,1.00
+Sales per Square Meter,RETAIL,PSAK_72,idx:SalesPerSquareMeter,1.00
+Sales per sqm,RETAIL,PSAK_72,idx:SalesPerSquareMeter,0.90
+Jumlah Toko,RETAIL,PSAK_72,idx:TotalStoreCount,1.00
+Total Store Count,RETAIL,PSAK_72,idx:TotalStoreCount,1.00
+Store Count,RETAIL,PSAK_72,idx:TotalStoreCount,1.00
+Total Gerai,RETAIL,PSAK_72,idx:TotalStoreCount,1.00
+Pembukaan Toko Baru,RETAIL,PSAK_72,idx:NetNewStoreOpenings,1.00
+Net New Store Openings,RETAIL,PSAK_72,idx:NetNewStoreOpenings,1.00
+Store Additions,RETAIL,PSAK_72,idx:NetNewStoreOpenings,0.90
+Hari Persediaan,RETAIL,PSAK_72,idx:InventoryDays,1.00
+Inventory Days,RETAIL,PSAK_72,idx:InventoryDays,1.00
+Days of Inventory,RETAIL,PSAK_72,idx:InventoryDays,1.00
+Share Private Label,RETAIL,PSAK_72,idx:PrivateLabelShare,1.00
+Private Label Share,RETAIL,PSAK_72,idx:PrivateLabelShare,1.00
+Ukuran Tiket Rata-rata,RETAIL,PSAK_72,idx:AverageTicketSize,1.00
+Average Ticket Size,RETAIL,PSAK_72,idx:AverageTicketSize,1.00
+Ticket Size,RETAIL,PSAK_72,idx:AverageTicketSize,0.90
+Total Aset,RETAIL,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,RETAIL,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,RETAIL,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,RETAIL,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Persediaan,RETAIL,PSAK_1_REV,ifrs:Inventories,1.00
+Inventories,RETAIL,PSAK_1_REV,ifrs:Inventories,1.00
+Pendapatan Usaha,PHARMACEUTICAL,PSAK_72,ifrs:Revenue,1.00
+Penjualan Bersih,PHARMACEUTICAL,PSAK_72,ifrs:Revenue,1.00
+Revenue,PHARMACEUTICAL,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Penjualan,PHARMACEUTICAL,PSAK_72,ifrs:CostOfSales,1.00
+Cost of Goods Sold,PHARMACEUTICAL,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,PHARMACEUTICAL,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,PHARMACEUTICAL,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,PHARMACEUTICAL,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,PHARMACEUTICAL,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,PHARMACEUTICAL,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,PHARMACEUTICAL,PSAK_72,ifrs:ProfitLoss,1.00
+Pendapatan Etikal,PHARMACEUTICAL,PSAK_72,idx:EthicalRevenueShare,1.00
+Ethical Revenue,PHARMACEUTICAL,PSAK_72,idx:EthicalRevenueShare,1.00
+Share Etikal,PHARMACEUTICAL,PSAK_72,idx:EthicalRevenueShare,1.00
+Ethical Revenue Share,PHARMACEUTICAL,PSAK_72,idx:EthicalRevenueShare,1.00
+Pendapatan OTC,PHARMACEUTICAL,PSAK_72,idx:OTCRevenueShare,1.00
+OTC Revenue,PHARMACEUTICAL,PSAK_72,idx:OTCRevenueShare,1.00
+OTC Revenue Share,PHARMACEUTICAL,PSAK_72,idx:OTCRevenueShare,1.00
+Over the Counter Revenue,PHARMACEUTICAL,PSAK_72,idx:OTCRevenueShare,0.90
+Eksposur Impor API,PHARMACEUTICAL,PSAK_72,idx:APIImportExposure,1.00
+API Import Exposure,PHARMACEUTICAL,PSAK_72,idx:APIImportExposure,1.00
+Impor Bahan Baku Obat,PHARMACEUTICAL,PSAK_72,idx:APIImportExposure,0.90
+Volume Toll Manufacturing,PHARMACEUTICAL,PSAK_72,idx:TollManufacturingVolume,1.00
+Toll Manufacturing Volume,PHARMACEUTICAL,PSAK_72,idx:TollManufacturingVolume,1.00
+Toll Manufacturing,PHARMACEUTICAL,PSAK_72,idx:TollManufacturingVolume,0.90
+Share Katalog BPJS,PHARMACEUTICAL,PSAK_72,idx:BPJSCatalogRevenueShare,1.00
+BPJS Catalog Revenue Share,PHARMACEUTICAL,PSAK_72,idx:BPJSCatalogRevenueShare,1.00
+Pendapatan Katalog BPJS,PHARMACEUTICAL,PSAK_72,idx:BPJSCatalogRevenueShare,1.00
+Total Aset,PHARMACEUTICAL,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,PHARMACEUTICAL,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,PHARMACEUTICAL,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,PHARMACEUTICAL,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Persediaan,PHARMACEUTICAL,PSAK_1_REV,ifrs:Inventories,1.00
+Inventories,PHARMACEUTICAL,PSAK_1_REV,ifrs:Inventories,1.00
+Pendapatan Usaha,HOSPITAL,PSAK_72,ifrs:Revenue,1.00
+Pendapatan Bersih,HOSPITAL,PSAK_72,ifrs:Revenue,1.00
+Revenue,HOSPITAL,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Pendapatan,HOSPITAL,PSAK_72,ifrs:CostOfSales,1.00
+Cost of Services,HOSPITAL,PSAK_72,ifrs:CostOfSales,0.90
+Laba Kotor,HOSPITAL,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,HOSPITAL,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,HOSPITAL,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,HOSPITAL,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,HOSPITAL,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,HOSPITAL,PSAK_72,ifrs:ProfitLoss,1.00
+Jumlah Tempat Tidur Operasional,HOSPITAL,PSAK_72,idx:OperationalBedsCount,1.00
+Operational Beds,HOSPITAL,PSAK_72,idx:OperationalBedsCount,1.00
+Operational Beds Count,HOSPITAL,PSAK_72,idx:OperationalBedsCount,1.00
+Tempat Tidur Operasional,HOSPITAL,PSAK_72,idx:OperationalBedsCount,1.00
+Bed Operational,HOSPITAL,PSAK_72,idx:OperationalBedsCount,0.90
+Tingkat Hunian Tempat Tidur,HOSPITAL,PSAK_72,idx:BedOccupancyRate,1.00
+Bed Occupancy Rate,HOSPITAL,PSAK_72,idx:BedOccupancyRate,1.00
+BOR,HOSPITAL,PSAK_72,idx:BedOccupancyRate,1.00
+Occupancy Rate,HOSPITAL,PSAK_72,idx:BedOccupancyRate,0.90
+Lama Rawat Rata-rata,HOSPITAL,PSAK_72,idx:AverageLengthOfStay,1.00
+Average Length of Stay,HOSPITAL,PSAK_72,idx:AverageLengthOfStay,1.00
+ALOS,HOSPITAL,PSAK_72,idx:AverageLengthOfStay,1.00
+Pasien Rawat Inap,HOSPITAL,PSAK_72,idx:InpatientAdmissions,1.00
+Inpatient Admissions,HOSPITAL,PSAK_72,idx:InpatientAdmissions,1.00
+Rawat Inap,HOSPITAL,PSAK_72,idx:InpatientAdmissions,0.90
+Kunjungan Rawat Jalan,HOSPITAL,PSAK_72,idx:OutpatientVisits,1.00
+Outpatient Visits,HOSPITAL,PSAK_72,idx:OutpatientVisits,1.00
+Rawat Jalan,HOSPITAL,PSAK_72,idx:OutpatientVisits,0.90
+ARPOB,HOSPITAL,PSAK_72,idx:ARPOB,1.00
+Average Revenue per Occupied Bed,HOSPITAL,PSAK_72,idx:ARPOB,1.00
+Pendapatan Rata-rata per Tempat Tidur Terisi,HOSPITAL,PSAK_72,idx:ARPOB,1.00
+Share Pendapatan BPJS,HOSPITAL,PSAK_72,idx:BPJSRevenueShare,1.00
+BPJS Revenue Share,HOSPITAL,PSAK_72,idx:BPJSRevenueShare,1.00
+Pendapatan BPJS,HOSPITAL,PSAK_72,idx:BPJSRevenueShare,0.90
+Total Aset,HOSPITAL,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,HOSPITAL,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,HOSPITAL,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,HOSPITAL,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Pendapatan Usaha,PROPERTY,PSAK_72,ifrs:Revenue,1.00
+Pendapatan Bersih,PROPERTY,PSAK_72,ifrs:Revenue,1.00
+Revenue,PROPERTY,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Pendapatan,PROPERTY,PSAK_72,ifrs:CostOfSales,1.00
+Cost of Sales,PROPERTY,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,PROPERTY,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,PROPERTY,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,PROPERTY,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,PROPERTY,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,PROPERTY,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,PROPERTY,PSAK_72,ifrs:ProfitLoss,1.00
+Marketing Sales,PROPERTY,PSAK_72,idx:MarketingSalesPresales,1.00
+Presales,PROPERTY,PSAK_72,idx:MarketingSalesPresales,1.00
+Prapenjualan,PROPERTY,PSAK_72,idx:MarketingSalesPresales,1.00
+Marketing Sales Presales,PROPERTY,PSAK_72,idx:MarketingSalesPresales,1.00
+Penjualan Pemasaran,PROPERTY,PSAK_72,idx:MarketingSalesPresales,0.90
+Total Landbank,PROPERTY,PSAK_72,idx:TotalLandbankHectares,1.00
+Landbank,PROPERTY,PSAK_72,idx:TotalLandbankHectares,1.00
+Total Landbank Hectares,PROPERTY,PSAK_72,idx:TotalLandbankHectares,1.00
+Cadangan Lahan,PROPERTY,PSAK_72,idx:TotalLandbankHectares,1.00
+Tingkat Hunian Mal,PROPERTY,PSAK_72,idx:MallOccupancyRate,1.00
+Mall Occupancy Rate,PROPERTY,PSAK_72,idx:MallOccupancyRate,1.00
+Occupancy Rate Mall,PROPERTY,PSAK_72,idx:MallOccupancyRate,0.90
+Share Pendapatan Berulang,PROPERTY,PSAK_72,idx:RecurringIncomeShare,1.00
+Recurring Income Share,PROPERTY,PSAK_72,idx:RecurringIncomeShare,1.00
+Pendapatan Berulang,PROPERTY,PSAK_72,idx:RecurringIncomeShare,0.90
+Backlog Pendapatan,PROPERTY,PSAK_72,idx:UnrecognizedRevenueBacklog,1.00
+Unrecognized Revenue Backlog,PROPERTY,PSAK_72,idx:UnrecognizedRevenueBacklog,1.00
+Revenue Backlog,PROPERTY,PSAK_72,idx:UnrecognizedRevenueBacklog,0.90
+Total Aset,PROPERTY,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,PROPERTY,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,PROPERTY,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,PROPERTY,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Persediaan Real Estate,PROPERTY,PSAK_1_REV,ifrs:Inventories,0.90
+Real Estate Inventory,PROPERTY,PSAK_1_REV,ifrs:Inventories,0.90
+Pendapatan Usaha,CONTRACTOR,PSAK_72,ifrs:Revenue,1.00
+Pendapatan Bersih,CONTRACTOR,PSAK_72,ifrs:Revenue,1.00
+Revenue,CONTRACTOR,PSAK_72,ifrs:Revenue,1.00
+Pendapatan Kontrak,CONTRACTOR,PSAK_72,ifrs:Revenue,0.90
+Contract Revenue,CONTRACTOR,PSAK_72,ifrs:Revenue,0.90
+Beban Pokok Pendapatan,CONTRACTOR,PSAK_72,ifrs:CostOfSales,1.00
+Cost of Contracts,CONTRACTOR,PSAK_72,ifrs:CostOfSales,0.90
+Laba Kotor,CONTRACTOR,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,CONTRACTOR,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,CONTRACTOR,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,CONTRACTOR,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,CONTRACTOR,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,CONTRACTOR,PSAK_72,ifrs:ProfitLoss,1.00
+Kontrak Baru,CONTRACTOR,PSAK_72,idx:NewContractWins,1.00
+Perolehan Kontrak Baru,CONTRACTOR,PSAK_72,idx:NewContractWins,1.00
+New Contract Wins,CONTRACTOR,PSAK_72,idx:NewContractWins,1.00
+New Contracts,CONTRACTOR,PSAK_72,idx:NewContractWins,0.90
+Order Book,CONTRACTOR,PSAK_72,idx:OrderBookBacklog,1.00
+Order Book Backlog,CONTRACTOR,PSAK_72,idx:OrderBookBacklog,1.00
+Backlog Order,CONTRACTOR,PSAK_72,idx:OrderBookBacklog,0.90
+Buku Pesanan,CONTRACTOR,PSAK_72,idx:OrderBookBacklog,0.90
+Burn Rate,CONTRACTOR,PSAK_72,idx:BurnRateConversion,1.00
+Burn Rate Conversion,CONTRACTOR,PSAK_72,idx:BurnRateConversion,1.00
+Kas Ventura Bersama KSO,CONTRACTOR,PSAK_72,idx:KSOJointOperationCF,1.00
+KSO Joint Operation Cash Flow,CONTRACTOR,PSAK_72,idx:KSOJointOperationCF,1.00
+Kerja Sama Operasi,CONTRACTOR,PSAK_72,idx:KSOJointOperationCF,0.90
+Hari Piutang Kontraktor,CONTRACTOR,PSAK_72,idx:ReceivablesDaysContractor,1.00
+Receivables Days,CONTRACTOR,PSAK_72,idx:ReceivablesDaysContractor,1.00
+Contractor Receivables Days,CONTRACTOR,PSAK_72,idx:ReceivablesDaysContractor,1.00
+Proyek Pemerintah,CONTRACTOR,PSAK_72,idx:GovernmentProjectMix,1.00
+Government Project Mix,CONTRACTOR,PSAK_72,idx:GovernmentProjectMix,1.00
+Share Proyek Pemerintah,CONTRACTOR,PSAK_72,idx:GovernmentProjectMix,1.00
+Total Aset,CONTRACTOR,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,CONTRACTOR,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,CONTRACTOR,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,CONTRACTOR,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Pendapatan Usaha,TOLL_ROAD,PSAK_72,ifrs:Revenue,1.00
+Pendapatan Tol,TOLL_ROAD,PSAK_72,ifrs:Revenue,0.90
+Toll Revenue,TOLL_ROAD,PSAK_72,ifrs:Revenue,0.90
+Revenue,TOLL_ROAD,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Pendapatan,TOLL_ROAD,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,TOLL_ROAD,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,TOLL_ROAD,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,TOLL_ROAD,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,TOLL_ROAD,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,TOLL_ROAD,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,TOLL_ROAD,PSAK_72,ifrs:ProfitLoss,1.00
+Lalu Lintas Harian Rata-rata,TOLL_ROAD,PSAK_72,idx:AverageDailyTraffic,1.00
+LHR,TOLL_ROAD,PSAK_72,idx:AverageDailyTraffic,1.00
+Average Daily Traffic,TOLL_ROAD,PSAK_72,idx:AverageDailyTraffic,1.00
+ADT,TOLL_ROAD,PSAK_72,idx:AverageDailyTraffic,1.00
+Penyesuaian Tarif Tol,TOLL_ROAD,PSAK_72,idx:TollTariffAdjustment,1.00
+Toll Tariff Adjustment,TOLL_ROAD,PSAK_72,idx:TollTariffAdjustment,1.00
+Kenaikan Tarif,TOLL_ROAD,PSAK_72,idx:TollTariffAdjustment,0.75
+Panjang Tol Operasional,TOLL_ROAD,PSAK_72,idx:OperationalTollLengthKm,1.00
+Operational Toll Length,TOLL_ROAD,PSAK_72,idx:OperationalTollLengthKm,1.00
+Operational Toll Length (Km),TOLL_ROAD,PSAK_72,idx:OperationalTollLengthKm,1.00
+Panjang Konsesi Tol,TOLL_ROAD,PSAK_72,idx:OperationalTollLengthKm,0.75
+Sisa Masa Konsesi,TOLL_ROAD,PSAK_72,idx:ConcessionRemainingYears,1.00
+Concession Remaining Years,TOLL_ROAD,PSAK_72,idx:ConcessionRemainingYears,1.00
+Remaining Concession Period,TOLL_ROAD,PSAK_72,idx:ConcessionRemainingYears,0.90
+Total Aset,TOLL_ROAD,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,TOLL_ROAD,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,TOLL_ROAD,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,TOLL_ROAD,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Total Utang,TOLL_ROAD,PSAK_1_REV,idx:TotalDebt,1.00
+Belanja Modal,TOLL_ROAD,PSAK_72,idx:Capex,1.00
+Capex,TOLL_ROAD,PSAK_72,idx:Capex,1.00
+Pendapatan Usaha,PORT,PSAK_72,ifrs:Revenue,1.00
+Revenue,PORT,PSAK_72,ifrs:Revenue,1.00
+Pendapatan Jasa Pelabuhan,PORT,PSAK_72,ifrs:Revenue,0.90
+Port Services Revenue,PORT,PSAK_72,ifrs:Revenue,0.90
+Beban Pokok Pendapatan,PORT,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,PORT,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,PORT,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,PORT,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,PORT,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,PORT,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,PORT,PSAK_72,ifrs:ProfitLoss,1.00
+Volume Peti Kemas,PORT,PSAK_72,idx:ContainerThroughputTEUs,1.00
+Container Throughput,PORT,PSAK_72,idx:ContainerThroughputTEUs,1.00
+Container Throughput (TEUs),PORT,PSAK_72,idx:ContainerThroughputTEUs,1.00
+Throughput TEU,PORT,PSAK_72,idx:ContainerThroughputTEUs,1.00
+Arus Peti Kemas,PORT,PSAK_72,idx:ContainerThroughputTEUs,0.90
+Volume Terminal CBU,PORT,PSAK_72,idx:CBUCarTerminalVolume,1.00
+CBU Car Terminal Volume,PORT,PSAK_72,idx:CBUCarTerminalVolume,1.00
+Bongkar Muat CBU,PORT,PSAK_72,idx:CBUCarTerminalVolume,0.90
+Pendapatan Stevedoring per TEU,PORT,PSAK_72,idx:StevedoringRevenuePerTEU,1.00
+Stevedoring Revenue per TEU,PORT,PSAK_72,idx:StevedoringRevenuePerTEU,1.00
+Stevedoring,PORT,PSAK_72,idx:StevedoringRevenuePerTEU,0.75
+Sisa Masa Konsesi,PORT,PSAK_72,idx:ConcessionRemainingYears,1.00
+Concession Remaining Years,PORT,PSAK_72,idx:ConcessionRemainingYears,1.00
+Total Aset,PORT,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,PORT,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,PORT,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,PORT,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Belanja Modal,PORT,PSAK_72,idx:Capex,1.00
+Capex,PORT,PSAK_72,idx:Capex,1.00
+Pendapatan Usaha,SHIPPING,PSAK_72,ifrs:Revenue,1.00
+Pendapatan Bersih,SHIPPING,PSAK_72,ifrs:Revenue,1.00
+Revenue,SHIPPING,PSAK_72,ifrs:Revenue,1.00
+Charter Revenue,SHIPPING,PSAK_72,ifrs:Revenue,0.90
+Pendapatan Charter,SHIPPING,PSAK_72,ifrs:Revenue,0.90
+Beban Pokok Pendapatan,SHIPPING,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,SHIPPING,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,SHIPPING,PSAK_72,ifrs:GrossProfit,1.00
+Laba Usaha,SHIPPING,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,SHIPPING,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,SHIPPING,PSAK_72,idx:EBITDA,1.00
+Laba Bersih,SHIPPING,PSAK_72,ifrs:ProfitLoss,1.00
+Jumlah Armada,SHIPPING,PSAK_72,idx:FleetCount,1.00
+Fleet Count,SHIPPING,PSAK_72,idx:FleetCount,1.00
+Total Kapal,SHIPPING,PSAK_72,idx:FleetCount,1.00
+Total Vessels,SHIPPING,PSAK_72,idx:FleetCount,1.00
+Total DWT,SHIPPING,PSAK_72,idx:TotalDWT,1.00
+Deadweight Tonnage,SHIPPING,PSAK_72,idx:TotalDWT,1.00
+DWT Armada,SHIPPING,PSAK_72,idx:TotalDWT,1.00
+Tarif Charter,SHIPPING,PSAK_72,idx:CharterRate,1.00
+Charter Rate,SHIPPING,PSAK_72,idx:CharterRate,1.00
+Time Charter Rate,SHIPPING,PSAK_72,idx:CharterRate,0.90
+Biaya Bunker,SHIPPING,PSAK_72,idx:BunkerFuelCost,1.00
+Bunker Fuel Cost,SHIPPING,PSAK_72,idx:BunkerFuelCost,1.00
+Bunker Cost,SHIPPING,PSAK_72,idx:BunkerFuelCost,0.90
+Utilisasi Kapal,SHIPPING,PSAK_72,idx:VesselUtilization,1.00
+Vessel Utilization,SHIPPING,PSAK_72,idx:VesselUtilization,1.00
+Vessel Utilisation,SHIPPING,PSAK_72,idx:VesselUtilization,0.90
+Total Aset,SHIPPING,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,SHIPPING,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,SHIPPING,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,SHIPPING,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Belanja Modal,SHIPPING,PSAK_72,idx:Capex,1.00
+Capex,SHIPPING,PSAK_72,idx:Capex,1.00
+Pendapatan Usaha,DIGITAL,PSAK_72,ifrs:Revenue,1.00
+Pendapatan Bersih,DIGITAL,PSAK_72,ifrs:Revenue,1.00
+Revenue,DIGITAL,PSAK_72,ifrs:Revenue,1.00
+Net Revenue,DIGITAL,PSAK_72,ifrs:Revenue,1.00
+Beban Pokok Pendapatan,DIGITAL,PSAK_72,ifrs:CostOfSales,1.00
+Cost of Revenue,DIGITAL,PSAK_72,ifrs:CostOfSales,1.00
+Laba Kotor,DIGITAL,PSAK_72,ifrs:GrossProfit,1.00
+Gross Profit,DIGITAL,PSAK_72,ifrs:GrossProfit,1.00
+Rugi Usaha,DIGITAL,PSAK_72,ifrs:OperatingProfit,0.90
+Operating Loss,DIGITAL,PSAK_72,ifrs:OperatingProfit,0.90
+Laba Usaha,DIGITAL,PSAK_72,ifrs:OperatingProfit,1.00
+Operating Profit,DIGITAL,PSAK_72,ifrs:OperatingProfit,1.00
+EBITDA,DIGITAL,PSAK_72,idx:EBITDA,1.00
+Adjusted EBITDA,DIGITAL,PSAK_72,idx:AdjustedEBITDADigital,1.00
+Adjusted EBITDA Digital,DIGITAL,PSAK_72,idx:AdjustedEBITDADigital,1.00
+Laba Bersih,DIGITAL,PSAK_72,ifrs:ProfitLoss,1.00
+Rugi Bersih,DIGITAL,PSAK_72,ifrs:ProfitLoss,1.00
+Net Loss,DIGITAL,PSAK_72,ifrs:ProfitLoss,1.00
+Gross Transaction Value,DIGITAL,PSAK_72,idx:GrossTransactionValue,1.00
+GTV,DIGITAL,PSAK_72,idx:GrossTransactionValue,1.00
+Nilai Transaksi Bruto,DIGITAL,PSAK_72,idx:GrossTransactionValue,1.00
+Gross Merchandise Value,DIGITAL,PSAK_72,idx:GrossMerchandiseValue,1.00
+GMV,DIGITAL,PSAK_72,idx:GrossMerchandiseValue,1.00
+Nilai Barang Dagangan Bruto,DIGITAL,PSAK_72,idx:GrossMerchandiseValue,1.00
+Take Rate,DIGITAL,PSAK_72,idx:TakeRate,1.00
+Tingkat Pengambilan,DIGITAL,PSAK_72,idx:TakeRate,0.75
+Monthly Active Transacting Users,DIGITAL,PSAK_72,idx:MonthlyActiveTransactingUsers,1.00
+MTU,DIGITAL,PSAK_72,idx:MonthlyActiveTransactingUsers,1.00
+MAU,DIGITAL,PSAK_72,idx:MonthlyActiveTransactingUsers,0.90
+Pengguna Aktif Bulanan,DIGITAL,PSAK_72,idx:MonthlyActiveTransactingUsers,0.90
+Contribution Margin,DIGITAL,PSAK_72,idx:ContributionMargin,1.00
+Margin Kontribusi,DIGITAL,PSAK_72,idx:ContributionMargin,1.00
+Insentif Promosi,DIGITAL,PSAK_72,idx:PromotionalIncentives,1.00
+Promotional Incentives,DIGITAL,PSAK_72,idx:PromotionalIncentives,1.00
+Promo Expenses,DIGITAL,PSAK_72,idx:PromotionalIncentives,0.90
+Total Aset,DIGITAL,PSAK_1_REV,ifrs:Assets,1.00
+Total Liabilitas,DIGITAL,PSAK_1_REV,ifrs:Liabilities,1.00
+Total Ekuitas,DIGITAL,PSAK_1_REV,ifrs:Equity,1.00
+Kas dan Setara Kas,DIGITAL,PSAK_1_REV,ifrs:CashAndCashEquivalents,1.00
+Rasio Solvabilitas RBC,INSURANCE,PSAK_74,idx:RiskBasedCapitalRatio,1.00
+Rasio Solvabilitas Berbasis Risiko,INSURANCE,PSAK_74,idx:RiskBasedCapitalRatio,1.00
+Tingkat Solvabilitas,INSURANCE,PSAK_74,idx:RiskBasedCapitalRatio,0.90
+Risk-Based Capital Ratio,INSURANCE,PSAK_74,idx:RiskBasedCapitalRatio,1.00
+Risk Based Capital,INSURANCE,PSAK_74,idx:RiskBasedCapitalRatio,0.90
+RBC,INSURANCE,PSAK_74,idx:RiskBasedCapitalRatio,0.75
+Solvency Ratio,INSURANCE,PSAK_74,idx:RiskBasedCapitalRatio,0.90
+Rasio Solvabilitas RBC,INSURANCE_LIFE,PSAK_74,idx:RiskBasedCapitalRatio,1.00
+Risk-Based Capital Ratio,INSURANCE_LIFE,PSAK_74,idx:RiskBasedCapitalRatio,1.00
+RBC,INSURANCE_LIFE,PSAK_74,idx:RiskBasedCapitalRatio,0.75
+Rasio Solvabilitas RBC,INSURANCE_REINSURANCE,PSAK_74,idx:RiskBasedCapitalRatio,1.00
+Risk-Based Capital Ratio,INSURANCE_REINSURANCE,PSAK_74,idx:RiskBasedCapitalRatio,1.00
+RBC,INSURANCE_REINSURANCE,PSAK_74,idx:RiskBasedCapitalRatio,0.75
+Rasio Klaim,INSURANCE,PSAK_74,idx:LossRatio,1.00
+Rasio Beban Klaim terhadap Premi Neto Diperoleh,INSURANCE,PSAK_74,idx:LossRatio,1.00
+Loss Ratio,INSURANCE,PSAK_74,idx:LossRatio,1.00
+Claim Ratio,INSURANCE,PSAK_74,idx:LossRatio,0.90
+Beban Klaim per Premi,INSURANCE,PSAK_74,idx:LossRatio,0.75
+Rasio Klaim,INSURANCE_REINSURANCE,PSAK_74,idx:LossRatio,1.00
+Loss Ratio,INSURANCE_REINSURANCE,PSAK_74,idx:LossRatio,1.00
+Rasio Beban Usaha,INSURANCE,PSAK_74,idx:ExpenseRatio,1.00
+Rasio Beban,INSURANCE,PSAK_74,idx:ExpenseRatio,0.90
+Expense Ratio,INSURANCE,PSAK_74,idx:ExpenseRatio,1.00
+Operating Expense Ratio,INSURANCE,PSAK_74,idx:ExpenseRatio,0.90
+Beban Usaha per Premi Neto Diperoleh,INSURANCE,PSAK_74,idx:ExpenseRatio,0.75
+Rasio Beban Usaha,INSURANCE_REINSURANCE,PSAK_74,idx:ExpenseRatio,1.00
+Expense Ratio,INSURANCE_REINSURANCE,PSAK_74,idx:ExpenseRatio,1.00
+Rasio Kombinasi,INSURANCE,PSAK_74,idx:CombinedRatio,1.00
+Combined Ratio,INSURANCE,PSAK_74,idx:CombinedRatio,1.00
+Combined Operating Ratio,INSURANCE,PSAK_74,idx:CombinedRatio,0.90
+COR,INSURANCE,PSAK_74,idx:CombinedRatio,0.75
+Rasio Kombinasi,INSURANCE_REINSURANCE,PSAK_74,idx:CombinedRatio,1.00
+Combined Ratio,INSURANCE_REINSURANCE,PSAK_74,idx:CombinedRatio,1.00
+Premi Bruto,INSURANCE,PSAK_74,idx:GrossWrittenPremium,1.00
+Premi Bruto Ditanggung Sendiri,INSURANCE,PSAK_74,idx:GrossWrittenPremium,0.90
+Premi Bruto Diterima,INSURANCE,PSAK_74,idx:GrossWrittenPremium,0.90
+Premi Kotor,INSURANCE,PSAK_74,idx:GrossWrittenPremium,0.90
+Gross Written Premium,INSURANCE,PSAK_74,idx:GrossWrittenPremium,1.00
+Gross Premium Written,INSURANCE,PSAK_74,idx:GrossWrittenPremium,0.90
+GWP,INSURANCE,PSAK_74,idx:GrossWrittenPremium,0.75
+Premi Bruto,INSURANCE_LIFE,PSAK_74,idx:GrossWrittenPremium,1.00
+Pendapatan Premi Bruto,INSURANCE_LIFE,PSAK_74,idx:GrossWrittenPremium,0.90
+Gross Written Premium,INSURANCE_LIFE,PSAK_74,idx:GrossWrittenPremium,1.00
+GWP,INSURANCE_LIFE,PSAK_74,idx:GrossWrittenPremium,0.75
+Premi Bruto,INSURANCE_REINSURANCE,PSAK_74,idx:GrossWrittenPremium,1.00
+Gross Written Premium,INSURANCE_REINSURANCE,PSAK_74,idx:GrossWrittenPremium,1.00
+GWP,INSURANCE_REINSURANCE,PSAK_74,idx:GrossWrittenPremium,0.75
+Retensi Sendiri,INSURANCE,PSAK_74,idx:NetRetentionRatio,1.00
+Rasio Retensi Sendiri,INSURANCE,PSAK_74,idx:NetRetentionRatio,1.00
+Retensi Neto,INSURANCE,PSAK_74,idx:NetRetentionRatio,0.90
+Net Retention Ratio,INSURANCE,PSAK_74,idx:NetRetentionRatio,1.00
+Retention Ratio,INSURANCE,PSAK_74,idx:NetRetentionRatio,0.90
+Retensi Sendiri,INSURANCE_REINSURANCE,PSAK_74,idx:NetRetentionRatio,1.00
+Net Retention Ratio,INSURANCE_REINSURANCE,PSAK_74,idx:NetRetentionRatio,1.00
+Hasil Underwriting,INSURANCE,PSAK_74,idx:UnderwritingResult,1.00
+Laba Underwriting,INSURANCE,PSAK_74,idx:UnderwritingResult,0.90
+Underwriting Result,INSURANCE,PSAK_74,idx:UnderwritingResult,1.00
+Underwriting Profit,INSURANCE,PSAK_74,idx:UnderwritingResult,0.90
+Hasil Underwriting,INSURANCE_REINSURANCE,PSAK_74,idx:UnderwritingResult,1.00
+Underwriting Result,INSURANCE_REINSURANCE,PSAK_74,idx:UnderwritingResult,1.00
+Hasil Investasi,INSURANCE,PSAK_74,idx:InvestmentYieldInsurance,1.00
+Yield Investasi,INSURANCE,PSAK_74,idx:InvestmentYieldInsurance,0.90
+Imbal Hasil Portofolio Investasi,INSURANCE,PSAK_74,idx:InvestmentYieldInsurance,0.90
+Investment Yield,INSURANCE,PSAK_74,idx:InvestmentYieldInsurance,1.00
+Portfolio Return,INSURANCE,PSAK_74,idx:InvestmentYieldInsurance,0.75
+Hasil Investasi,INSURANCE_LIFE,PSAK_74,idx:InvestmentYieldInsurance,1.00
+Investment Yield,INSURANCE_LIFE,PSAK_74,idx:InvestmentYieldInsurance,1.00
+Hasil Investasi,INSURANCE_REINSURANCE,PSAK_74,idx:InvestmentYieldInsurance,1.00
+Investment Yield,INSURANCE_REINSURANCE,PSAK_74,idx:InvestmentYieldInsurance,1.00
+Rasio Klaim Dibayar,INSURANCE,PSAK_74,idx:ClaimsSettlementRatio,1.00
+Klaim Dibayar,INSURANCE,PSAK_74,idx:ClaimsSettlementRatio,0.90
+Rasio Penyelesaian Klaim,INSURANCE,PSAK_74,idx:ClaimsSettlementRatio,0.90
+Claims Settlement Ratio,INSURANCE,PSAK_74,idx:ClaimsSettlementRatio,1.00
+Claim Paid Ratio,INSURANCE,PSAK_74,idx:ClaimsSettlementRatio,0.90
+Rasio Klaim Dibayar,INSURANCE_LIFE,PSAK_74,idx:ClaimsSettlementRatio,1.00
+Claims Settlement Ratio,INSURANCE_LIFE,PSAK_74,idx:ClaimsSettlementRatio,1.00
+Kecukupan Cadangan Teknis,INSURANCE,PSAK_74,idx:ReserveAdequacyRatio,1.00
+Cadangan Teknis,INSURANCE,PSAK_74,idx:ReserveAdequacyRatio,0.90
+Rasio Kecukupan Cadangan,INSURANCE,PSAK_74,idx:ReserveAdequacyRatio,0.90
+Technical Reserve Adequacy,INSURANCE,PSAK_74,idx:ReserveAdequacyRatio,1.00
+Reserve Ratio,INSURANCE,PSAK_74,idx:ReserveAdequacyRatio,0.75
+Kecukupan Cadangan Teknis,INSURANCE_LIFE,PSAK_74,idx:ReserveAdequacyRatio,1.00
+Technical Reserve Adequacy,INSURANCE_LIFE,PSAK_74,idx:ReserveAdequacyRatio,1.00
+Kecukupan Cadangan Teknis,INSURANCE_REINSURANCE,PSAK_74,idx:ReserveAdequacyRatio,1.00
+Technical Reserve Adequacy,INSURANCE_REINSURANCE,PSAK_74,idx:ReserveAdequacyRatio,1.00
+Eksposur Bencana PML,INSURANCE,PSAK_74,idx:CatastropheExposure,1.00
+Probable Maximum Loss,INSURANCE,PSAK_74,idx:CatastropheExposure,1.00
+Konsentrasi Katastrofe,INSURANCE,PSAK_74,idx:CatastropheExposure,0.90
+PML,INSURANCE,PSAK_74,idx:CatastropheExposure,0.75
+Catastrophe Exposure,INSURANCE,PSAK_74,idx:CatastropheExposure,1.00
+CAT Exposure,INSURANCE,PSAK_74,idx:CatastropheExposure,0.75
+Eksposur Bencana PML,INSURANCE_REINSURANCE,PSAK_74,idx:CatastropheExposure,1.00
+PML,INSURANCE_REINSURANCE,PSAK_74,idx:CatastropheExposure,0.75
+Premi Bruto per Lini Usaha,INSURANCE,PSAK_74,idx:GwpByLineOfBusiness,1.00
+Premi Bruto per Lini,INSURANCE,PSAK_74,idx:GwpByLineOfBusiness,0.90
+Rincian Premi per Lini Usaha,INSURANCE,PSAK_74,idx:GwpByLineOfBusiness,0.90
+GWP by Line of Business,INSURANCE,PSAK_74,idx:GwpByLineOfBusiness,1.00
+Line of Business Premium,INSURANCE,PSAK_74,idx:GwpByLineOfBusiness,0.90
+Premi Bruto per Lini Usaha,INSURANCE_REINSURANCE,PSAK_74,idx:GwpByLineOfBusiness,1.00
+GWP by Line of Business,INSURANCE_REINSURANCE,PSAK_74,idx:GwpByLineOfBusiness,1.00
+Bauran Kanal Distribusi,INSURANCE,PSAK_74,idx:DistributionChannelMix,1.00
+Kanal Distribusi,INSURANCE,PSAK_74,idx:DistributionChannelMix,0.90
+Distribusi melalui Keagenan dan Bancassurance,INSURANCE,PSAK_74,idx:DistributionChannelMix,0.90
+Distribution Channel Mix,INSURANCE,PSAK_74,idx:DistributionChannelMix,1.00
+Channel Mix,INSURANCE,PSAK_74,idx:DistributionChannelMix,0.75
+Bauran Kanal Distribusi,INSURANCE_LIFE,PSAK_74,idx:DistributionChannelMix,1.00
+Bancassurance,INSURANCE_LIFE,PSAK_74,idx:DistributionChannelMix,0.75
+Distribution Channel Mix,INSURANCE_LIFE,PSAK_74,idx:DistributionChannelMix,1.00
+Bauran Reasuransi Dalam-Luar Negeri,INSURANCE,PSAK_74,idx:DomesticVsOverseasCession,1.00
+Reasuransi Dalam Negeri,INSURANCE,PSAK_74,idx:DomesticVsOverseasCession,0.90
+Reasuransi Luar Negeri,INSURANCE,PSAK_74,idx:DomesticVsOverseasCession,0.90
+Domestic vs Overseas Cession,INSURANCE,PSAK_74,idx:DomesticVsOverseasCession,1.00
+Domestic Reinsurance Share,INSURANCE,PSAK_74,idx:DomesticVsOverseasCession,0.90
+Bauran Reasuransi Dalam-Luar Negeri,INSURANCE_REINSURANCE,PSAK_74,idx:DomesticVsOverseasCession,1.00
+Domestic vs Overseas Cession,INSURANCE_REINSURANCE,PSAK_74,idx:DomesticVsOverseasCession,1.00
+Setara Premi Tahunan,INSURANCE_LIFE,PSAK_74,idx:AnnualPremiumEquivalent,1.00
+Annualized Premium Equivalent,INSURANCE_LIFE,PSAK_74,idx:AnnualPremiumEquivalent,1.00
+Annual Premium Equivalent,INSURANCE_LIFE,PSAK_74,idx:AnnualPremiumEquivalent,1.00
+APE,INSURANCE_LIFE,PSAK_74,idx:AnnualPremiumEquivalent,0.75
+Nilai Bisnis Baru,INSURANCE_LIFE,PSAK_74,idx:ValueOfNewBusiness,1.00
+Nilai Bisnis Baru VNB,INSURANCE_LIFE,PSAK_74,idx:ValueOfNewBusiness,1.00
+Value of New Business,INSURANCE_LIFE,PSAK_74,idx:ValueOfNewBusiness,1.00
+VNB,INSURANCE_LIFE,PSAK_74,idx:ValueOfNewBusiness,0.75
+Nilai Intrinsik,INSURANCE_LIFE,PSAK_74,idx:EmbeddedValue,1.00
+Nilai Intrinsik Embedded Value,INSURANCE_LIFE,PSAK_74,idx:EmbeddedValue,1.00
+Embedded Value,INSURANCE_LIFE,PSAK_74,idx:EmbeddedValue,1.00
+EV,INSURANCE_LIFE,PSAK_74,idx:EmbeddedValue,0.75
+Persistensi Bulan ke-13,INSURANCE_LIFE,PSAK_74,idx:PersistencyRatio13m,1.00
+Persistensi 13 Bulan,INSURANCE_LIFE,PSAK_74,idx:PersistencyRatio13m,1.00
+Rasio Persistensi 13 Bulan,INSURANCE_LIFE,PSAK_74,idx:PersistencyRatio13m,0.90
+13-Month Persistency Ratio,INSURANCE_LIFE,PSAK_74,idx:PersistencyRatio13m,1.00
+13M Persistency,INSURANCE_LIFE,PSAK_74,idx:PersistencyRatio13m,0.75
+Persistency Rate 13M,INSURANCE_LIFE,PSAK_74,idx:PersistencyRatio13m,0.90
+Persistensi Bulan ke-25,INSURANCE_LIFE,PSAK_74,idx:PersistencyRatio25m,1.00
+Persistensi 25 Bulan,INSURANCE_LIFE,PSAK_74,idx:PersistencyRatio25m,1.00
+25-Month Persistency Ratio,INSURANCE_LIFE,PSAK_74,idx:PersistencyRatio25m,1.00
+25M Persistency,INSURANCE_LIFE,PSAK_74,idx:PersistencyRatio25m,0.75
+Bauran Produk Tradisional dan Unit Link,INSURANCE_LIFE,PSAK_74,idx:ProductMixTraditionalUL,1.00
+Produk Tradisional dan Unitlink,INSURANCE_LIFE,PSAK_74,idx:ProductMixTraditionalUL,0.90
+PAYDI,INSURANCE_LIFE,PSAK_74,idx:ProductMixTraditionalUL,0.75
+Unit Link,INSURANCE_LIFE,PSAK_74,idx:ProductMixTraditionalUL,0.75
+Traditional vs Unit-Linked Product Mix,INSURANCE_LIFE,PSAK_74,idx:ProductMixTraditionalUL,1.00
+Product Mix,INSURANCE_LIFE,PSAK_74,idx:ProductMixTraditionalUL,0.75
+Produktivitas Agen,INSURANCE_LIFE,PSAK_74,idx:AgentProductivity,1.00
+APE per Agen,INSURANCE_LIFE,PSAK_74,idx:AgentProductivity,0.90
+Agent Productivity,INSURANCE_LIFE,PSAK_74,idx:AgentProductivity,1.00
+APE per Agent,INSURANCE_LIFE,PSAK_74,idx:AgentProductivity,0.90
+Kesenjangan Durasi Aset-Liabilitas,INSURANCE_LIFE,PSAK_74,idx:AssetLiabilityDurationGap,1.00
+Duration Gap,INSURANCE_LIFE,PSAK_74,idx:AssetLiabilityDurationGap,0.90
+ALM Gap,INSURANCE_LIFE,PSAK_74,idx:AssetLiabilityDurationGap,0.75
+Asset-Liability Duration Gap,INSURANCE_LIFE,PSAK_74,idx:AssetLiabilityDurationGap,1.00
+Kesenjangan Durasi Aset-Liabilitas,INSURANCE_REINSURANCE,PSAK_74,idx:AssetLiabilityDurationGap,1.00
+Duration Gap,INSURANCE_REINSURANCE,PSAK_74,idx:AssetLiabilityDurationGap,0.90
+Asset-Liability Duration Gap,INSURANCE_REINSURANCE,PSAK_74,idx:AssetLiabilityDurationGap,1.00
+Bauran Treaty-Fakultatif,INSURANCE_REINSURANCE,PSAK_74,idx:TreatyFacultativeMix,1.00
+Bauran Treaty dan Facultative,INSURANCE_REINSURANCE,PSAK_74,idx:TreatyFacultativeMix,0.90
+Treaty,INSURANCE_REINSURANCE,PSAK_74,idx:TreatyFacultativeMix,0.75
+Fakultatif,INSURANCE_REINSURANCE,PSAK_74,idx:TreatyFacultativeMix,0.75
+Treaty vs Facultative GWP Mix,INSURANCE_REINSURANCE,PSAK_74,idx:TreatyFacultativeMix,1.00
+Treaty Facultative Mix,INSURANCE_REINSURANCE,PSAK_74,idx:TreatyFacultativeMix,0.90
+Bauran Proporsional dan Non-Proporsional,INSURANCE_REINSURANCE,PSAK_74,idx:ProportionalNonProportionalMix,1.00
+Excess of Loss,INSURANCE_REINSURANCE,PSAK_74,idx:ProportionalNonProportionalMix,0.75
+XL Treaty,INSURANCE_REINSURANCE,PSAK_74,idx:ProportionalNonProportionalMix,0.75
+Kuota Bagian,INSURANCE_REINSURANCE,PSAK_74,idx:ProportionalNonProportionalMix,0.75
+Proportional vs Non-Proportional Mix,INSURANCE_REINSURANCE,PSAK_74,idx:ProportionalNonProportionalMix,1.00
+XL Mix,INSURANCE_REINSURANCE,PSAK_74,idx:ProportionalNonProportionalMix,0.75
+Rasio Retrosesi,INSURANCE_REINSURANCE,PSAK_74,idx:RetrocessionRatio,1.00
+Retrosesi,INSURANCE_REINSURANCE,PSAK_74,idx:RetrocessionRatio,0.90
+Retrocession Ratio,INSURANCE_REINSURANCE,PSAK_74,idx:RetrocessionRatio,1.00
+Retrocession,INSURANCE_REINSURANCE,PSAK_74,idx:RetrocessionRatio,0.90
+Perubahan Suku Premi Renewal,INSURANCE_REINSURANCE,PSAK_74,idx:RenewalRateChange,1.00
+Rate Change,INSURANCE_REINSURANCE,PSAK_74,idx:RenewalRateChange,0.75
+Suku Premi Renewal,INSURANCE_REINSURANCE,PSAK_74,idx:RenewalRateChange,0.90
+Renewal Rate Change,INSURANCE_REINSURANCE,PSAK_74,idx:RenewalRateChange,1.00
+Rasio Gearing,MULTIFINANCE,PSAK_71,idx:GearingRatio,1.00
+Gearing Ratio,MULTIFINANCE,PSAK_71,idx:GearingRatio,1.00
+Rasio Utang terhadap Ekuitas,MULTIFINANCE,PSAK_71,idx:GearingRatio,0.90
+Debt-to-Equity Ratio Multifinance,MULTIFINANCE,PSAK_71,idx:GearingRatio,0.90
+Leverage Ratio,MULTIFINANCE,PSAK_71,idx:GearingRatio,0.75
+NPF Bruto,MULTIFINANCE,PSAK_71,idx:NpfGrossRatio,1.00
+Rasio NPF Bruto,MULTIFINANCE,PSAK_71,idx:NpfGrossRatio,1.00
+Non-Performing Financing Bruto,MULTIFINANCE,PSAK_71,idx:NpfGrossRatio,0.90
+Gross NPF,MULTIFINANCE,PSAK_71,idx:NpfGrossRatio,1.00
+NPF Gross Ratio,MULTIFINANCE,PSAK_71,idx:NpfGrossRatio,1.00
+NPF Neto,MULTIFINANCE,PSAK_71,idx:NpfNetRatio,1.00
+Rasio NPF Neto,MULTIFINANCE,PSAK_71,idx:NpfNetRatio,1.00
+Non-Performing Financing Neto,MULTIFINANCE,PSAK_71,idx:NpfNetRatio,0.90
+Net NPF,MULTIFINANCE,PSAK_71,idx:NpfNetRatio,1.00
+NPF Net Ratio,MULTIFINANCE,PSAK_71,idx:NpfNetRatio,1.00
+Pembiayaan Baru,MULTIFINANCE,PSAK_71,idx:NewBookingsMultifinance,1.00
+Pembiayaan Baru per Segmen,MULTIFINANCE,PSAK_71,idx:NewBookingsMultifinance,1.00
+Booking Baru,MULTIFINANCE,PSAK_71,idx:NewBookingsMultifinance,0.90
+Pembiayaan Baru Roda 2,MULTIFINANCE,PSAK_71,idx:NewBookingsMultifinance,0.90
+Pembiayaan Baru Roda 4,MULTIFINANCE,PSAK_71,idx:NewBookingsMultifinance,0.90
+Pembiayaan Alat Berat,MULTIFINANCE,PSAK_71,idx:NewBookingsMultifinance,0.90
+Pembiayaan Multiguna,MULTIFINANCE,PSAK_71,idx:NewBookingsMultifinance,0.90
+New Bookings,MULTIFINANCE,PSAK_71,idx:NewBookingsMultifinance,1.00
+Loan Origination,MULTIFINANCE,PSAK_71,idx:NewBookingsMultifinance,0.90
+Piutang Pembiayaan,MULTIFINANCE,PSAK_71,idx:FinancingReceivablesOutstanding,1.00
+Piutang Pembiayaan Kelolaan,MULTIFINANCE,PSAK_71,idx:FinancingReceivablesOutstanding,1.00
+Piutang Pembiayaan Konsumen,MULTIFINANCE,PSAK_71,idx:FinancingReceivablesOutstanding,0.90
+Piutang Sewa Pembiayaan,MULTIFINANCE,PSAK_71,idx:FinancingReceivablesOutstanding,0.90
+Managed Portfolio,MULTIFINANCE,PSAK_71,idx:FinancingReceivablesOutstanding,0.90
+Financing Receivables,MULTIFINANCE,PSAK_71,idx:FinancingReceivablesOutstanding,1.00
+NIM Pembiayaan,MULTIFINANCE,PSAK_71,idx:NimFinancing,1.00
+Net Interest Margin Pembiayaan,MULTIFINANCE,PSAK_71,idx:NimFinancing,1.00
+Marjin Bunga Bersih,MULTIFINANCE,PSAK_71,idx:NimFinancing,0.90
+NIM,MULTIFINANCE,PSAK_71,idx:NimFinancing,0.75
+NIM Financing,MULTIFINANCE,PSAK_71,idx:NimFinancing,1.00
+Biaya Dana,MULTIFINANCE,PSAK_71,idx:CostOfFundsMultifinance,1.00
+Cost of Fund,MULTIFINANCE,PSAK_71,idx:CostOfFundsMultifinance,1.00
+Cost of Funds,MULTIFINANCE,PSAK_71,idx:CostOfFundsMultifinance,1.00
+CoF,MULTIFINANCE,PSAK_71,idx:CostOfFundsMultifinance,0.75
+Rasio Efektivitas Penagihan,MULTIFINANCE,PSAK_71,idx:CollectionEfficiencyRate,1.00
+Collection Rate,MULTIFINANCE,PSAK_71,idx:CollectionEfficiencyRate,0.90
+Efektivitas Penagihan,MULTIFINANCE,PSAK_71,idx:CollectionEfficiencyRate,0.90
+Collection Efficiency,MULTIFINANCE,PSAK_71,idx:CollectionEfficiencyRate,1.00
+Collection Efficiency Rate,MULTIFINANCE,PSAK_71,idx:CollectionEfficiencyRate,1.00
+Rasio Pencadangan CKPN terhadap NPF,MULTIFINANCE,PSAK_71,idx:CkpnCoverageMultifinance,1.00
+Coverage Ratio CKPN,MULTIFINANCE,PSAK_71,idx:CkpnCoverageMultifinance,0.90
+CKPN Coverage,MULTIFINANCE,PSAK_71,idx:CkpnCoverageMultifinance,1.00
+Provision Coverage,MULTIFINANCE,PSAK_71,idx:CkpnCoverageMultifinance,0.90
+NPF Coverage,MULTIFINANCE,PSAK_71,idx:CkpnCoverageMultifinance,0.75
+Bauran Kanal Pembiayaan,MULTIFINANCE,PSAK_71,idx:ChannelMixDealerDirect,1.00
+Kanal Dealer,MULTIFINANCE,PSAK_71,idx:ChannelMixDealerDirect,0.75
+Kanal Digital,MULTIFINANCE,PSAK_71,idx:ChannelMixDealerDirect,0.75
+Channel Mix Dealer Direct Digital,MULTIFINANCE,PSAK_71,idx:ChannelMixDealerDirect,1.00
+Channel Mix,MULTIFINANCE,PSAK_71,idx:ChannelMixDealerDirect,0.75
+Rata-rata Tenor Kontrak,MULTIFINANCE,PSAK_71,idx:AverageContractTenor,1.00
+Tenor Kontrak,MULTIFINANCE,PSAK_71,idx:AverageContractTenor,0.90
+Jangka Waktu Kontrak,MULTIFINANCE,PSAK_71,idx:AverageContractTenor,0.90
+Average Contract Tenor,MULTIFINANCE,PSAK_71,idx:AverageContractTenor,1.00
+Average Tenor,MULTIFINANCE,PSAK_71,idx:AverageContractTenor,0.75
+BOPO Pembiayaan,MULTIFINANCE,PSAK_71,idx:CostToIncomeMultifinance,1.00
+Rasio BOPO Multifinance,MULTIFINANCE,PSAK_71,idx:CostToIncomeMultifinance,0.90
+Cost to Income Multifinance,MULTIFINANCE,PSAK_71,idx:CostToIncomeMultifinance,1.00
+Cost-to-Income Ratio,MULTIFINANCE,PSAK_71,idx:CostToIncomeMultifinance,0.90
+CIR,MULTIFINANCE,PSAK_71,idx:CostToIncomeMultifinance,0.75
+Tingkat Hunian Kamar,HOTEL_TOURISM,PSAK_1_REV,idx:OccupancyRate,1.00
+Tingkat Hunian,HOTEL_TOURISM,PSAK_1_REV,idx:OccupancyRate,1.00
+Okupansi,HOTEL_TOURISM,PSAK_1_REV,idx:OccupancyRate,0.90
+Occupancy Rate,HOTEL_TOURISM,PSAK_1_REV,idx:OccupancyRate,1.00
+Hotel Occupancy,HOTEL_TOURISM,PSAK_1_REV,idx:OccupancyRate,0.90
+Tarif Kamar Rata-rata,HOTEL_TOURISM,PSAK_1_REV,idx:AverageDailyRate,1.00
+Tarif Rata-rata Kamar Harian,HOTEL_TOURISM,PSAK_1_REV,idx:AverageDailyRate,0.90
+Average Daily Rate,HOTEL_TOURISM,PSAK_1_REV,idx:AverageDailyRate,1.00
+ADR,HOTEL_TOURISM,PSAK_1_REV,idx:AverageDailyRate,0.75
+Room Rate,HOTEL_TOURISM,PSAK_1_REV,idx:AverageDailyRate,0.75
+Pendapatan per Kamar Tersedia,HOTEL_TOURISM,PSAK_1_REV,idx:RevenuePerAvailableRoom,1.00
+Revenue per Available Room,HOTEL_TOURISM,PSAK_1_REV,idx:RevenuePerAvailableRoom,1.00
+RevPAR,HOTEL_TOURISM,PSAK_1_REV,idx:RevenuePerAvailableRoom,0.75
+Pendapatan Total per Kamar Tersedia,HOTEL_TOURISM,PSAK_1_REV,idx:TotalRevenuePerAvailableRoom,1.00
+Total Revenue per Available Room,HOTEL_TOURISM,PSAK_1_REV,idx:TotalRevenuePerAvailableRoom,1.00
+Total RevPAR,HOTEL_TOURISM,PSAK_1_REV,idx:TotalRevenuePerAvailableRoom,0.90
+TRevPAR,HOTEL_TOURISM,PSAK_1_REV,idx:TotalRevenuePerAvailableRoom,0.75
+Laba Operasi Kotor per Kamar Tersedia,HOTEL_TOURISM,PSAK_1_REV,idx:GopParRatio,1.00
+Gross Operating Profit per Available Room,HOTEL_TOURISM,PSAK_1_REV,idx:GopParRatio,1.00
+GOPPAR,HOTEL_TOURISM,PSAK_1_REV,idx:GopParRatio,0.75
+Jumlah Kamar Tersedia,HOTEL_TOURISM,PSAK_1_REV,idx:RoomInventoryCount,1.00
+Jumlah Kamar,HOTEL_TOURISM,PSAK_1_REV,idx:RoomInventoryCount,0.90
+Kamar Tersedia,HOTEL_TOURISM,PSAK_1_REV,idx:RoomInventoryCount,0.90
+Jumlah Kamar Milik Kelola Franchise,HOTEL_TOURISM,PSAK_1_REV,idx:RoomInventoryCount,1.00
+Room Inventory Count,HOTEL_TOURISM,PSAK_1_REV,idx:RoomInventoryCount,1.00
+Room Count,HOTEL_TOURISM,PSAK_1_REV,idx:RoomInventoryCount,0.90
+Total Keys,HOTEL_TOURISM,PSAK_1_REV,idx:RoomInventoryCount,0.75
+Jumlah Kunjungan Taman Rekreasi,HOTEL_TOURISM,PSAK_1_REV,idx:ThemeParkVisitorCount,1.00
+Jumlah Pengunjung,HOTEL_TOURISM,PSAK_1_REV,idx:ThemeParkVisitorCount,0.90
+Kunjungan Taman Rekreasi,HOTEL_TOURISM,PSAK_1_REV,idx:ThemeParkVisitorCount,0.90
+Pengunjung Ancol,HOTEL_TOURISM,PSAK_1_REV,idx:ThemeParkVisitorCount,0.75
+Theme Park Visitor Count,HOTEL_TOURISM,PSAK_1_REV,idx:ThemeParkVisitorCount,1.00
+Park Visitors,HOTEL_TOURISM,PSAK_1_REV,idx:ThemeParkVisitorCount,0.90
+Pengeluaran Rata-rata per Pengunjung,HOTEL_TOURISM,PSAK_1_REV,idx:AverageSpendPerVisitor,1.00
+Belanja per Pengunjung,HOTEL_TOURISM,PSAK_1_REV,idx:AverageSpendPerVisitor,0.90
+Average Spend per Visitor,HOTEL_TOURISM,PSAK_1_REV,idx:AverageSpendPerVisitor,1.00
+ASP per Visitor,HOTEL_TOURISM,PSAK_1_REV,idx:AverageSpendPerVisitor,0.75
+Bauran Wisatawan Internasional,HOTEL_TOURISM,PSAK_1_REV,idx:InternationalArrivalMix,1.00
+Wisatawan Asing,HOTEL_TOURISM,PSAK_1_REV,idx:InternationalArrivalMix,0.90
+Wisman,HOTEL_TOURISM,PSAK_1_REV,idx:InternationalArrivalMix,0.75
+International Arrival Mix,HOTEL_TOURISM,PSAK_1_REV,idx:InternationalArrivalMix,1.00
+Foreign Guest Mix,HOTEL_TOURISM,PSAK_1_REV,idx:InternationalArrivalMix,0.90
+Bauran Portofolio per Lokasi,HOTEL_TOURISM,PSAK_1_REV,idx:PropertyPortfolioByLocation,1.00
+Portofolio Bali Jakarta,HOTEL_TOURISM,PSAK_1_REV,idx:PropertyPortfolioByLocation,0.75
+Portfolio Mix by Location,HOTEL_TOURISM,PSAK_1_REV,idx:PropertyPortfolioByLocation,1.00
+Portfolio by Region,HOTEL_TOURISM,PSAK_1_REV,idx:PropertyPortfolioByLocation,0.90
+Bauran Portofolio per Segmen Bintang,HOTEL_TOURISM,PSAK_1_REV,idx:PropertyPortfolioByBrand,1.00
+Segmen Bintang,HOTEL_TOURISM,PSAK_1_REV,idx:PropertyPortfolioByBrand,0.90
+Portfolio Mix by Brand Tier,HOTEL_TOURISM,PSAK_1_REV,idx:PropertyPortfolioByBrand,1.00
+Brand Tier Mix,HOTEL_TOURISM,PSAK_1_REV,idx:PropertyPortfolioByBrand,0.90
+Luxury Upscale Midscale Mix,HOTEL_TOURISM,PSAK_1_REV,idx:PropertyPortfolioByBrand,0.75
+Bauran Pendapatan F&B,HOTEL_TOURISM,PSAK_1_REV,idx:FoodBeverageRevenueMix,1.00
+Pendapatan F&B,HOTEL_TOURISM,PSAK_1_REV,idx:FoodBeverageRevenueMix,0.90
+Pendapatan Makanan dan Minuman,HOTEL_TOURISM,PSAK_1_REV,idx:FoodBeverageRevenueMix,0.90
+F&B Revenue Mix,HOTEL_TOURISM,PSAK_1_REV,idx:FoodBeverageRevenueMix,1.00
+Food and Beverage Revenue,HOTEL_TOURISM,PSAK_1_REV,idx:FoodBeverageRevenueMix,0.90
+Volume Emas Murni Terjual,JEWELRY_LUXURY,PSAK_1_REV,idx:PureGoldVolumeTonnes,1.00
+Volume Emas,JEWELRY_LUXURY,PSAK_1_REV,idx:PureGoldVolumeTonnes,0.90
+Emas Murni Terjual Ton,JEWELRY_LUXURY,PSAK_1_REV,idx:PureGoldVolumeTonnes,0.90
+Pure Gold Volume Sold,JEWELRY_LUXURY,PSAK_1_REV,idx:PureGoldVolumeTonnes,1.00
+Gold Tonnes Sold,JEWELRY_LUXURY,PSAK_1_REV,idx:PureGoldVolumeTonnes,0.90
+Bauran Penjualan Bullion dan Perhiasan,JEWELRY_LUXURY,PSAK_1_REV,idx:BullionJewelryMix,1.00
+Bauran Bullion,JEWELRY_LUXURY,PSAK_1_REV,idx:BullionJewelryMix,0.90
+Bullion,JEWELRY_LUXURY,PSAK_1_REV,idx:BullionJewelryMix,0.75
+Bullion vs Jewelry Revenue Mix,JEWELRY_LUXURY,PSAK_1_REV,idx:BullionJewelryMix,1.00
+Bullion Mix,JEWELRY_LUXURY,PSAK_1_REV,idx:BullionJewelryMix,0.90
+Ongkos Bikin per Gram,JEWELRY_LUXURY,PSAK_1_REV,idx:MakingChargePerGram,1.00
+Ongkos Bikin,JEWELRY_LUXURY,PSAK_1_REV,idx:MakingChargePerGram,0.90
+Ongkos per Gram,JEWELRY_LUXURY,PSAK_1_REV,idx:MakingChargePerGram,0.90
+Making Charge per Gram,JEWELRY_LUXURY,PSAK_1_REV,idx:MakingChargePerGram,1.00
+Value-Add per Gram,JEWELRY_LUXURY,PSAK_1_REV,idx:MakingChargePerGram,0.75
+Pangsa Pasar Emas Retail,JEWELRY_LUXURY,PSAK_1_REV,idx:MarketShareGoldRetail,1.00
+Pangsa Pasar Emas,JEWELRY_LUXURY,PSAK_1_REV,idx:MarketShareGoldRetail,0.90
+Gold Retail Market Share,JEWELRY_LUXURY,PSAK_1_REV,idx:MarketShareGoldRetail,1.00
+Gold Market Share,JEWELRY_LUXURY,PSAK_1_REV,idx:MarketShareGoldRetail,0.90
+Rasio Lindung Nilai Emas,JEWELRY_LUXURY,PSAK_1_REV,idx:GoldHedgeRatio,1.00
+Lindung Nilai Emas,JEWELRY_LUXURY,PSAK_1_REV,idx:GoldHedgeRatio,0.90
+Hedging Emas,JEWELRY_LUXURY,PSAK_1_REV,idx:GoldHedgeRatio,0.90
+Gold Inventory Hedge Ratio,JEWELRY_LUXURY,PSAK_1_REV,idx:GoldHedgeRatio,1.00
+Gold Hedge Ratio,JEWELRY_LUXURY,PSAK_1_REV,idx:GoldHedgeRatio,1.00
+Pengguna Tabungan Emas Digital,JEWELRY_LUXURY,PSAK_1_REV,idx:EmaskuSubscriberCount,1.00
+Tabungan Emas Digital,JEWELRY_LUXURY,PSAK_1_REV,idx:EmaskuSubscriberCount,0.90
+EMASKU,JEWELRY_LUXURY,PSAK_1_REV,idx:EmaskuSubscriberCount,0.75
+Digital Gold Savings Users,JEWELRY_LUXURY,PSAK_1_REV,idx:EmaskuSubscriberCount,1.00
+EMASKU Subscribers,JEWELRY_LUXURY,PSAK_1_REV,idx:EmaskuSubscriberCount,0.90
+Perputaran Persediaan Emas,JEWELRY_LUXURY,PSAK_1_REV,idx:InventoryTurnoverJewelry,1.00
+Perputaran Persediaan Perhiasan,JEWELRY_LUXURY,PSAK_1_REV,idx:InventoryTurnoverJewelry,1.00
+Perputaran Persediaan,JEWELRY_LUXURY,PSAK_1_REV,idx:InventoryTurnoverJewelry,0.90
+Inventory Turnover Jewelry,JEWELRY_LUXURY,PSAK_1_REV,idx:InventoryTurnoverJewelry,1.00
+Inventory Turnover,JEWELRY_LUXURY,PSAK_1_REV,idx:InventoryTurnoverJewelry,0.90
+Rata-rata Kandungan Emas per Perhiasan,JEWELRY_LUXURY,PSAK_1_REV,idx:AverageGoldContentPerPiece,1.00
+Kandungan Emas per Piece,JEWELRY_LUXURY,PSAK_1_REV,idx:AverageGoldContentPerPiece,0.90
+Gram per Piece,JEWELRY_LUXURY,PSAK_1_REV,idx:AverageGoldContentPerPiece,0.75
+Karat Rata-rata,JEWELRY_LUXURY,PSAK_1_REV,idx:AverageGoldContentPerPiece,0.75
+Average Gold Content per Piece,JEWELRY_LUXURY,PSAK_1_REV,idx:AverageGoldContentPerPiece,1.00
+Grams per Piece,JEWELRY_LUXURY,PSAK_1_REV,idx:AverageGoldContentPerPiece,0.90
+Jumlah Toko dan Mitra Retailer,JEWELRY_LUXURY,PSAK_1_REV,idx:JewelryStorePartnerCount,1.00
+Jumlah Toko Ritel,JEWELRY_LUXURY,PSAK_1_REV,idx:JewelryStorePartnerCount,0.90
+Mitra Retailer,JEWELRY_LUXURY,PSAK_1_REV,idx:JewelryStorePartnerCount,0.90
+Store Partner Count,JEWELRY_LUXURY,PSAK_1_REV,idx:JewelryStorePartnerCount,1.00
+Store Count,JEWELRY_LUXURY,PSAK_1_REV,idx:JewelryStorePartnerCount,0.90
+Partner Retailers,JEWELRY_LUXURY,PSAK_1_REV,idx:JewelryStorePartnerCount,0.90
+Pangsa Pemirsa Primetime,MEDIA_BROADCAST,PSAK_1_REV,idx:PrimetimeAudienceShare,1.00
+Pangsa Pemirsa Prime Time,MEDIA_BROADCAST,PSAK_1_REV,idx:PrimetimeAudienceShare,1.00
+Audience Share Primetime,MEDIA_BROADCAST,PSAK_1_REV,idx:PrimetimeAudienceShare,0.90
+Rating Primetime,MEDIA_BROADCAST,PSAK_1_REV,idx:PrimetimeAudienceShare,0.90
+Primetime Audience Share,MEDIA_BROADCAST,PSAK_1_REV,idx:PrimetimeAudienceShare,1.00
+AMR Share,MEDIA_BROADCAST,PSAK_1_REV,idx:PrimetimeAudienceShare,0.75
+Pangsa Pemirsa Sepanjang Hari,MEDIA_BROADCAST,PSAK_1_REV,idx:AllTimeAudienceShare,1.00
+Audience Share 24 Jam,MEDIA_BROADCAST,PSAK_1_REV,idx:AllTimeAudienceShare,0.90
+All-Time Audience Share,MEDIA_BROADCAST,PSAK_1_REV,idx:AllTimeAudienceShare,1.00
+All-Time Share,MEDIA_BROADCAST,PSAK_1_REV,idx:AllTimeAudienceShare,0.90
+Pangsa Belanja Iklan,MEDIA_BROADCAST,PSAK_1_REV,idx:AdvertisingShareOfWallet,1.00
+Pangsa Iklan,MEDIA_BROADCAST,PSAK_1_REV,idx:AdvertisingShareOfWallet,0.90
+Ad Share of Wallet,MEDIA_BROADCAST,PSAK_1_REV,idx:AdvertisingShareOfWallet,1.00
+Ad Share,MEDIA_BROADCAST,PSAK_1_REV,idx:AdvertisingShareOfWallet,0.90
+Advertising SoW,MEDIA_BROADCAST,PSAK_1_REV,idx:AdvertisingShareOfWallet,0.75
+GRP Ditayangkan,MEDIA_BROADCAST,PSAK_1_REV,idx:GrossRatingPointDelivery,1.00
+Gross Rating Point Ditayangkan,MEDIA_BROADCAST,PSAK_1_REV,idx:GrossRatingPointDelivery,1.00
+GRP Delivered,MEDIA_BROADCAST,PSAK_1_REV,idx:GrossRatingPointDelivery,1.00
+GRP,MEDIA_BROADCAST,PSAK_1_REV,idx:GrossRatingPointDelivery,0.75
+Biaya per GRP,MEDIA_BROADCAST,PSAK_1_REV,idx:AverageCostPerGRP,1.00
+Biaya Rata-rata per Rating Point,MEDIA_BROADCAST,PSAK_1_REV,idx:AverageCostPerGRP,0.90
+Average Cost per GRP,MEDIA_BROADCAST,PSAK_1_REV,idx:AverageCostPerGRP,1.00
+Cost per Rating Point,MEDIA_BROADCAST,PSAK_1_REV,idx:AverageCostPerGRP,0.90
+CPRP,MEDIA_BROADCAST,PSAK_1_REV,idx:AverageCostPerGRP,0.75
+Utilisasi Inventori Iklan,MEDIA_BROADCAST,PSAK_1_REV,idx:AdInventoryUtilization,1.00
+Fill Rate Iklan,MEDIA_BROADCAST,PSAK_1_REV,idx:AdInventoryUtilization,0.90
+Inventory Fill Rate,MEDIA_BROADCAST,PSAK_1_REV,idx:AdInventoryUtilization,1.00
+Ad Inventory Fill Rate,MEDIA_BROADCAST,PSAK_1_REV,idx:AdInventoryUtilization,1.00
+Inventory Fill,MEDIA_BROADCAST,PSAK_1_REV,idx:AdInventoryUtilization,0.75
+Bauran Pendapatan Digital,MEDIA_BROADCAST,PSAK_1_REV,idx:DigitalRevenueMix,1.00
+Pendapatan Digital,MEDIA_BROADCAST,PSAK_1_REV,idx:DigitalRevenueMix,0.90
+Pendapatan OTT,MEDIA_BROADCAST,PSAK_1_REV,idx:DigitalRevenueMix,0.90
+Digital Revenue Mix,MEDIA_BROADCAST,PSAK_1_REV,idx:DigitalRevenueMix,1.00
+Digital Revenue,MEDIA_BROADCAST,PSAK_1_REV,idx:DigitalRevenueMix,0.90
+Pelanggan Berbayar OTT,MEDIA_BROADCAST,PSAK_1_REV,idx:SubscriberCountOTT,1.00
+Pelanggan OTT,MEDIA_BROADCAST,PSAK_1_REV,idx:SubscriberCountOTT,0.90
+Subscriber OTT,MEDIA_BROADCAST,PSAK_1_REV,idx:SubscriberCountOTT,0.90
+Pelanggan Vidio,MEDIA_BROADCAST,PSAK_1_REV,idx:SubscriberCountOTT,0.75
+OTT Paid Subscribers,MEDIA_BROADCAST,PSAK_1_REV,idx:SubscriberCountOTT,1.00
+Paid Streaming Subscribers,MEDIA_BROADCAST,PSAK_1_REV,idx:SubscriberCountOTT,0.90
+ARPU OTT,MEDIA_BROADCAST,PSAK_1_REV,idx:ArpuOtt,1.00
+ARPU Streaming,MEDIA_BROADCAST,PSAK_1_REV,idx:ArpuOtt,0.90
+OTT ARPU,MEDIA_BROADCAST,PSAK_1_REV,idx:ArpuOtt,1.00
+Streaming ARPU,MEDIA_BROADCAST,PSAK_1_REV,idx:ArpuOtt,0.90
+Investasi Konten,MEDIA_BROADCAST,PSAK_1_REV,idx:ContentInvestmentCapex,1.00
+Biaya Konten,MEDIA_BROADCAST,PSAK_1_REV,idx:ContentInvestmentCapex,0.90
+Belanja Konten,MEDIA_BROADCAST,PSAK_1_REV,idx:ContentInvestmentCapex,0.90
+Capex Konten,MEDIA_BROADCAST,PSAK_1_REV,idx:ContentInvestmentCapex,0.90
+Content Investment,MEDIA_BROADCAST,PSAK_1_REV,idx:ContentInvestmentCapex,1.00
+Content Spend,MEDIA_BROADCAST,PSAK_1_REV,idx:ContentInvestmentCapex,0.90
+Pelanggan TV Berbayar,MEDIA_BROADCAST,PSAK_1_REV,idx:PayTvSubscribers,1.00
+Pelanggan Pay TV,MEDIA_BROADCAST,PSAK_1_REV,idx:PayTvSubscribers,0.90
+K-Vision Subscriber,MEDIA_BROADCAST,PSAK_1_REV,idx:PayTvSubscribers,0.75
+Pay-TV Subscribers,MEDIA_BROADCAST,PSAK_1_REV,idx:PayTvSubscribers,1.00
+Pay TV Subscribers,MEDIA_BROADCAST,PSAK_1_REV,idx:PayTvSubscribers,0.90
+Ukuran Perpustakaan Konten,MEDIA_BROADCAST,PSAK_1_REV,idx:ContentLibrarySize,1.00
+Perpustakaan Konten,MEDIA_BROADCAST,PSAK_1_REV,idx:ContentLibrarySize,0.90
+Library Konten Jam,MEDIA_BROADCAST,PSAK_1_REV,idx:ContentLibrarySize,0.90
+Content Library Size,MEDIA_BROADCAST,PSAK_1_REV,idx:ContentLibrarySize,1.00
+Content Library Hours,MEDIA_BROADCAST,PSAK_1_REV,idx:ContentLibrarySize,0.90
+Nilai Aktiva Bersih Portofolio,INVESTMENT_HOLDING,PSAK_1_REV,idx:NetAssetValue,1.00
+Nilai Aktiva Bersih,INVESTMENT_HOLDING,PSAK_1_REV,idx:NetAssetValue,1.00
+NAB Portofolio,INVESTMENT_HOLDING,PSAK_1_REV,idx:NetAssetValue,0.90
+Net Asset Value,INVESTMENT_HOLDING,PSAK_1_REV,idx:NetAssetValue,1.00
+Portfolio NAV,INVESTMENT_HOLDING,PSAK_1_REV,idx:NetAssetValue,0.90
+NAV,INVESTMENT_HOLDING,PSAK_1_REV,idx:NetAssetValue,0.75
+NAV per Saham,INVESTMENT_HOLDING,PSAK_1_REV,idx:NavPerShare,1.00
+Nilai Aktiva Bersih per Saham,INVESTMENT_HOLDING,PSAK_1_REV,idx:NavPerShare,1.00
+NAV per Share,INVESTMENT_HOLDING,PSAK_1_REV,idx:NavPerShare,1.00
+NAV/Share,INVESTMENT_HOLDING,PSAK_1_REV,idx:NavPerShare,0.75
+Diskon terhadap NAV,INVESTMENT_HOLDING,PSAK_1_REV,idx:DiscountToNav,1.00
+Premi terhadap NAV,INVESTMENT_HOLDING,PSAK_1_REV,idx:DiscountToNav,0.90
+Diskon NAV,INVESTMENT_HOLDING,PSAK_1_REV,idx:DiscountToNav,0.90
+Discount to NAV,INVESTMENT_HOLDING,PSAK_1_REV,idx:DiscountToNav,1.00
+NAV Discount,INVESTMENT_HOLDING,PSAK_1_REV,idx:DiscountToNav,0.90
+Dividen Diterima Induk,INVESTMENT_HOLDING,PSAK_1_REV,idx:DividendIncomeReceived,1.00
+Dividen Diterima,INVESTMENT_HOLDING,PSAK_1_REV,idx:DividendIncomeReceived,1.00
+Pendapatan Dividen Holdco,INVESTMENT_HOLDING,PSAK_1_REV,idx:DividendIncomeReceived,0.90
+Dividend Income Received,INVESTMENT_HOLDING,PSAK_1_REV,idx:DividendIncomeReceived,1.00
+Dividend Income Holdco,INVESTMENT_HOLDING,PSAK_1_REV,idx:DividendIncomeReceived,0.90
+Modal Ditanamkan,INVESTMENT_HOLDING,PSAK_1_REV,idx:CapitalDeployedToInvestments,1.00
+Investasi Baru,INVESTMENT_HOLDING,PSAK_1_REV,idx:CapitalDeployedToInvestments,1.00
+Investasi Baru dan Follow-On,INVESTMENT_HOLDING,PSAK_1_REV,idx:CapitalDeployedToInvestments,1.00
+Capital Deployed,INVESTMENT_HOLDING,PSAK_1_REV,idx:CapitalDeployedToInvestments,1.00
+Investment Outflow,INVESTMENT_HOLDING,PSAK_1_REV,idx:CapitalDeployedToInvestments,0.90
+Realisasi Divestasi,INVESTMENT_HOLDING,PSAK_1_REV,idx:CapitalRealizedExits,1.00
+Divestasi,INVESTMENT_HOLDING,PSAK_1_REV,idx:CapitalRealizedExits,1.00
+Realisasi Exit,INVESTMENT_HOLDING,PSAK_1_REV,idx:CapitalRealizedExits,0.90
+Capital Realized from Exits,INVESTMENT_HOLDING,PSAK_1_REV,idx:CapitalRealizedExits,1.00
+Exit Proceeds,INVESTMENT_HOLDING,PSAK_1_REV,idx:CapitalRealizedExits,0.90
+Utang Bersih Induk terhadap NAV,INVESTMENT_HOLDING,PSAK_1_REV,idx:HoldcoNetDebtToNav,1.00
+Rasio Utang Bersih terhadap NAV,INVESTMENT_HOLDING,PSAK_1_REV,idx:HoldcoNetDebtToNav,0.90
+Holdco Leverage,INVESTMENT_HOLDING,PSAK_1_REV,idx:HoldcoNetDebtToNav,0.90
+Net Debt to NAV,INVESTMENT_HOLDING,PSAK_1_REV,idx:HoldcoNetDebtToNav,1.00
+Holdco Net Debt / NAV,INVESTMENT_HOLDING,PSAK_1_REV,idx:HoldcoNetDebtToNav,1.00
+EBITDA Konsolidasi Proporsional Portofolio,INVESTMENT_HOLDING,PSAK_1_REV,idx:LookThroughEbitda,1.00
+EBITDA Proporsional,INVESTMENT_HOLDING,PSAK_1_REV,idx:LookThroughEbitda,0.90
+Look-Through EBITDA,INVESTMENT_HOLDING,PSAK_1_REV,idx:LookThroughEbitda,1.00
+Proportionate EBITDA,INVESTMENT_HOLDING,PSAK_1_REV,idx:LookThroughEbitda,0.90
+Konsentrasi 3 Portofolio Teratas,INVESTMENT_HOLDING,PSAK_1_REV,idx:Top3HoldingConcentration,1.00
+Top 3 Holdings,INVESTMENT_HOLDING,PSAK_1_REV,idx:Top3HoldingConcentration,0.90
+Konsentrasi Portofolio,INVESTMENT_HOLDING,PSAK_1_REV,idx:Top3HoldingConcentration,0.90
+Top-3 Portfolio Holding Concentration,INVESTMENT_HOLDING,PSAK_1_REV,idx:Top3HoldingConcentration,1.00
+Top Holdings Concentration,INVESTMENT_HOLDING,PSAK_1_REV,idx:Top3HoldingConcentration,0.90
+Bauran Portofolio per Kelas Aset,INVESTMENT_HOLDING,PSAK_1_REV,idx:PortfolioMixByAssetClass,1.00
+Listed vs Unlisted,INVESTMENT_HOLDING,PSAK_1_REV,idx:PortfolioMixByAssetClass,0.90
+Portfolio Mix by Asset Class,INVESTMENT_HOLDING,PSAK_1_REV,idx:PortfolioMixByAssetClass,1.00
+Portfolio Asset Class Mix,INVESTMENT_HOLDING,PSAK_1_REV,idx:PortfolioMixByAssetClass,0.90
+Bauran Portofolio per Sektor Industri,INVESTMENT_HOLDING,PSAK_1_REV,idx:PortfolioMixByIndustry,1.00
+Bauran Sektor Portofolio,INVESTMENT_HOLDING,PSAK_1_REV,idx:PortfolioMixByIndustry,0.90
+Industry Split Portfolio,INVESTMENT_HOLDING,PSAK_1_REV,idx:PortfolioMixByIndustry,0.90
+Portfolio Mix by Industry,INVESTMENT_HOLDING,PSAK_1_REV,idx:PortfolioMixByIndustry,1.00
+Portfolio by Industry,INVESTMENT_HOLDING,PSAK_1_REV,idx:PortfolioMixByIndustry,0.90
+Kas dan Setara Kas Bauran Mata Uang,INVESTMENT_HOLDING,PSAK_1_REV,idx:CashHoldingsIdrUsdMix,1.00
+Kas Setara Kas Holdco,INVESTMENT_HOLDING,PSAK_1_REV,idx:CashHoldingsIdrUsdMix,0.90
+Dry Powder,INVESTMENT_HOLDING,PSAK_1_REV,idx:CashHoldingsIdrUsdMix,0.75
+Cash Holdings and IDR USD Mix,INVESTMENT_HOLDING,PSAK_1_REV,idx:CashHoldingsIdrUsdMix,1.00
+Cash Holdings,INVESTMENT_HOLDING,PSAK_1_REV,idx:CashHoldingsIdrUsdMix,0.90
+Produksi Bijih Timah,TIN_MINING,PSAK_1_REV,idx:TinInOreProduction,1.00
+Produksi Tambang Bijih Timah,TIN_MINING,PSAK_1_REV,idx:TinInOreProduction,0.90
+Bijih Timah Ditambang,TIN_MINING,PSAK_1_REV,idx:TinInOreProduction,0.90
+Tin-in-Ore Production,TIN_MINING,PSAK_1_REV,idx:TinInOreProduction,1.00
+Mine Production Tin,TIN_MINING,PSAK_1_REV,idx:TinInOreProduction,0.90
+Produksi Logam Timah,TIN_MINING,PSAK_1_REV,idx:RefinedTinProduction,1.00
+Produksi Timah Murni,TIN_MINING,PSAK_1_REV,idx:RefinedTinProduction,0.90
+Logam Timah,TIN_MINING,PSAK_1_REV,idx:RefinedTinProduction,0.75
+Refined Tin Production,TIN_MINING,PSAK_1_REV,idx:RefinedTinProduction,1.00
+Tin Metal Output,TIN_MINING,PSAK_1_REV,idx:RefinedTinProduction,0.90
+Penjualan Logam Timah,TIN_MINING,PSAK_1_REV,idx:RefinedTinSalesVolume,1.00
+Volume Penjualan Timah,TIN_MINING,PSAK_1_REV,idx:RefinedTinSalesVolume,0.90
+Refined Tin Sales Volume,TIN_MINING,PSAK_1_REV,idx:RefinedTinSalesVolume,1.00
+Refined Tin Sales,TIN_MINING,PSAK_1_REV,idx:RefinedTinSalesVolume,0.90
+Bauran Tambang Darat dan Laut,TIN_MINING,PSAK_1_REV,idx:OnshoreOffshoreMix,1.00
+Tambang Darat,TIN_MINING,PSAK_1_REV,idx:OnshoreOffshoreMix,0.75
+Tambang Laut,TIN_MINING,PSAK_1_REV,idx:OnshoreOffshoreMix,0.75
+Onshore vs Offshore Mining Mix,TIN_MINING,PSAK_1_REV,idx:OnshoreOffshoreMix,1.00
+Onshore Offshore Mix,TIN_MINING,PSAK_1_REV,idx:OnshoreOffshoreMix,0.90
+Harga Jual Rata-rata Timah per Ton,TIN_MINING,PSAK_1_REV,idx:AverageSellingPricePerTonTin,1.00
+ASP Timah,TIN_MINING,PSAK_1_REV,idx:AverageSellingPricePerTonTin,0.90
+Harga Jual Timah,TIN_MINING,PSAK_1_REV,idx:AverageSellingPricePerTonTin,0.90
+ASP Tin per Ton,TIN_MINING,PSAK_1_REV,idx:AverageSellingPricePerTonTin,1.00
+Tin Price Realized,TIN_MINING,PSAK_1_REV,idx:AverageSellingPricePerTonTin,0.90
+Biaya Tunai per Ton Timah,TIN_MINING,PSAK_1_REV,idx:CashCostPerTonTin,1.00
+Cash Cost Timah,TIN_MINING,PSAK_1_REV,idx:CashCostPerTonTin,0.90
+C1 Cost Timah,TIN_MINING,PSAK_1_REV,idx:CashCostPerTonTin,0.90
+C1 Cash Cost,TIN_MINING,PSAK_1_REV,idx:CashCostPerTonTin,1.00
+Tin Cash Cost,TIN_MINING,PSAK_1_REV,idx:CashCostPerTonTin,1.00
+Cash Cost per Ton,TIN_MINING,PSAK_1_REV,idx:CashCostPerTonTin,0.75
+Kadar Bijih Timah,TIN_MINING,PSAK_1_REV,idx:OreGradeSn,1.00
+Kadar Sn,TIN_MINING,PSAK_1_REV,idx:OreGradeSn,0.90
+Ore Grade Sn,TIN_MINING,PSAK_1_REV,idx:OreGradeSn,1.00
+Ore Grade Tin,TIN_MINING,PSAK_1_REV,idx:OreGradeSn,0.90
+Umur Cadangan Timah,TIN_MINING,PSAK_1_REV,idx:ReserveResourceLifeTin,1.00
+Umur Tambang Timah,TIN_MINING,PSAK_1_REV,idx:ReserveResourceLifeTin,0.90
+Reserve Life Tin,TIN_MINING,PSAK_1_REV,idx:ReserveResourceLifeTin,1.00
+Mine Life Tin,TIN_MINING,PSAK_1_REV,idx:ReserveResourceLifeTin,0.90
+Status Persetujuan Ekspor,TIN_MINING,PSAK_1_REV,idx:ExportPermitStatus,1.00
+Persetujuan Ekspor,TIN_MINING,PSAK_1_REV,idx:ExportPermitStatus,0.90
+Persetujuan Ekspor PE,TIN_MINING,PSAK_1_REV,idx:ExportPermitStatus,1.00
+Export Permit Status,TIN_MINING,PSAK_1_REV,idx:ExportPermitStatus,1.00
+PE Status,TIN_MINING,PSAK_1_REV,idx:ExportPermitStatus,0.75
+Luas Wilayah IUP Timah,TIN_MINING,PSAK_1_REV,idx:IupConcessionAreaTin,1.00
+Wilayah Izin Usaha Pertambangan Timah,TIN_MINING,PSAK_1_REV,idx:IupConcessionAreaTin,0.90
+IUP Timah,TIN_MINING,PSAK_1_REV,idx:IupConcessionAreaTin,0.75
+IUP Concession Area,TIN_MINING,PSAK_1_REV,idx:IupConcessionAreaTin,1.00
+Concession Area Tin,TIN_MINING,PSAK_1_REV,idx:IupConcessionAreaTin,0.90
+Kontribusi Mitra Tambang,TIN_MINING,PSAK_1_REV,idx:CooperativeMinerContribution,1.00
+Kontribusi Koperasi Tambang,TIN_MINING,PSAK_1_REV,idx:CooperativeMinerContribution,0.90
+Cooperative Mining Feed,TIN_MINING,PSAK_1_REV,idx:CooperativeMinerContribution,0.90
+Cooperative Miner Feed Contribution,TIN_MINING,PSAK_1_REV,idx:CooperativeMinerContribution,1.00
+Partner Miner Contribution,TIN_MINING,PSAK_1_REV,idx:CooperativeMinerContribution,0.90
+Kapasitas Pabrik per Produk,CHEMICALS,PSAK_1_REV,idx:PlantCapacityByProduct,1.00
+Kapasitas Terpasang Pabrik,CHEMICALS,PSAK_1_REV,idx:PlantCapacityByProduct,0.90
+Kapasitas Produksi per Produk,CHEMICALS,PSAK_1_REV,idx:PlantCapacityByProduct,0.90
+Plant Capacity by Product,CHEMICALS,PSAK_1_REV,idx:PlantCapacityByProduct,1.00
+Nameplate Capacity,CHEMICALS,PSAK_1_REV,idx:PlantCapacityByProduct,0.90
+Utilisasi Kapasitas Kimia,CHEMICALS,PSAK_1_REV,idx:CapacityUtilizationChem,1.00
+Tingkat Utilisasi Pabrik,CHEMICALS,PSAK_1_REV,idx:CapacityUtilizationChem,0.90
+Utilisasi Pabrik Kimia,CHEMICALS,PSAK_1_REV,idx:CapacityUtilizationChem,0.90
+Capacity Utilization Chemicals,CHEMICALS,PSAK_1_REV,idx:CapacityUtilizationChem,1.00
+Plant Utilization,CHEMICALS,PSAK_1_REV,idx:CapacityUtilizationChem,0.90
+Bauran Pendapatan Spesialti dan Komoditas,CHEMICALS,PSAK_1_REV,idx:SpecialtyCommodityMix,1.00
+Bauran Spesialti,CHEMICALS,PSAK_1_REV,idx:SpecialtyCommodityMix,0.90
+Specialty Mix,CHEMICALS,PSAK_1_REV,idx:SpecialtyCommodityMix,0.90
+Specialty vs Commodity Revenue Mix,CHEMICALS,PSAK_1_REV,idx:SpecialtyCommodityMix,1.00
+Specialty Commodity Mix,CHEMICALS,PSAK_1_REV,idx:SpecialtyCommodityMix,0.90
+Rasio Biaya Bahan Baku,CHEMICALS,PSAK_1_REV,idx:FeedstockCostRatio,1.00
+Biaya Bahan Baku terhadap Pokok Penjualan,CHEMICALS,PSAK_1_REV,idx:FeedstockCostRatio,0.90
+Biaya Bahan Baku,CHEMICALS,PSAK_1_REV,idx:FeedstockCostRatio,0.90
+Feedstock Cost Ratio,CHEMICALS,PSAK_1_REV,idx:FeedstockCostRatio,1.00
+Raw Material Cost Ratio,CHEMICALS,PSAK_1_REV,idx:FeedstockCostRatio,0.90
+Harga Jual Rata-rata Kimia per Ton,CHEMICALS,PSAK_1_REV,idx:AspChemicalPerTon,1.00
+ASP Kimia,CHEMICALS,PSAK_1_REV,idx:AspChemicalPerTon,0.90
+Harga Jual Rata-rata Produk Kimia,CHEMICALS,PSAK_1_REV,idx:AspChemicalPerTon,0.90
+ASP per Ton Chemicals,CHEMICALS,PSAK_1_REV,idx:AspChemicalPerTon,1.00
+Blended ASP,CHEMICALS,PSAK_1_REV,idx:AspChemicalPerTon,0.75
+Bauran Pendapatan Ekspor Kimia,CHEMICALS,PSAK_1_REV,idx:ExportRevenueMixChem,1.00
+Pendapatan Ekspor Kimia,CHEMICALS,PSAK_1_REV,idx:ExportRevenueMixChem,0.90
+Ekspor Kimia,CHEMICALS,PSAK_1_REV,idx:ExportRevenueMixChem,0.75
+Export Revenue Mix Chemicals,CHEMICALS,PSAK_1_REV,idx:ExportRevenueMixChem,1.00
+Export Sales Mix,CHEMICALS,PSAK_1_REV,idx:ExportRevenueMixChem,0.90
+Pangsa Substitusi Impor,CHEMICALS,PSAK_1_REV,idx:ImportSubstitutionShare,1.00
+Substitusi Impor,CHEMICALS,PSAK_1_REV,idx:ImportSubstitutionShare,0.90
+Import Substitution Share,CHEMICALS,PSAK_1_REV,idx:ImportSubstitutionShare,1.00
+Import Substitution,CHEMICALS,PSAK_1_REV,idx:ImportSubstitutionShare,0.90
+Bauran Pasar Akhir Kimia,CHEMICALS,PSAK_1_REV,idx:EndMarketMixChemicals,1.00
+Segmen Pasar Akhir,CHEMICALS,PSAK_1_REV,idx:EndMarketMixChemicals,0.90
+End Market Mix,CHEMICALS,PSAK_1_REV,idx:EndMarketMixChemicals,0.90
+End-Market Mix Textile FnB Construction Auto,CHEMICALS,PSAK_1_REV,idx:EndMarketMixChemicals,1.00
+End-Market Split,CHEMICALS,PSAK_1_REV,idx:EndMarketMixChemicals,0.90
+Capex Kepatuhan Lingkungan,CHEMICALS,PSAK_1_REV,idx:EnvironmentalComplianceCapex,1.00
+Belanja Modal Lingkungan,CHEMICALS,PSAK_1_REV,idx:EnvironmentalComplianceCapex,0.90
+Env Capex PROPER,CHEMICALS,PSAK_1_REV,idx:EnvironmentalComplianceCapex,0.90
+IPAL Capex,CHEMICALS,PSAK_1_REV,idx:EnvironmentalComplianceCapex,0.75
+Environmental Compliance Capex,CHEMICALS,PSAK_1_REV,idx:EnvironmentalComplianceCapex,1.00
+Environmental Capex,CHEMICALS,PSAK_1_REV,idx:EnvironmentalComplianceCapex,0.90
+Cakupan Sertifikasi BPOM,CHEMICALS,PSAK_1_REV,idx:BpomCertMixChemicals,1.00
+Sertifikasi BPOM Food Cosmetic Grade,CHEMICALS,PSAK_1_REV,idx:BpomCertMixChemicals,1.00
+Food Grade Certification,CHEMICALS,PSAK_1_REV,idx:BpomCertMixChemicals,0.90
+BPOM Cert Coverage,CHEMICALS,PSAK_1_REV,idx:BpomCertMixChemicals,1.00
+BPOM Cert Mix,CHEMICALS,PSAK_1_REV,idx:BpomCertMixChemicals,1.00

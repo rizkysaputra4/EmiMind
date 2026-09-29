@@ -6,10 +6,312 @@ import asyncio
 from typing import Any
 
 from sqlalchemy import text
+
 from services.shared.db import create_pool
 from services.shared.logging import get_logger
 
 log = get_logger("seed.metric_ontology")
+
+
+_STATEMENT_TYPE_BY_CATEGORY = {
+    "INCOME": "INCOME_STATEMENT",
+    "BALANCE_SHEET": "BALANCE_SHEET",
+    "ASSET": "BALANCE_SHEET",
+    "LIABILITY": "BALANCE_SHEET",
+    "EQUITY": "BALANCE_SHEET",
+    "CASH_FLOW": "CASH_FLOW",
+    "PER_SHARE": "PER_SHARE",
+    "RATIO": "OPERATIONAL_KPI",
+    "OPERATIONAL": "OPERATIONAL_KPI",
+    "OPERATIONAL_KPI": "OPERATIONAL_KPI",
+    "SEGMENT": "NOTE",
+    "NARRATIVE": "NARRATIVE",
+}
+
+
+def _default_statement_type(category: str) -> str:
+    return _STATEMENT_TYPE_BY_CATEGORY.get((category or "").upper(), "NOTE")
+
+
+# Per-metric prime-then-validate enrichment. The validator injects these into
+# feedback messages when a metric is missing so the LLM knows exactly where to
+# look and how to extract. Keys are metric_id; values override the defaults in
+# METRIC_DEFINITIONS_DATA at insert time.
+METRIC_ENRICHMENTS: dict[str, dict[str, Any]] = {
+    # ---------------- Core income statement ----------------
+    "ifrs:Revenue": {
+        "search_hints": ["Laporan Laba Rugi Komprehensif", "Catatan Pendapatan Usaha", "Notes to Revenue / Segment Information"],
+        "extraction_guideline": "Extract net revenue from the top of the income statement AND decompose per product/segment from the Revenue note.",
+        "expected_segment_fields": ["segment", "type", "pct_total"],
+    },
+    "ifrs:CostOfSales": {
+        "search_hints": ["Catatan Beban Pokok Penjualan", "Notes to Cost of Goods Sold"],
+        "extraction_guideline": "Submit as a POSITIVE number. If the note breaks COGS into components (bahan baku, upah, penyusutan), also extract each component with segment metadata.",
+        "expected_segment_fields": ["segment", "type", "pct_cogs"],
+    },
+    "ifrs:GrossProfit": {
+        "search_hints": ["Laporan Laba Rugi"],
+        "extraction_guideline": "Must satisfy: Revenue − CostOfSales = GrossProfit (tolerance 0.05%).",
+    },
+    "ifrs:OperatingProfit": {
+        "search_hints": ["Laporan Laba Rugi", "Ikhtisar Keuangan / Financial Highlights"],
+        "extraction_guideline": "Some issuers call this Laba Usaha; others EBIT. Prefer the value that excludes finance costs and non-operating items.",
+    },
+    "idx:EBITDA": {
+        "search_hints": ["Ikhtisar Keuangan / Financial Highlights", "Investor Presentation / Public Expose"],
+        "extraction_guideline": "If the issuer reports EBITDA directly, extract it; otherwise leave it — the derive engine will compute it.",
+    },
+    "ifrs:FinanceCosts": {
+        "search_hints": ["Laporan Laba Rugi", "Catatan Beban Keuangan / Beban Bunga"],
+        "extraction_guideline": "Submit as a POSITIVE number.",
+    },
+    "ifrs:ProfitBeforeTax": {
+        "search_hints": ["Laporan Laba Rugi"],
+    },
+    "ifrs:ProfitLoss": {
+        "search_hints": ["Laporan Laba Rugi Komprehensif"],
+        "extraction_guideline": "The bottom-line net profit (attributable to owners + non-controlling interest combined).",
+    },
+    "ifrs:ProfitLossAttributableToOwnersOfParent": {
+        "search_hints": ["Laporan Laba Rugi Komprehensif (bagian bawah)"],
+    },
+    # ---------------- Core balance sheet ----------------
+    "ifrs:Assets": {
+        "search_hints": ["Laporan Posisi Keuangan (Neraca)"],
+        "extraction_guideline": "Must satisfy the accounting identity Assets = Liabilities + Equity within 0.05% tolerance.",
+    },
+    "ifrs:CurrentAssets": {
+        "search_hints": ["Laporan Posisi Keuangan - Aset Lancar"],
+        "extraction_guideline": "Sum with NonCurrentAssets must equal Total Assets.",
+    },
+    "ifrs:NonCurrentAssets": {
+        "search_hints": ["Laporan Posisi Keuangan - Aset Tidak Lancar"],
+    },
+    "ifrs:CashAndCashEquivalents": {
+        "search_hints": ["Catatan Kas dan Setara Kas / Bank & Deposito"],
+        "extraction_guideline": "Also decompose per bank / currency / interest rate using segment metadata.",
+        "expected_segment_fields": ["segment", "type", "currency", "interest_rate"],
+    },
+    "ifrs:Liabilities": {
+        "search_hints": ["Laporan Posisi Keuangan (Neraca)"],
+    },
+    "ifrs:CurrentLiabilities": {
+        "search_hints": ["Laporan Posisi Keuangan - Liabilitas Jangka Pendek"],
+        "extraction_guideline": "Sum with NonCurrentLiabilities must equal Total Liabilities.",
+    },
+    "ifrs:NonCurrentLiabilities": {
+        "search_hints": ["Laporan Posisi Keuangan - Liabilitas Jangka Panjang"],
+    },
+    "ifrs:Equity": {
+        "search_hints": ["Laporan Posisi Keuangan - Ekuitas / Modal"],
+        "extraction_guideline": "Total equity including non-controlling interest. Must satisfy Assets = Liabilities + Equity within 0.05% tolerance.",
+    },
+    "ifrs:EquityAttributableToOwnersOfParent": {
+        "search_hints": ["Laporan Posisi Keuangan - Ekuitas"],
+    },
+    "idx:TotalDebt": {
+        "search_hints": ["Catatan Utang Bank / Pinjaman Jangka Panjang", "Catatan Obligasi / Sukuk / MTN"],
+        "extraction_guideline": "Sum of short-term + long-term interest-bearing borrowings AND bonds/sukuk. Exclude trade payables.",
+    },
+    # ---------------- Core cash flow ----------------
+    "ifrs:CashFlowsFromUsedInOperatingActivities": {
+        "search_hints": ["Laporan Arus Kas - Arus Kas dari Aktivitas Operasi"],
+        "extraction_guideline": "The bottom-line CFO (net cash from operating). Submit as-signed; POSITIVE if net inflow.",
+    },
+    "idx:Capex": {
+        "search_hints": ["Laporan Arus Kas - Aktivitas Investasi", "Catatan Aset Tetap - Penambahan"],
+        "extraction_guideline": "Capex = 'Perolehan/Pembelian Aset Tetap' line under Investing activities. Submit as POSITIVE.",
+    },
+    "idx:FreeCashFlow": {
+        "search_hints": ["Ikhtisar Keuangan / Investor Presentation"],
+        "extraction_guideline": "If disclosed directly, extract; otherwise leave — derived as CFO − Capex.",
+    },
+    # ---------------- Banking sector ----------------
+    "idx:LoansAndAdvances": {
+        "search_hints": ["Catatan Kredit yang Diberikan", "Rincian Kredit Berdasarkan Segmen"],
+        "extraction_guideline": "Gross loans (before CKPN provision). Also decompose per segment (Korporasi/Komersial/UKM/Mikro/Konsumer).",
+        "expected_segment_fields": ["segment", "type", "pct_total"],
+    },
+    "idx:CustomerDeposits": {
+        "search_hints": ["Catatan Simpanan Nasabah", "Catatan Dana Pihak Ketiga (DPK)"],
+        "extraction_guideline": "DPK = Giro + Tabungan + Deposito. Also decompose per product type.",
+        "expected_segment_fields": ["segment", "type", "pct_total"],
+    },
+    "idx:CASA": {
+        "search_hints": ["Ikhtisar Rasio Keuangan OJK", "Investor Presentation - CASA Composition"],
+        "extraction_guideline": "CASA = Giro + Tabungan (excluding time deposits/deposito).",
+    },
+    "idx:CASARatio": {
+        "search_hints": ["Ikhtisar Rasio Keuangan OJK"],
+        "extraction_guideline": "CASA / Total DPK. Submit as percentage (e.g. 74.5 not 0.745).",
+    },
+    "idx:NetInterestMargin": {
+        "search_hints": ["Ikhtisar Rasio Keuangan OJK (NIM)", "Public Expose Deck"],
+        "extraction_guideline": "Submit as percentage (e.g. 5.35).",
+    },
+    "idx:NonPerformingLoansGross": {
+        "search_hints": ["Catatan Kualitas Aset Produktif / Kolektibilitas Kredit", "Rasio NPL OJK"],
+        "extraction_guideline": "Gross NPL = sum of Kol 3 + Kol 4 + Kol 5 loans, before CKPN.",
+    },
+    "idx:CapitalAdequacyRatio": {
+        "search_hints": ["Ikhtisar Rasio Keuangan OJK - CAR"],
+        "extraction_guideline": "CAR after CKPN. Submit as percentage.",
+    },
+    "idx:LoanToDepositRatio": {"search_hints": ["Ikhtisar Rasio Keuangan OJK - LDR"], "extraction_guideline": "Submit as percentage."},
+    "idx:BOPO": {"search_hints": ["Ikhtisar Rasio Keuangan OJK - BOPO"], "extraction_guideline": "Beban Operasional / Pendapatan Operasional. Submit as percentage."},
+    "idx:CostToIncomeRatio": {"search_hints": ["Ikhtisar Rasio Keuangan / Investor Presentation"], "extraction_guideline": "Submit as percentage."},
+    "idx:ReturnOnAssetsBank": {"search_hints": ["Ikhtisar Rasio Keuangan OJK - ROA"], "extraction_guideline": "OJK-formula ROA (before-tax profit / avg assets). Submit as percentage."},
+    "idx:CostOfCredit": {"search_hints": ["Ikhtisar Rasio Keuangan OJK - CoC", "Public Expose"], "extraction_guideline": "Annualised loan loss provision / avg loans. Submit as percentage."},
+    "idx:LoanAtRiskLAR": {"search_hints": ["Public Expose - Asset Quality"], "extraction_guideline": "LAR = restructured + special-mention + NPL over gross loans. Submit as percentage."},
+    "idx:NPLCoverageRatio": {"search_hints": ["Catatan CKPN PSAK 71 / ECL", "Public Expose - Coverage"], "extraction_guideline": "CKPN / Gross NPL. Submit as percentage (typical 200-350%)."},
+    "idx:PPOP": {"search_hints": ["Ikhtisar Kinerja / Investor Presentation"], "extraction_guideline": "Pre-Provision Operating Profit — operating profit BEFORE loan loss provisions."},
+    # ---------------- Mining / Coal / Nickel ----------------
+    "idx:CoalProductionVolume": {
+        "search_hints": ["Ikhtisar Operasional Batubara", "Public Expose - Production", "Investor Presentation"],
+        "extraction_guideline": "Volume in metric tonnes (MT). Also decompose per mine site if disclosed.",
+        "expected_segment_fields": ["segment", "type", "market"],
+    },
+    "idx:CoalAveragePriceASP": {"search_hints": ["Ikhtisar Operasional Batubara"], "extraction_guideline": "Realized ASP in USD/ton (not IDR). Watch the unit."},
+    "idx:CoalCashCostPerTon": {"search_hints": ["Ikhtisar Operasional Batubara - Cash Cost"], "extraction_guideline": "Ex-mine cash cost in USD/ton excluding royalty."},
+    "idx:StripRatio": {"search_hints": ["Ikhtisar Operasional - Strip Ratio / Nisbah Kupas"], "extraction_guideline": "BCM (overburden) per ton coal. Dimensionless ratio."},
+    "idx:OverburdenRemoval": {"search_hints": ["Ikhtisar Operasional - Overburden Removal"], "extraction_guideline": "Volume in BCM."},
+    "idx:DomesticMarketObligationRatio": {"search_hints": ["Realisasi DMO / Public Expose"], "extraction_guideline": "Actual DMO ratio vs regulator obligation (25%). Submit as percentage."},
+    "idx:MiningReservesMt": {"search_hints": ["Catatan Cadangan & Sumber Daya Tambang", "JORC/SRK Report Summary"], "extraction_guideline": "Proved + Probable reserves in million tonnes (Mt)."},
+    "idx:NickelOreProduction": {"search_hints": ["Ikhtisar Operasional Nikel"], "extraction_guideline": "Volume in WMT (wet metric tonnes). Decompose Saprolite vs Limonite."},
+    "idx:FerroNickelOutput": {"search_hints": ["Ikhtisar Operasional Smelter"], "extraction_guideline": "Ton Ni (metric tonnes of nickel content, not gross)."},
+    "idx:MHPProduction": {"search_hints": ["Ikhtisar Operasional HPAL / MHP"], "extraction_guideline": "Ton Ni content."},
+    "idx:NickelCashCostPerTon": {"search_hints": ["Ikhtisar Operasional Nikel - Cash Cost"], "extraction_guideline": "USD per ton Ni content."},
+    "idx:SmelterUtilizationRate": {"search_hints": ["Ikhtisar Operasional Smelter"], "extraction_guideline": "Actual output / nameplate capacity. Submit as percentage."},
+    # ---------------- CPO / Agri ----------------
+    "idx:MaturePlantedArea": {
+        "search_hints": ["Catatan Tanaman Produktif / Aset Biologis", "Ikhtisar Operasional Kebun"],
+        "extraction_guideline": "Mature-only planted area in hectares. Do NOT include immature/plasma unless explicitly asked.",
+        "expected_segment_fields": ["segment", "type", "planted_area_ha"],
+    },
+    "idx:FfbProduction": {"search_hints": ["Ikhtisar Operasional Kelapa Sawit - Produksi TBS"], "extraction_guideline": "Fresh Fruit Bunches produced in tonnes. Inti (own) + plasma if disclosed."},
+    "idx:CPOProductionVolume": {"search_hints": ["Ikhtisar Operasional - Produksi CPO"], "extraction_guideline": "Crude Palm Oil output in metric tonnes."},
+    "idx:PalmKernelProduction": {"search_hints": ["Ikhtisar Operasional - Produksi Inti Sawit"], "extraction_guideline": "Palm Kernel in tonnes."},
+    "idx:OilExtractionRate": {"search_hints": ["Ikhtisar Operasional - OER / Rendemen"], "extraction_guideline": "CPO / FFB in percent (typically 20-24%)."},
+    "idx:CPOAveragePriceASP": {"search_hints": ["Ikhtisar Operasional - ASP CPO"], "extraction_guideline": "Realized average selling price in IDR/kg (some issuers quote USD/ton — convert)."},
+    "idx:CPOCashCostPerKg": {"search_hints": ["Ikhtisar Operasional - Cash Cost CPO"], "extraction_guideline": "Ex-mill cash cost in IDR/kg."},
+    # ---------------- Property ----------------
+    "idx:MarketingSalesPresales": {"search_hints": ["Catatan Pendapatan Pra-Penjualan Properti", "Investor Presentation - Marketing Sales"], "extraction_guideline": "Presales value in IDR. Decompose per project/segment.", "expected_segment_fields": ["segment", "type", "project_location"]},
+    "idx:TotalLandbankHectares": {"search_hints": ["Catatan Tanah untuk Pengembangan / Cadangan Lahan"], "extraction_guideline": "Total landbank in hectares. Decompose per township.", "expected_segment_fields": ["segment", "type", "location", "hectares"]},
+    "idx:RecurringIncomeShare": {"search_hints": ["Investor Presentation - Recurring Income"], "extraction_guideline": "Share of revenue from mall/hotel/office (%)"},
+    "idx:MallOccupancyRate": {"search_hints": ["Public Expose - Mall Occupancy"], "extraction_guideline": "Percentage occupied. If multiple malls, extract per asset."},
+    "idx:UnrecognizedRevenueBacklog": {"search_hints": ["Catatan Pendapatan Belum Diakui / Deferred Revenue"], "extraction_guideline": "Backlog of presales not yet recognised. IDR."},
+    # ---------------- Telco / Tower ----------------
+    "idx:DataTrafficPetabytes": {"search_hints": ["Ikhtisar Operasional Telekomunikasi"], "extraction_guideline": "Data traffic in petabytes (PB)."},
+    "idx:BlendedARPU": {"search_hints": ["Ikhtisar Operasional Seluler - ARPU"], "extraction_guideline": "Average revenue per user in IDR. Decompose prepaid vs postpaid if disclosed."},
+    "idx:MobileSubscribers": {"search_hints": ["Ikhtisar Operasional - Subscriber Base"], "extraction_guideline": "Total mobile subscriber count."},
+    "idx:TowerCount": {"search_hints": ["Ikhtisar Operasional Menara"], "extraction_guideline": "Total tower sites."},
+    "idx:TenancyRatio": {"search_hints": ["Ikhtisar Operasional Menara - Tenancy"], "extraction_guideline": "Tenants per tower (ratio, e.g. 1.85)."},
+    # ---------------- Healthcare ----------------
+    "idx:OperationalBedsCount": {"search_hints": ["Ikhtisar Operasional Rumah Sakit"], "extraction_guideline": "Total operational bed count across all hospitals."},
+    "idx:BedOccupancyRate": {"search_hints": ["Ikhtisar Operasional Rumah Sakit - BOR"], "extraction_guideline": "Occupancy percentage."},
+    "idx:AverageLengthOfStay": {"search_hints": ["Ikhtisar Operasional - ALOS"], "extraction_guideline": "Average length of stay in days."},
+    "idx:InpatientAdmissions": {"search_hints": ["Ikhtisar Operasional - IP Admissions"], "extraction_guideline": "Count of inpatient admissions during period."},
+    "idx:OutpatientVisits": {"search_hints": ["Ikhtisar Operasional - OP Visits"], "extraction_guideline": "Count of outpatient visits during period."},
+    "idx:ARPOB": {"search_hints": ["Ikhtisar Operasional - ARPOB"], "extraction_guideline": "Average revenue per occupied bed-day in IDR."},
+    "idx:BPJSRevenueShare": {"search_hints": ["Ikhtisar Operasional - BPJS Mix"], "extraction_guideline": "Percentage of revenue from BPJS (national insurance)."},
+    # ---------------- Shipping ----------------
+    "idx:FleetCount": {"search_hints": ["Ikhtisar Armada Kapal"], "extraction_guideline": "Number of vessels. Decompose by type if disclosed.", "expected_segment_fields": ["segment", "type", "vessel_type"]},
+    "idx:TotalDWT": {"search_hints": ["Ikhtisar Armada - Total DWT"], "extraction_guideline": "Total deadweight tonnage."},
+    "idx:CharterRate": {"search_hints": ["Ikhtisar Armada - TCE / Charter Rate"], "extraction_guideline": "Time-charter-equivalent rate in USD/day."},
+    "idx:BunkerFuelCost": {"search_hints": ["Ikhtisar Biaya Operasional - Bunker"], "extraction_guideline": "Bunker fuel cost in USD/ton."},
+    "idx:VesselUtilization": {"search_hints": ["Ikhtisar Armada - Utilisasi"], "extraction_guideline": "Fleet utilisation percentage."},
+    # ---------------- Renewable Energy ----------------
+    "idx:InstalledCapacityMW": {"search_hints": ["Ikhtisar Operasional - Kapasitas Terpasang"], "extraction_guideline": "Total installed capacity in MW. Decompose per plant.", "expected_segment_fields": ["segment", "type", "plant_name"]},
+    "idx:NetGenerationGWh": {"search_hints": ["Ikhtisar Operasional - Net Generation"], "extraction_guideline": "Net electricity generation in GWh (sent-out, not gross)."},
+    "idx:CapacityFactor": {"search_hints": ["Ikhtisar Operasional - Capacity Factor"], "extraction_guideline": "Actual generation / theoretical max (%)."},
+    "idx:RealizedElectricityTariff": {"search_hints": ["Ikhtisar Operasional - Tariff"], "extraction_guideline": "Realised tariff in USD/kWh."},
+    "idx:SteamProductionTonnes": {"search_hints": ["Ikhtisar Operasional Geotermal - Uap"], "extraction_guideline": "Geothermal steam produced in tonnes."},
+    "idx:ProvenGeothermalReservesMWe": {"search_hints": ["Ikhtisar Cadangan Geotermal"], "extraction_guideline": "Proven geothermal reserves in MWe."},
+    # ---------------- Oil & Gas ----------------
+    "idx:ProvedReserves2P": {"search_hints": ["Catatan Cadangan Migas / SEC 1P/2P"], "extraction_guideline": "Proved + Probable reserves in MMBOE."},
+    "idx:OilProductionBOPD": {"search_hints": ["Ikhtisar Operasional Hulu - Oil Lifting"], "extraction_guideline": "Oil lifting in barrels of oil per day (BOPD)."},
+    "idx:GasProductionMMSCFD": {"search_hints": ["Ikhtisar Operasional Hulu - Gas Production"], "extraction_guideline": "Gas output in million standard cubic feet per day (MMSCFD)."},
+    "idx:LiftingCostPerBOE": {"search_hints": ["Ikhtisar Biaya Angkat"], "extraction_guideline": "Lifting cost in USD/BOE."},
+    "idx:RealizedICP": {"search_hints": ["Ikhtisar Realisasi Harga - ICP"], "extraction_guideline": "Indonesian Crude Price realisation in USD/bbl."},
+    "idx:RealizedGasASP": {"search_hints": ["Ikhtisar Realisasi Harga Gas"], "extraction_guideline": "Realised gas selling price in USD/MMBTU."},
+    "idx:RigUtilization": {"search_hints": ["Ikhtisar Operasional Rig"], "extraction_guideline": "Rig utilisation percentage."},
+    "idx:ReserveReplacementRatio": {"search_hints": ["Ikhtisar Cadangan - RRR"], "extraction_guideline": "Ratio of new reserves added / production during period."},
+    # ---------------- Automotive ----------------
+    "idx:CarWholesaleUnits": {"search_hints": ["Ikhtisar Penjualan Otomotif - Wholesale"], "extraction_guideline": "4W wholesale units. Decompose per brand.", "expected_segment_fields": ["segment", "type", "brand", "channel"]},
+    "idx:CarRetailUnits": {"search_hints": ["Ikhtisar Penjualan Otomotif - Retail"], "extraction_guideline": "4W retail units."},
+    "idx:MotorcycleUnitSales": {"search_hints": ["Ikhtisar Penjualan Sepeda Motor"], "extraction_guideline": "2W unit sales."},
+    "idx:MarketShareGaikindo": {"search_hints": ["Ikhtisar - Market Share Gaikindo/AISI"], "extraction_guideline": "Market share percentage per Gaikindo (4W) / AISI (2W)."},
+    "idx:ExportVolumeUnits": {"search_hints": ["Ikhtisar Ekspor CBU"], "extraction_guideline": "Export volume in units (CBU)."},
+    "idx:EVModelMixShare": {"search_hints": ["Ikhtisar Kendaraan Listrik / EV Mix"], "extraction_guideline": "EV/HEV share of total units (%)."},
+    "idx:ComponentContentPerVehicle": {"search_hints": ["Ikhtisar Komponen per Kendaraan"], "extraction_guideline": "IDR content per vehicle."},
+    # ---------------- Poultry ----------------
+    "idx:FeedMillSalesVolumeMT": {"search_hints": ["Ikhtisar Operasional - Feedmill"], "extraction_guideline": "Feedmill sales volume in metric tonnes."},
+    "idx:DayOldChickVolume": {"search_hints": ["Ikhtisar Operasional - DOC Volume"], "extraction_guideline": "DOC volume in million heads."},
+    "idx:DOCFarmgatePrice": {"search_hints": ["Ikhtisar Harga DOC"], "extraction_guideline": "DOC price at farm gate in IDR/head."},
+    "idx:LiveBirdPriceIDR": {"search_hints": ["Ikhtisar Harga Ayam Hidup"], "extraction_guideline": "Live broiler price in IDR/kg."},
+    "idx:RawMaterialExposureSoyCorn": {"search_hints": ["Catatan Beban Bahan Baku - Soy/Corn"], "extraction_guideline": "Percentage exposure to soybean meal + corn."},
+    # ---------------- Consumer Staples ----------------
+    "idx:BrandedFoodVolumeMT": {"search_hints": ["Ikhtisar Operasional - Volume per Brand"], "extraction_guideline": "Branded food volume in tonnes. Decompose per brand.", "expected_segment_fields": ["segment", "type", "brand"]},
+    "idx:VolumePriceMixDecomp": {"search_hints": ["Investor Presentation - Volume/Price/Mix"], "extraction_guideline": "Decomposition of revenue growth into volume + price + mix (%)."},
+    # ---------------- Retail ----------------
+    "idx:SameStoreSalesGrowth": {"search_hints": ["Ikhtisar Operasional Retail - SSSG"], "extraction_guideline": "Same-store sales growth percentage YoY."},
+    "idx:SalesPerSquareMeter": {"search_hints": ["Ikhtisar Operasional - Sales Density"], "extraction_guideline": "Sales per square metre in IDR."},
+    "idx:TotalStoreCount": {"search_hints": ["Ikhtisar Operasional - Store Count"], "extraction_guideline": "Total operational store count."},
+    "idx:NetNewStoreOpenings": {"search_hints": ["Ikhtisar Ekspansi Gerai"], "extraction_guideline": "Net new store openings during period."},
+    "idx:InventoryDays": {"search_hints": ["Analisis Working Capital"], "extraction_guideline": "Inventory days = (Inventory / COGS) × 365."},
+    "idx:PrivateLabelShare": {"search_hints": ["Ikhtisar Bauran - Private Label"], "extraction_guideline": "Share of private-label sales (%)."},
+    "idx:AverageTicketSize": {"search_hints": ["Ikhtisar Operasional - Ticket Size"], "extraction_guideline": "Average ticket size in IDR."},
+    # ---------------- Pharmaceutical ----------------
+    "idx:EthicalRevenueShare": {"search_hints": ["Ikhtisar Bauran Pendapatan - Ethical"], "extraction_guideline": "Ethical (prescription) revenue share (%)."},
+    "idx:OTCRevenueShare": {"search_hints": ["Ikhtisar Bauran Pendapatan - OTC"], "extraction_guideline": "OTC revenue share (%)."},
+    "idx:APIImportExposure": {"search_hints": ["Catatan Impor Bahan Baku / API"], "extraction_guideline": "API import exposure as % of raw materials."},
+    "idx:TollManufacturingVolume": {"search_hints": ["Ikhtisar Operasional - Toll Manufacturing"], "extraction_guideline": "Toll-manufacturing volume."},
+    "idx:BPJSCatalogRevenueShare": {"search_hints": ["Ikhtisar Bauran Pendapatan - BPJS"], "extraction_guideline": "Share of revenue from BPJS catalog (%)."},
+    # ---------------- Petrochemical ----------------
+    "idx:NaphthaCrackerUtilization": {"search_hints": ["Ikhtisar Operasional - Cracker Utilization"], "extraction_guideline": "Naphtha cracker utilisation (%)."},
+    "idx:PolyolefinProductionMT": {"search_hints": ["Ikhtisar Operasional - PE/PP Production"], "extraction_guideline": "Polyolefin production in tonnes."},
+    "idx:PolymerNaphthaSpread": {"search_hints": ["Investor Presentation - Spread"], "extraction_guideline": "Spread of polymer price over naphtha in USD/MT."},
+    "idx:AmmoniaProductionMT": {"search_hints": ["Ikhtisar Operasional - Ammonia"], "extraction_guideline": "Ammonia production in tonnes."},
+    "idx:UreaProductionMT": {"search_hints": ["Ikhtisar Operasional - Urea"], "extraction_guideline": "Urea production in tonnes."},
+    "idx:PlantTurnaroundEvent": {"search_hints": ["Catatan Peristiwa Setelah Tanggal Pelaporan / Turnaround"], "extraction_guideline": "Days of scheduled plant turnaround/shutdown."},
+    # ---------------- Contractor ----------------
+    "idx:NewContractWins": {"search_hints": ["Ikhtisar Kontrak Baru / New Contracts"], "extraction_guideline": "Value of new contracts won during period in IDR. Decompose per owner.", "expected_segment_fields": ["segment", "type", "project_owner"]},
+    "idx:OrderBookBacklog": {"search_hints": ["Ikhtisar Order Book"], "extraction_guideline": "Total order-book backlog in IDR."},
+    "idx:BurnRateConversion": {"search_hints": ["Analisis Order Book - Burn Rate"], "extraction_guideline": "Backlog burn rate / conversion (%)."},
+    "idx:KSOJointOperationCF": {"search_hints": ["Catatan KSO / Joint Operation"], "extraction_guideline": "Cash flow from KSO/JO arrangements in IDR."},
+    "idx:ReceivablesDaysContractor": {"search_hints": ["Analisis Working Capital - AR Days"], "extraction_guideline": "Days sales outstanding (contractor-specific)."},
+    "idx:GovernmentProjectMix": {"search_hints": ["Ikhtisar Order Book - Owner Mix"], "extraction_guideline": "Percentage of order book from government/SOE projects."},
+    # ---------------- Pulp & Paper ----------------
+    "idx:PulpProductionCapacityMT": {"search_hints": ["Ikhtisar Operasional - Pulp Capacity"], "extraction_guideline": "Pulp production capacity in tonnes."},
+    "idx:PaperPackagingVolumeMT": {"search_hints": ["Ikhtisar Operasional - Paper/Packaging"], "extraction_guideline": "Paper & packaging volume in tonnes."},
+    "idx:PulpExportASPUSDMT": {"search_hints": ["Ikhtisar Harga - Pulp Export ASP"], "extraction_guideline": "Pulp export ASP in USD/MT."},
+    "idx:WoodFiberSelfSufficiency": {"search_hints": ["Ikhtisar - Wood Fibre Self-Sufficiency (HTI)"], "extraction_guideline": "% of wood fibre sourced from own HTI plantations."},
+    "idx:PulpCashCostUSDMT": {"search_hints": ["Ikhtisar Cash Cost - Pulp"], "extraction_guideline": "Pulp cash cost in USD/MT."},
+    # ---------------- Gold / Copper ----------------
+    "idx:GoldProductionOz": {"search_hints": ["Ikhtisar Operasional Tambang Emas"], "extraction_guideline": "Gold production in troy ounces (Oz). Decompose per mine.", "expected_segment_fields": ["segment", "type", "mine_name"]},
+    "idx:CopperCathodeOutputMT": {"search_hints": ["Ikhtisar Operasional - Copper Cathode"], "extraction_guideline": "Copper cathode output in tonnes."},
+    "idx:AllInSustainingCost": {"search_hints": ["Ikhtisar Cash Cost - AISC"], "extraction_guideline": "All-In-Sustaining-Cost in USD/oz."},
+    "idx:CopperConcentrateGrade": {"search_hints": ["Ikhtisar Operasional - Copper Grade"], "extraction_guideline": "Copper concentrate grade (%)."},
+    "idx:SmelterTCRCDeductions": {"search_hints": ["Ikhtisar Realisasi Harga - TC/RC"], "extraction_guideline": "Smelter TC/RC deductions in USD per pound of copper."},
+    "idx:GoldReservesOz": {"search_hints": ["Catatan Cadangan Emas"], "extraction_guideline": "Proved + Probable gold reserves in ounces."},
+    "idx:ByProductCreditsUSDOz": {"search_hints": ["Ikhtisar Cash Cost - By-Product Credits"], "extraction_guideline": "By-product credits in USD/oz of gold-equivalent."},
+    # ---------------- Digital Platform ----------------
+    "idx:GrossTransactionValue": {"search_hints": ["Ikhtisar Operasional - GTV"], "extraction_guideline": "Gross Transaction Value in IDR. Decompose per business line.", "expected_segment_fields": ["segment", "type", "business_line"]},
+    "idx:GrossMerchandiseValue": {"search_hints": ["Ikhtisar Operasional - GMV"], "extraction_guideline": "GMV (e-commerce) in IDR."},
+    "idx:TakeRate": {"search_hints": ["Ikhtisar Operasional - Take Rate"], "extraction_guideline": "Blended take rate (Revenue / GTV) as percentage."},
+    "idx:MonthlyActiveTransactingUsers": {"search_hints": ["Ikhtisar Operasional - MTU"], "extraction_guideline": "Monthly Transacting Users count."},
+    "idx:ContributionMargin": {"search_hints": ["Investor Presentation - Contribution Margin"], "extraction_guideline": "Contribution margin (%)."},
+    "idx:AdjustedEBITDADigital": {"search_hints": ["Investor Presentation - Adjusted EBITDA"], "extraction_guideline": "Adjusted EBITDA per issuer definition."},
+    "idx:PromotionalIncentives": {"search_hints": ["Ikhtisar - Promotional Spend / Incentives"], "extraction_guideline": "Promotional/incentive spend in IDR."},
+    # ---------------- Toll Road / Port ----------------
+    "idx:AverageDailyTraffic": {"search_hints": ["Ikhtisar Operasional Tol - LHR"], "extraction_guideline": "Average daily traffic (LHR) per route.", "expected_segment_fields": ["segment", "type", "route_name"]},
+    "idx:TollTariffAdjustment": {"search_hints": ["Ikhtisar Penyesuaian Tarif Tol"], "extraction_guideline": "Tariff adjustment (%)."},
+    "idx:OperationalTollLengthKm": {"search_hints": ["Ikhtisar Panjang Tol Operasional"], "extraction_guideline": "Operational toll length in kilometres."},
+    "idx:ContainerThroughputTEUs": {"search_hints": ["Ikhtisar Operasional Pelabuhan - Throughput"], "extraction_guideline": "Container throughput in TEUs."},
+    "idx:CBUCarTerminalVolume": {"search_hints": ["Ikhtisar Terminal - CBU Volume"], "extraction_guideline": "CBU car terminal volume in units."},
+    "idx:StevedoringRevenuePerTEU": {"search_hints": ["Ikhtisar Revenue per TEU"], "extraction_guideline": "Revenue per TEU in IDR/USD."},
+    "idx:ConcessionRemainingYears": {"search_hints": ["Catatan Konsesi - Sisa Masa"], "extraction_guideline": "Remaining concession years."},
+}
 
 METRIC_DEFINITIONS_DATA: list[dict[str, Any]] = [
     # =========================================================================
@@ -217,6 +519,66 @@ METRIC_DEFINITIONS_DATA: list[dict[str, Any]] = [
         "source_priority": ["FS_CORE_STATEMENT"],
         "synonyms_id": ["Jumlah Liabilitas", "Total Kewajiban"],
         "synonyms_en": ["Total Liabilities"],
+    },
+    {
+        "metric_id": "ifrs:CurrentLiabilities",
+        "name_en": "Current Liabilities",
+        "name_id": "Total Liabilitas Jangka Pendek",
+        "category": "BALANCE_SHEET",
+        "sector_applicability": ["ALL"],
+        "importance": "CRITICAL",
+        "value_type": "MONETARY",
+        "unit": "IDR",
+        "flow_stock_type": "STOCK_POINT_IN_TIME",
+        "extraction_mode": "EXTRACTED_RAW",
+        "source_priority": ["FS_CORE_STATEMENT"],
+        "synonyms_id": ["Jumlah Liabilitas Jangka Pendek", "Kewajiban Lancar"],
+        "synonyms_en": ["Current Liabilities"],
+    },
+    {
+        "metric_id": "ifrs:NonCurrentLiabilities",
+        "name_en": "Non-Current Liabilities",
+        "name_id": "Total Liabilitas Jangka Panjang",
+        "category": "BALANCE_SHEET",
+        "sector_applicability": ["ALL"],
+        "importance": "CRITICAL",
+        "value_type": "MONETARY",
+        "unit": "IDR",
+        "flow_stock_type": "STOCK_POINT_IN_TIME",
+        "extraction_mode": "EXTRACTED_RAW",
+        "source_priority": ["FS_CORE_STATEMENT"],
+        "synonyms_id": ["Jumlah Liabilitas Jangka Panjang", "Kewajiban Tidak Lancar"],
+        "synonyms_en": ["Non-Current Liabilities"],
+    },
+    {
+        "metric_id": "ifrs:Equity",
+        "name_en": "Total Equity",
+        "name_id": "Total Ekuitas",
+        "category": "BALANCE_SHEET",
+        "sector_applicability": ["ALL"],
+        "importance": "CRITICAL",
+        "value_type": "MONETARY",
+        "unit": "IDR",
+        "flow_stock_type": "STOCK_POINT_IN_TIME",
+        "extraction_mode": "EXTRACTED_RAW",
+        "source_priority": ["FS_CORE_STATEMENT"],
+        "synonyms_id": ["Jumlah Ekuitas", "Modal Bersih"],
+        "synonyms_en": ["Total Equity", "Stockholders Equity"],
+    },
+    {
+        "metric_id": "ifrs:ProfitLoss",
+        "name_en": "Net Profit / Loss for the Period",
+        "name_id": "Laba Bersih Tahun/Periode Berjalan",
+        "category": "INCOME",
+        "sector_applicability": ["ALL"],
+        "importance": "CRITICAL",
+        "value_type": "MONETARY",
+        "unit": "IDR",
+        "flow_stock_type": "FLOW_PERIOD",
+        "extraction_mode": "EXTRACTED_RAW",
+        "source_priority": ["FS_CORE_STATEMENT"],
+        "synonyms_id": ["Laba Bersih", "Laba Tahun Berjalan", "Laba Periode Berjalan", "Laba (Rugi) Neto"],
+        "synonyms_en": ["Net Income", "Profit for the Period", "Net Profit"],
     },
     {
         "metric_id": "ifrs:EquityAttributableToOwnersOfParent",
@@ -789,6 +1151,162 @@ METRIC_DEFINITIONS_DATA: list[dict[str, Any]] = [
     {"metric_id": "idx:CBUCarTerminalVolume", "name_en": "CBU Car Terminal Volume (Units)", "name_id": "Volume Bongkar Muat Kendaraan CBU (Unit)", "category": "OPERATIONAL", "sector_applicability": ["PORT", "INFRASTRUCTURE"], "importance": "CRITICAL", "value_type": "INTEGER", "unit": "UNITS", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION", "PUBLIC_EXPOSE"], "synonyms_id": ["Volume CBU", "Stevedoring Mobil"], "synonyms_en": ["CBU Volume", "Car Terminal Throughput"]},
     {"metric_id": "idx:StevedoringRevenuePerTEU", "name_en": "Stevedoring Revenue per TEU (USD)", "name_id": "Pendapatan Stevedoring per TEU", "category": "OPERATIONAL", "sector_applicability": ["PORT", "INFRASTRUCTURE"], "importance": "HIGH", "value_type": "FLOAT", "unit": "USD_PER_TEU", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION", "ANNUAL_REPORT"], "synonyms_id": ["Tarif Stevedoring per TEU"], "synonyms_en": ["Revenue per TEU", "Stevedoring Tariff"]},
     {"metric_id": "idx:ConcessionRemainingYears", "name_en": "Concession Remaining Life (Years)", "name_id": "Sisa Masa Konsesi (Tahun)", "category": "OPERATIONAL", "sector_applicability": ["TOLL_ROAD", "PORT", "INFRASTRUCTURE"], "importance": "HIGH", "value_type": "FLOAT", "unit": "YEARS", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "FS_NOTES_DETAIL"], "synonyms_id": ["Sisa Konsesi", "Masa Konsesi Tersisa"], "synonyms_en": ["Remaining Concession Term"]},
+
+    # =========================================================================
+    # 25. INSURANCE — NEW SECTOR (general, life, reinsurance: PNLF, TUGU, ABDA, MREI, PNIN)
+    # Regulatory anchor: POJK 71/POJK.05/2016 (RBC ≥120%), POJK 5/POJK.05/2022 (PAYDI),
+    # SEOJK 31/SEOJK.05/2015 (retention & domestic reinsurance).
+    # =========================================================================
+    {"metric_id": "idx:RiskBasedCapitalRatio", "name_en": "Risk-Based Capital Ratio (RBC)", "name_id": "Rasio Solvabilitas RBC", "category": "CAPITAL", "sector_applicability": ["INSURANCE", "INSURANCE_LIFE", "INSURANCE_REINSURANCE"], "importance": "CRITICAL", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["RBC", "Rasio Solvabilitas", "Tingkat Solvabilitas"], "synonyms_en": ["Risk Based Capital Ratio", "Solvency Ratio"]},
+    {"metric_id": "idx:LossRatio", "name_en": "Loss Ratio (Claims / Earned Premium)", "name_id": "Rasio Klaim", "category": "ASSET_QUALITY", "sector_applicability": ["INSURANCE", "INSURANCE_REINSURANCE"], "importance": "CRITICAL", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["Rasio Klaim", "Beban Klaim per Premi"], "synonyms_en": ["Loss Ratio", "Claim Ratio"]},
+    {"metric_id": "idx:ExpenseRatio", "name_en": "Expense Ratio (OpEx / Earned Premium)", "name_id": "Rasio Beban Usaha", "category": "OPERATIONAL", "sector_applicability": ["INSURANCE", "INSURANCE_REINSURANCE"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Rasio Beban", "Beban Usaha per Premi"], "synonyms_en": ["Expense Ratio"]},
+    {"metric_id": "idx:CombinedRatio", "name_en": "Combined Ratio (Loss + Expense)", "name_id": "Rasio Kombinasi", "category": "PROFITABILITY", "sector_applicability": ["INSURANCE", "INSURANCE_REINSURANCE"], "importance": "CRITICAL", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "HYBRID_FALLBACK", "calculation_formula": "idx:LossRatio + idx:ExpenseRatio", "dependencies": ["idx:LossRatio", "idx:ExpenseRatio"], "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["Rasio Kombinasi", "Combined Ratio"], "synonyms_en": ["Combined Ratio"]},
+    {"metric_id": "idx:GrossWrittenPremium", "name_en": "Gross Written Premium (GWP)", "name_id": "Premi Bruto", "category": "INCOME", "sector_applicability": ["INSURANCE", "INSURANCE_LIFE", "INSURANCE_REINSURANCE"], "importance": "CRITICAL", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["Premi Bruto", "GWP", "Premi Kotor"], "synonyms_en": ["Gross Written Premium", "GWP"]},
+    {"metric_id": "idx:NetRetentionRatio", "name_en": "Net Retention Ratio", "name_id": "Rasio Retensi Sendiri", "category": "OPERATIONAL", "sector_applicability": ["INSURANCE", "INSURANCE_REINSURANCE"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "FS_NOTES_DETAIL"], "synonyms_id": ["Retensi Sendiri", "Retensi Neto"], "synonyms_en": ["Net Retention", "Retention Ratio"]},
+    {"metric_id": "idx:UnderwritingResult", "name_en": "Underwriting Result", "name_id": "Hasil Underwriting", "category": "PROFITABILITY", "sector_applicability": ["INSURANCE", "INSURANCE_REINSURANCE"], "importance": "CRITICAL", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["Hasil Underwriting"], "synonyms_en": ["Underwriting Result", "Underwriting Profit"]},
+    {"metric_id": "idx:InvestmentYieldInsurance", "name_en": "Investment Yield (Insurance Float)", "name_id": "Hasil Investasi Asuransi", "category": "PROFITABILITY", "sector_applicability": ["INSURANCE", "INSURANCE_LIFE", "INSURANCE_REINSURANCE"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "FS_NOTES_DETAIL"], "synonyms_id": ["Yield Investasi", "Hasil Investasi", "Imbal Hasil Portofolio"], "synonyms_en": ["Investment Yield", "Portfolio Return"]},
+    {"metric_id": "idx:AnnualPremiumEquivalent", "name_en": "Annual Premium Equivalent (APE)", "name_id": "Setara Premi Tahunan", "category": "INCOME", "sector_applicability": ["INSURANCE_LIFE"], "importance": "CRITICAL", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION", "ANNUAL_REPORT"], "synonyms_id": ["APE", "Setara Premi Tahunan"], "synonyms_en": ["APE", "Annualized Premium Equivalent"]},
+    {"metric_id": "idx:ValueOfNewBusiness", "name_en": "Value of New Business (VNB)", "name_id": "Nilai Bisnis Baru", "category": "PROFITABILITY", "sector_applicability": ["INSURANCE_LIFE"], "importance": "CRITICAL", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION", "ANNUAL_REPORT"], "synonyms_id": ["VNB", "Nilai Bisnis Baru"], "synonyms_en": ["VNB", "Value of New Business"]},
+    {"metric_id": "idx:EmbeddedValue", "name_en": "Embedded Value (EV)", "name_id": "Nilai Intrinsik (Embedded Value)", "category": "PROFITABILITY", "sector_applicability": ["INSURANCE_LIFE"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Embedded Value", "Nilai Intrinsik"], "synonyms_en": ["Embedded Value", "EV"]},
+    {"metric_id": "idx:PersistencyRatio13m", "name_en": "13-Month Persistency Ratio", "name_id": "Persistensi Bulan ke-13", "category": "ASSET_QUALITY", "sector_applicability": ["INSURANCE_LIFE"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Persistensi 13 Bulan", "Rasio Persistensi"], "synonyms_en": ["13-Month Persistency", "Persistency Rate"]},
+    {"metric_id": "idx:PersistencyRatio25m", "name_en": "25-Month Persistency Ratio", "name_id": "Persistensi Bulan ke-25", "category": "ASSET_QUALITY", "sector_applicability": ["INSURANCE_LIFE"], "importance": "MEDIUM", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Persistensi 25 Bulan"], "synonyms_en": ["25-Month Persistency"]},
+    {"metric_id": "idx:ClaimsSettlementRatio", "name_en": "Claims Settlement Ratio (%)", "name_id": "Rasio Klaim Dibayar", "category": "OPERATIONAL", "sector_applicability": ["INSURANCE", "INSURANCE_LIFE"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Klaim Dibayar", "Rasio Penyelesaian Klaim"], "synonyms_en": ["Claims Settlement Ratio", "Claim Paid Ratio"]},
+    {"metric_id": "idx:ReserveAdequacyRatio", "name_en": "Technical Reserve Adequacy (%)", "name_id": "Kecukupan Cadangan Teknis", "category": "RESERVES", "sector_applicability": ["INSURANCE", "INSURANCE_LIFE", "INSURANCE_REINSURANCE"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "FS_NOTES_DETAIL"], "synonyms_id": ["Cadangan Teknis", "Kecukupan Cadangan"], "synonyms_en": ["Technical Reserve Adequacy", "Reserve Ratio"]},
+    {"metric_id": "idx:CatastropheExposure", "name_en": "Catastrophe Exposure (PML, IDR)", "name_id": "Eksposur Bencana (PML)", "category": "OPERATIONAL", "sector_applicability": ["INSURANCE", "INSURANCE_REINSURANCE"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["PML", "Eksposur Bencana", "Konsentrasi Katastrofe"], "synonyms_en": ["PML", "Probable Maximum Loss", "CAT Exposure"]},
+    {"metric_id": "idx:GwpByLineOfBusiness", "name_en": "GWP by Line of Business", "name_id": "Premi Bruto per Lini Usaha", "category": "INCOME", "sector_applicability": ["INSURANCE", "INSURANCE_REINSURANCE"], "importance": "CRITICAL", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "FS_NOTES_DETAIL"], "synonyms_id": ["Premi per Lini", "Property", "Kendaraan Bermotor", "Marine Cargo", "Kesehatan"], "synonyms_en": ["GWP by Line", "Line of Business Premium"], "expected_segment_fields": ["segment", "type", "line_of_business", "pct_total"]},
+    {"metric_id": "idx:ProductMixTraditionalUL", "name_en": "Traditional vs Unit-Linked Product Mix (%)", "name_id": "Bauran Produk Tradisional-Unitlink", "category": "OPERATIONAL", "sector_applicability": ["INSURANCE_LIFE"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["PAYDI", "Unit Link", "Tradisional", "Product Mix"], "synonyms_en": ["Product Mix", "Traditional vs Unit-Linked"]},
+    {"metric_id": "idx:DistributionChannelMix", "name_en": "Distribution Channel Mix (Agency/Bancassurance/Digital)", "name_id": "Bauran Kanal Distribusi", "category": "OPERATIONAL", "sector_applicability": ["INSURANCE", "INSURANCE_LIFE"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["Bancassurance", "Keagenan", "Kanal Distribusi"], "synonyms_en": ["Distribution Mix", "Channel Mix"]},
+    {"metric_id": "idx:AgentProductivity", "name_en": "Agent Productivity (APE per Agent)", "name_id": "Produktivitas Agen", "category": "OPERATIONAL", "sector_applicability": ["INSURANCE_LIFE"], "importance": "MEDIUM", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION", "PUBLIC_EXPOSE"], "synonyms_id": ["Produktivitas Agen", "APE per Agen"], "synonyms_en": ["Agent Productivity", "APE per Agent"]},
+    {"metric_id": "idx:AssetLiabilityDurationGap", "name_en": "Asset-Liability Duration Gap (Years)", "name_id": "Kesenjangan Durasi Aset-Liabilitas", "category": "LIQUIDITY", "sector_applicability": ["INSURANCE_LIFE", "INSURANCE_REINSURANCE"], "importance": "HIGH", "value_type": "FLOAT", "unit": "YEARS", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "FS_NOTES_DETAIL"], "synonyms_id": ["Duration Gap", "ALM", "Asset-Liability Matching"], "synonyms_en": ["Duration Gap", "ALM Gap"]},
+    {"metric_id": "idx:TreatyFacultativeMix", "name_en": "Treaty vs Facultative GWP Mix (%)", "name_id": "Bauran Treaty-Fakultatif", "category": "OPERATIONAL", "sector_applicability": ["INSURANCE_REINSURANCE"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["Treaty", "Fakultatif", "Facultative"], "synonyms_en": ["Treaty vs Facultative Mix"]},
+    {"metric_id": "idx:ProportionalNonProportionalMix", "name_en": "Proportional vs Non-Proportional Mix (%)", "name_id": "Bauran Proporsional-Non Proporsional", "category": "OPERATIONAL", "sector_applicability": ["INSURANCE_REINSURANCE"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "FS_NOTES_DETAIL"], "synonyms_id": ["Excess of Loss", "XL Treaty", "Kuota Bagian", "Proporsional"], "synonyms_en": ["Proportional vs Non-Proportional", "XL Mix"]},
+    {"metric_id": "idx:RetrocessionRatio", "name_en": "Retrocession Ratio (%)", "name_id": "Rasio Retrosesi", "category": "OPERATIONAL", "sector_applicability": ["INSURANCE_REINSURANCE"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "FS_NOTES_DETAIL"], "synonyms_id": ["Retrosesi", "Retrocession"], "synonyms_en": ["Retrocession Ratio"]},
+    {"metric_id": "idx:DomesticVsOverseasCession", "name_en": "Domestic vs Overseas Ceded Premium Split (%)", "name_id": "Bauran Reasuransi Dalam-Luar Negeri", "category": "OPERATIONAL", "sector_applicability": ["INSURANCE", "INSURANCE_REINSURANCE"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "FS_NOTES_DETAIL"], "synonyms_id": ["Reasuransi Dalam Negeri", "Reasuransi Luar Negeri", "Domestic Reinsurance"], "synonyms_en": ["Domestic vs Overseas Cession"]},
+    {"metric_id": "idx:RenewalRateChange", "name_en": "Renewal Rate Change (%)", "name_id": "Perubahan Suku Premi Renewal", "category": "OPERATIONAL", "sector_applicability": ["INSURANCE_REINSURANCE"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Rate Change", "Suku Premi", "Renewal"], "synonyms_en": ["Rate Change", "Renewal Rate Change"]},
+
+    # =========================================================================
+    # 26. MULTIFINANCE — NEW SECTOR (BFIN, ADMF, CFIN, WOMF, BBLD, MFIN, IMFI)
+    # Regulatory anchor: POJK 35/POJK.05/2018 (gearing ≤10x; NPF Net <1% for 0% DP).
+    # =========================================================================
+    {"metric_id": "idx:GearingRatio", "name_en": "Gearing Ratio (Debt / Equity)", "name_id": "Rasio Gearing", "category": "CAPITAL", "sector_applicability": ["MULTIFINANCE"], "importance": "CRITICAL", "value_type": "FLOAT", "unit": "RATIO", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["Gearing Ratio", "Rasio Gearing", "Debt-to-Equity"], "synonyms_en": ["Gearing Ratio", "Leverage Ratio"]},
+    {"metric_id": "idx:NpfGrossRatio", "name_en": "NPF Gross Ratio", "name_id": "NPF Bruto", "category": "ASSET_QUALITY", "sector_applicability": ["MULTIFINANCE"], "importance": "CRITICAL", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["NPF Bruto", "NPF Gross"], "synonyms_en": ["Gross NPF", "Non-Performing Financing Gross"]},
+    {"metric_id": "idx:NpfNetRatio", "name_en": "NPF Net Ratio", "name_id": "NPF Neto", "category": "ASSET_QUALITY", "sector_applicability": ["MULTIFINANCE"], "importance": "CRITICAL", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["NPF Neto", "NPF Net"], "synonyms_en": ["Net NPF", "Non-Performing Financing Net"]},
+    {"metric_id": "idx:NewBookingsMultifinance", "name_en": "New Bookings by Product", "name_id": "Pembiayaan Baru per Segmen", "category": "OPERATIONAL", "sector_applicability": ["MULTIFINANCE"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION", "ANNUAL_REPORT"], "synonyms_id": ["Pembiayaan Baru", "New Bookings", "Roda 4", "Roda 2", "Alat Berat", "Multiguna"], "synonyms_en": ["New Bookings", "Loan Origination"], "expected_segment_fields": ["segment", "type", "pct_total"]},
+    {"metric_id": "idx:FinancingReceivablesOutstanding", "name_en": "Financing Receivables (Managed Portfolio)", "name_id": "Piutang Pembiayaan Kelolaan", "category": "BALANCE_SHEET", "sector_applicability": ["MULTIFINANCE"], "importance": "CRITICAL", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "FS_NOTES_DETAIL"], "synonyms_id": ["Piutang Pembiayaan", "Managed Portfolio"], "synonyms_en": ["Financing Receivables", "Managed Portfolio"]},
+    {"metric_id": "idx:NimFinancing", "name_en": "Net Interest Margin (Financing)", "name_id": "NIM Pembiayaan", "category": "PROFITABILITY", "sector_applicability": ["MULTIFINANCE"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["NIM", "Marjin Bunga Bersih"], "synonyms_en": ["NIM Financing", "Net Interest Margin"]},
+    {"metric_id": "idx:CostOfFundsMultifinance", "name_en": "Cost of Funds", "name_id": "Biaya Dana", "category": "OPERATIONAL", "sector_applicability": ["MULTIFINANCE"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["Cost of Fund", "Biaya Dana"], "synonyms_en": ["Cost of Funds"]},
+    {"metric_id": "idx:CollectionEfficiencyRate", "name_en": "Collection Efficiency Rate", "name_id": "Rasio Efektivitas Penagihan", "category": "OPERATIONAL", "sector_applicability": ["MULTIFINANCE"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Collection Rate", "Penagihan"], "synonyms_en": ["Collection Efficiency"]},
+    {"metric_id": "idx:CkpnCoverageMultifinance", "name_en": "CKPN Coverage / NPF (%)", "name_id": "Rasio Pencadangan CKPN terhadap NPF", "category": "ASSET_QUALITY", "sector_applicability": ["MULTIFINANCE"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "FS_NOTES_DETAIL"], "synonyms_id": ["CKPN", "Pencadangan", "Coverage Ratio"], "synonyms_en": ["Provision Coverage", "CKPN Coverage"]},
+    {"metric_id": "idx:ChannelMixDealerDirect", "name_en": "Channel Mix (Dealer/Direct/Digital)", "name_id": "Bauran Kanal Pembiayaan", "category": "OPERATIONAL", "sector_applicability": ["MULTIFINANCE"], "importance": "MEDIUM", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Dealer", "Digital", "Kanal Direct"], "synonyms_en": ["Channel Mix"]},
+    {"metric_id": "idx:AverageContractTenor", "name_en": "Average Contract Tenor (Months)", "name_id": "Rata-rata Tenor Kontrak", "category": "OPERATIONAL", "sector_applicability": ["MULTIFINANCE"], "importance": "MEDIUM", "value_type": "FLOAT", "unit": "DAYS", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Tenor", "Jangka Waktu Kontrak"], "synonyms_en": ["Average Tenor", "Contract Tenor"]},
+    {"metric_id": "idx:CostToIncomeMultifinance", "name_en": "Cost-to-Income Ratio (Multifinance BOPO)", "name_id": "BOPO Pembiayaan", "category": "OPERATIONAL", "sector_applicability": ["MULTIFINANCE"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Cost to Income", "BOPO Multifinance"], "synonyms_en": ["Cost-to-Income Ratio Multifinance"]},
+
+    # =========================================================================
+    # 27. HOTEL_TOURISM — NEW SECTOR (BUVA, MINA, PJAA, JIHD, PANR, HOTL)
+    # =========================================================================
+    {"metric_id": "idx:OccupancyRate", "name_en": "Occupancy Rate (Hotel)", "name_id": "Tingkat Hunian Kamar", "category": "OPERATIONAL", "sector_applicability": ["HOTEL_TOURISM"], "importance": "CRITICAL", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION", "ANNUAL_REPORT"], "synonyms_id": ["Tingkat Hunian", "Okupansi"], "synonyms_en": ["Occupancy Rate", "Occupancy"]},
+    {"metric_id": "idx:AverageDailyRate", "name_en": "Average Daily Rate (ADR)", "name_id": "Tarif Kamar Rata-rata", "category": "OPERATIONAL", "sector_applicability": ["HOTEL_TOURISM"], "importance": "CRITICAL", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION", "ANNUAL_REPORT"], "synonyms_id": ["ADR", "Tarif Rata-rata", "Room Rate"], "synonyms_en": ["ADR", "Average Daily Rate"]},
+    {"metric_id": "idx:RevenuePerAvailableRoom", "name_en": "Revenue per Available Room (RevPAR)", "name_id": "Pendapatan per Kamar Tersedia", "category": "PROFITABILITY", "sector_applicability": ["HOTEL_TOURISM"], "importance": "CRITICAL", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "RATIO", "extraction_mode": "HYBRID_FALLBACK", "calculation_formula": "idx:AverageDailyRate * idx:OccupancyRate / 100", "dependencies": ["idx:AverageDailyRate", "idx:OccupancyRate"], "source_priority": ["INVESTOR_PRESENTATION", "ANNUAL_REPORT"], "synonyms_id": ["RevPAR"], "synonyms_en": ["RevPAR", "Revenue per Available Room"]},
+    {"metric_id": "idx:TotalRevenuePerAvailableRoom", "name_en": "Total Revenue per Available Room (TRevPAR)", "name_id": "Pendapatan Total per Kamar Tersedia", "category": "PROFITABILITY", "sector_applicability": ["HOTEL_TOURISM"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["TRevPAR"], "synonyms_en": ["TRevPAR", "Total RevPAR"]},
+    {"metric_id": "idx:GopParRatio", "name_en": "Gross Operating Profit per Available Room (GOPPAR)", "name_id": "Laba Operasi Kotor per Kamar Tersedia", "category": "PROFITABILITY", "sector_applicability": ["HOTEL_TOURISM"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["GOPPAR"], "synonyms_en": ["GOPPAR", "Gross Operating Profit per Room"]},
+    {"metric_id": "idx:RoomInventoryCount", "name_en": "Room Inventory Count (Owned/Managed/Franchised)", "name_id": "Jumlah Kamar (Milik/Kelola/Franchise)", "category": "OPERATIONAL", "sector_applicability": ["HOTEL_TOURISM"], "importance": "HIGH", "value_type": "INTEGER", "unit": "UNITS", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Jumlah Kamar", "Kamar Tersedia"], "synonyms_en": ["Room Inventory", "Room Count"], "expected_segment_fields": ["segment", "type", "ownership_model"]},
+    {"metric_id": "idx:ThemeParkVisitorCount", "name_en": "Theme Park Visitor Count", "name_id": "Jumlah Kunjungan Taman Rekreasi", "category": "OPERATIONAL", "sector_applicability": ["HOTEL_TOURISM"], "importance": "HIGH", "value_type": "INTEGER", "unit": "UNITS", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION", "ANNUAL_REPORT"], "synonyms_id": ["Kunjungan", "Pengunjung", "Ancol"], "synonyms_en": ["Visitor Count", "Park Visitors"]},
+    {"metric_id": "idx:AverageSpendPerVisitor", "name_en": "Average Spend per Visitor", "name_id": "Pengeluaran Rata-rata per Pengunjung", "category": "OPERATIONAL", "sector_applicability": ["HOTEL_TOURISM"], "importance": "MEDIUM", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["ASP Pengunjung", "Belanja per Pengunjung"], "synonyms_en": ["Spend per Visitor", "ASP per Visitor"]},
+    {"metric_id": "idx:InternationalArrivalMix", "name_en": "International Arrival Mix (%)", "name_id": "Bauran Wisatawan Internasional", "category": "OPERATIONAL", "sector_applicability": ["HOTEL_TOURISM"], "importance": "MEDIUM", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Wisatawan Asing", "Wisman"], "synonyms_en": ["International Arrival Mix", "Foreign Guest Mix"]},
+    {"metric_id": "idx:PropertyPortfolioByLocation", "name_en": "Portfolio Mix by Location (Bali/Jakarta/Other)", "name_id": "Bauran Portofolio per Lokasi", "category": "OPERATIONAL", "sector_applicability": ["HOTEL_TOURISM"], "importance": "MEDIUM", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Portofolio Lokasi", "Portfolio by Region"], "synonyms_en": ["Portfolio by Location"], "expected_segment_fields": ["segment", "type", "location", "pct_total"]},
+    {"metric_id": "idx:PropertyPortfolioByBrand", "name_en": "Portfolio Mix by Brand Tier (Luxury/Upscale/Midscale)", "name_id": "Bauran Portofolio per Segmen Bintang", "category": "OPERATIONAL", "sector_applicability": ["HOTEL_TOURISM"], "importance": "MEDIUM", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Segmen Bintang", "Brand Tier"], "synonyms_en": ["Brand Tier Mix"], "expected_segment_fields": ["segment", "type", "brand_tier", "pct_total"]},
+    {"metric_id": "idx:FoodBeverageRevenueMix", "name_en": "F&B Revenue % of Total", "name_id": "Bauran Pendapatan F&B", "category": "OPERATIONAL", "sector_applicability": ["HOTEL_TOURISM"], "importance": "MEDIUM", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Bauran F&B", "F&B Revenue"], "synonyms_en": ["F&B Revenue Mix"]},
+
+    # =========================================================================
+    # 28. JEWELRY_LUXURY — NEW SECTOR (HRTA, KING)
+    # =========================================================================
+    {"metric_id": "idx:PureGoldVolumeTonnes", "name_en": "Pure Gold Volume Sold (Tonnes)", "name_id": "Volume Emas Murni Terjual", "category": "OPERATIONAL", "sector_applicability": ["JEWELRY_LUXURY"], "importance": "CRITICAL", "value_type": "FLOAT", "unit": "TONNES", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION", "ANNUAL_REPORT"], "synonyms_id": ["Volume Emas", "Emas Murni Terjual"], "synonyms_en": ["Pure Gold Volume", "Gold Tonnes Sold"]},
+    {"metric_id": "idx:BullionJewelryMix", "name_en": "Bullion vs Jewelry Revenue Mix", "name_id": "Bauran Penjualan Bullion-Perhiasan", "category": "OPERATIONAL", "sector_applicability": ["JEWELRY_LUXURY"], "importance": "CRITICAL", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Bauran Bullion", "Bullion Mix"], "synonyms_en": ["Bullion vs Jewelry Mix"]},
+    {"metric_id": "idx:MakingChargePerGram", "name_en": "Making Charge per Gram", "name_id": "Ongkos Bikin per Gram", "category": "OPERATIONAL", "sector_applicability": ["JEWELRY_LUXURY"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Ongkos Bikin", "Ongkos per Gram"], "synonyms_en": ["Making Charge", "Value-Add per Gram"]},
+    {"metric_id": "idx:MarketShareGoldRetail", "name_en": "Gold Retail Market Share (%)", "name_id": "Pangsa Pasar Emas Retail", "category": "OPERATIONAL", "sector_applicability": ["JEWELRY_LUXURY"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Pangsa Pasar Emas"], "synonyms_en": ["Gold Market Share"]},
+    {"metric_id": "idx:GoldHedgeRatio", "name_en": "Gold Inventory Hedge Ratio (%)", "name_id": "Rasio Lindung Nilai Emas", "category": "OPERATIONAL", "sector_applicability": ["JEWELRY_LUXURY"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "FS_NOTES_DETAIL"], "synonyms_id": ["Lindung Nilai Emas", "Hedging Emas"], "synonyms_en": ["Gold Hedge Ratio"]},
+    {"metric_id": "idx:EmaskuSubscriberCount", "name_en": "Digital Gold Savings Users (EMASKU-type)", "name_id": "Pengguna Tabungan Emas Digital", "category": "OPERATIONAL", "sector_applicability": ["JEWELRY_LUXURY"], "importance": "MEDIUM", "value_type": "INTEGER", "unit": "USERS", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["EMASKU", "Tabungan Emas Digital"], "synonyms_en": ["Digital Gold Users", "EMASKU Subscribers"]},
+    {"metric_id": "idx:InventoryTurnoverJewelry", "name_en": "Inventory Turnover (Jewelry)", "name_id": "Perputaran Persediaan Emas/Perhiasan", "category": "OPERATIONAL", "sector_applicability": ["JEWELRY_LUXURY"], "importance": "HIGH", "value_type": "FLOAT", "unit": "RATIO", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Perputaran Persediaan"], "synonyms_en": ["Inventory Turnover"]},
+    {"metric_id": "idx:AverageGoldContentPerPiece", "name_en": "Average Gold Content per Piece (Grams)", "name_id": "Rata-rata Kandungan Emas per Perhiasan", "category": "OPERATIONAL", "sector_applicability": ["JEWELRY_LUXURY"], "importance": "MEDIUM", "value_type": "FLOAT", "unit": "TONNES", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Gram per Piece", "Karat"], "synonyms_en": ["Gold Content per Piece", "Grams per Piece"]},
+    {"metric_id": "idx:JewelryStorePartnerCount", "name_en": "Store / Partner Retailer Count", "name_id": "Jumlah Toko dan Mitra Retailer", "category": "OPERATIONAL", "sector_applicability": ["JEWELRY_LUXURY"], "importance": "MEDIUM", "value_type": "INTEGER", "unit": "STORES", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["Jumlah Toko", "Mitra Retailer"], "synonyms_en": ["Store Count", "Partner Retailers"]},
+
+    # =========================================================================
+    # 29. MEDIA_BROADCAST — NEW SECTOR (SCMA, MNCN, VIVA, FILM, MDIA)
+    # =========================================================================
+    {"metric_id": "idx:PrimetimeAudienceShare", "name_en": "Primetime All-People Audience Share (%)", "name_id": "Pangsa Pemirsa Primetime", "category": "OPERATIONAL", "sector_applicability": ["MEDIA_BROADCAST"], "importance": "CRITICAL", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION", "PUBLIC_EXPOSE"], "synonyms_id": ["Audience Share", "Pangsa Pemirsa", "Rating Primetime"], "synonyms_en": ["Primetime Audience Share", "AMR Share"]},
+    {"metric_id": "idx:AllTimeAudienceShare", "name_en": "All-Time (24h) Audience Share (%)", "name_id": "Pangsa Pemirsa Sepanjang Hari", "category": "OPERATIONAL", "sector_applicability": ["MEDIA_BROADCAST"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["All-Time Share"], "synonyms_en": ["All-Time Audience Share"]},
+    {"metric_id": "idx:AdvertisingShareOfWallet", "name_en": "Ad Share of Wallet (%)", "name_id": "Pangsa Belanja Iklan", "category": "OPERATIONAL", "sector_applicability": ["MEDIA_BROADCAST"], "importance": "CRITICAL", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Pangsa Iklan", "Ad Share"], "synonyms_en": ["Ad Share of Wallet"]},
+    {"metric_id": "idx:GrossRatingPointDelivery", "name_en": "GRP Delivered (Gross Rating Points)", "name_id": "GRP Ditayangkan", "category": "OPERATIONAL", "sector_applicability": ["MEDIA_BROADCAST"], "importance": "HIGH", "value_type": "INTEGER", "unit": "UNITS", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["GRP", "Gross Rating Point"], "synonyms_en": ["GRP Delivered"]},
+    {"metric_id": "idx:AverageCostPerGRP", "name_en": "Average Cost per GRP (CPRP)", "name_id": "Biaya per GRP", "category": "OPERATIONAL", "sector_applicability": ["MEDIA_BROADCAST"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["CPRP", "Biaya per Rating"], "synonyms_en": ["CPRP", "Cost per Rating Point"]},
+    {"metric_id": "idx:AdInventoryUtilization", "name_en": "Ad Inventory Fill Rate (%)", "name_id": "Utilisasi Inventori Iklan", "category": "OPERATIONAL", "sector_applicability": ["MEDIA_BROADCAST"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Inventory Fill", "Fill Rate Iklan"], "synonyms_en": ["Inventory Fill Rate"]},
+    {"metric_id": "idx:DigitalRevenueMix", "name_en": "Digital Revenue Mix (%)", "name_id": "Bauran Pendapatan Digital", "category": "OPERATIONAL", "sector_applicability": ["MEDIA_BROADCAST"], "importance": "CRITICAL", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["Digital Revenue", "Pendapatan OTT"], "synonyms_en": ["Digital Revenue Mix"]},
+    {"metric_id": "idx:SubscriberCountOTT", "name_en": "OTT Paid Subscribers", "name_id": "Pelanggan Berbayar OTT", "category": "OPERATIONAL", "sector_applicability": ["MEDIA_BROADCAST"], "importance": "HIGH", "value_type": "INTEGER", "unit": "USERS", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Pelanggan Vidio", "Subscriber OTT"], "synonyms_en": ["OTT Subscribers", "Paid Streaming Subscribers"]},
+    {"metric_id": "idx:ArpuOtt", "name_en": "OTT ARPU (Streaming ARPU)", "name_id": "ARPU OTT", "category": "OPERATIONAL", "sector_applicability": ["MEDIA_BROADCAST"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR_PER_USER_MONTH", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["ARPU OTT"], "synonyms_en": ["OTT ARPU", "Streaming ARPU"]},
+    {"metric_id": "idx:ContentInvestmentCapex", "name_en": "Content Investment (Capex)", "name_id": "Investasi Konten", "category": "OPERATIONAL", "sector_applicability": ["MEDIA_BROADCAST"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Investasi Konten", "Biaya Konten"], "synonyms_en": ["Content Investment", "Content Spend"]},
+    {"metric_id": "idx:PayTvSubscribers", "name_en": "Pay-TV Subscribers", "name_id": "Pelanggan TV Berbayar", "category": "OPERATIONAL", "sector_applicability": ["MEDIA_BROADCAST"], "importance": "MEDIUM", "value_type": "INTEGER", "unit": "USERS", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Pelanggan TV Berbayar", "K-Vision", "IndiHome TV"], "synonyms_en": ["Pay-TV Subscribers"]},
+    {"metric_id": "idx:ContentLibrarySize", "name_en": "Content Library Size (Hours)", "name_id": "Ukuran Perpustakaan Konten (Jam)", "category": "OPERATIONAL", "sector_applicability": ["MEDIA_BROADCAST"], "importance": "MEDIUM", "value_type": "FLOAT", "unit": "DAYS", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Library Konten", "Content Hours", "Perpustakaan Konten"], "synonyms_en": ["Content Library", "Content Hours"]},
+
+    # =========================================================================
+    # 30. INVESTMENT_HOLDING — NEW SECTOR (SRTG, MPMX, BNBR, BHIT, BMTR, BCAP, MLPL)
+    # =========================================================================
+    {"metric_id": "idx:NetAssetValue", "name_en": "Net Asset Value (Portfolio NAV)", "name_id": "Nilai Aktiva Bersih Portofolio", "category": "BALANCE_SHEET", "sector_applicability": ["INVESTMENT_HOLDING"], "importance": "CRITICAL", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION", "ANNUAL_REPORT"], "synonyms_id": ["NAV", "Nilai Aktiva Bersih"], "synonyms_en": ["NAV", "Net Asset Value"]},
+    {"metric_id": "idx:NavPerShare", "name_en": "NAV per Share", "name_id": "NAV per Saham", "category": "BALANCE_SHEET", "sector_applicability": ["INVESTMENT_HOLDING"], "importance": "CRITICAL", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["NAV per Saham"], "synonyms_en": ["NAV per Share"]},
+    {"metric_id": "idx:DiscountToNav", "name_en": "Discount / Premium to NAV (%)", "name_id": "Diskon / Premi terhadap NAV", "category": "OPERATIONAL", "sector_applicability": ["INVESTMENT_HOLDING"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Diskon NAV", "Discount to NAV"], "synonyms_en": ["Discount to NAV", "NAV Discount"]},
+    {"metric_id": "idx:DividendIncomeReceived", "name_en": "Dividend Income Received (Holdco)", "name_id": "Dividen Diterima Induk", "category": "INCOME", "sector_applicability": ["INVESTMENT_HOLDING"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["Dividen Diterima", "Dividend Income"], "synonyms_en": ["Dividend Income Received"]},
+    {"metric_id": "idx:CapitalDeployedToInvestments", "name_en": "Capital Deployed to Investments (New + Follow-On)", "name_id": "Modal Ditanamkan (Investasi Baru + Follow-On)", "category": "CASH_FLOW", "sector_applicability": ["INVESTMENT_HOLDING"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Investasi Baru", "Modal Ditanamkan"], "synonyms_en": ["Capital Deployed", "Investment Outflow"]},
+    {"metric_id": "idx:CapitalRealizedExits", "name_en": "Capital Realized from Exits / Divestments", "name_id": "Realisasi Divestasi", "category": "CASH_FLOW", "sector_applicability": ["INVESTMENT_HOLDING"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Divestasi", "Exit"], "synonyms_en": ["Capital Realized", "Exit Proceeds"]},
+    {"metric_id": "idx:HoldcoNetDebtToNav", "name_en": "Holdco Net Debt / NAV (%)", "name_id": "Utang Bersih Induk / NAV", "category": "CAPITAL", "sector_applicability": ["INVESTMENT_HOLDING"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Net Debt NAV", "Utang Bersih terhadap NAV"], "synonyms_en": ["Holdco Leverage", "Net Debt to NAV"]},
+    {"metric_id": "idx:LookThroughEbitda", "name_en": "Look-Through EBITDA (Portfolio Proportionate)", "name_id": "EBITDA Konsolidasi Proporsional Portofolio", "category": "PROFITABILITY", "sector_applicability": ["INVESTMENT_HOLDING"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Look-Through EBITDA", "EBITDA Proporsional"], "synonyms_en": ["Look-Through EBITDA", "Proportionate EBITDA"]},
+    {"metric_id": "idx:Top3HoldingConcentration", "name_en": "Top-3 Portfolio Holding Concentration (%)", "name_id": "Konsentrasi 3 Portofolio Teratas", "category": "OPERATIONAL", "sector_applicability": ["INVESTMENT_HOLDING"], "importance": "MEDIUM", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Top Holdings", "Konsentrasi Portofolio"], "synonyms_en": ["Top Holdings Concentration"]},
+    {"metric_id": "idx:PortfolioMixByAssetClass", "name_en": "Portfolio Mix by Asset Class (Listed/Unlisted/Cash)", "name_id": "Bauran Portofolio per Kelas Aset", "category": "OPERATIONAL", "sector_applicability": ["INVESTMENT_HOLDING"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Portfolio Mix", "Listed vs Unlisted"], "synonyms_en": ["Portfolio Asset Class Mix"], "expected_segment_fields": ["segment", "type", "asset_class", "pct_total"]},
+    {"metric_id": "idx:PortfolioMixByIndustry", "name_en": "Portfolio Mix by Industry", "name_id": "Bauran Portofolio per Sektor Industri", "category": "OPERATIONAL", "sector_applicability": ["INVESTMENT_HOLDING"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Bauran Sektor", "Industry Split"], "synonyms_en": ["Portfolio by Industry"], "expected_segment_fields": ["segment", "type", "industry", "pct_total"]},
+    {"metric_id": "idx:CashHoldingsIdrUsdMix", "name_en": "Cash Holdings & IDR/USD Mix", "name_id": "Kas Setara Kas & Bauran Mata Uang", "category": "BALANCE_SHEET", "sector_applicability": ["INVESTMENT_HOLDING"], "importance": "MEDIUM", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Kas & Setara Kas", "Dry Powder"], "synonyms_en": ["Cash Holdings", "Dry Powder"], "expected_segment_fields": ["segment", "type", "currency"]},
+
+    # =========================================================================
+    # 31. TIN_MINING — NEW SECTOR (TINS)
+    # Regulatory anchor: UU 3/2020 (Minerba), Permen ESDM 7/2020 (Export Permit).
+    # =========================================================================
+    {"metric_id": "idx:TinInOreProduction", "name_en": "Tin-in-Ore Production (Tonnes)", "name_id": "Produksi Bijih Timah", "category": "OPERATIONAL", "sector_applicability": ["TIN_MINING"], "importance": "CRITICAL", "value_type": "FLOAT", "unit": "TONNES", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION", "ANNUAL_REPORT"], "synonyms_id": ["Produksi Bijih Timah", "Tin-in-Ore"], "synonyms_en": ["Tin-in-Ore Production", "Mine Production"]},
+    {"metric_id": "idx:RefinedTinProduction", "name_en": "Refined Tin Production (Tonnes)", "name_id": "Produksi Logam Timah", "category": "OPERATIONAL", "sector_applicability": ["TIN_MINING"], "importance": "CRITICAL", "value_type": "FLOAT", "unit": "TONNES", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION", "ANNUAL_REPORT"], "synonyms_id": ["Logam Timah", "Refined Tin"], "synonyms_en": ["Refined Tin Production", "Tin Metal Output"]},
+    {"metric_id": "idx:RefinedTinSalesVolume", "name_en": "Refined Tin Sales Volume (Tonnes)", "name_id": "Penjualan Logam Timah", "category": "OPERATIONAL", "sector_applicability": ["TIN_MINING"], "importance": "CRITICAL", "value_type": "FLOAT", "unit": "TONNES", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION", "ANNUAL_REPORT"], "synonyms_id": ["Penjualan Logam Timah"], "synonyms_en": ["Refined Tin Sales"]},
+    {"metric_id": "idx:OnshoreOffshoreMix", "name_en": "Onshore vs Offshore Mining Mix (%)", "name_id": "Bauran Tambang Darat-Laut", "category": "OPERATIONAL", "sector_applicability": ["TIN_MINING"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["Tambang Darat", "Tambang Laut"], "synonyms_en": ["Onshore Offshore Mix"]},
+    {"metric_id": "idx:AverageSellingPricePerTonTin", "name_en": "ASP Tin per Ton (USD)", "name_id": "Harga Jual Rata-rata Timah per Ton", "category": "OPERATIONAL", "sector_applicability": ["TIN_MINING"], "importance": "CRITICAL", "value_type": "FLOAT", "unit": "USD_PER_TON", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION", "ANNUAL_REPORT"], "synonyms_id": ["ASP Timah", "Harga Jual Timah"], "synonyms_en": ["ASP Tin", "Tin Price Realized"]},
+    {"metric_id": "idx:CashCostPerTonTin", "name_en": "C1 Cash Cost per Ton (Tin, USD)", "name_id": "Biaya Tunai per Ton Timah", "category": "OPERATIONAL", "sector_applicability": ["TIN_MINING"], "importance": "CRITICAL", "value_type": "FLOAT", "unit": "USD_PER_TON", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Cash Cost Timah", "C1 Cost"], "synonyms_en": ["C1 Cash Cost", "Tin Cash Cost"]},
+    {"metric_id": "idx:OreGradeSn", "name_en": "Ore Grade (Sn %)", "name_id": "Kadar Bijih Timah (Sn)", "category": "OPERATIONAL", "sector_applicability": ["TIN_MINING"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Kadar Sn", "Ore Grade"], "synonyms_en": ["Ore Grade Sn"]},
+    {"metric_id": "idx:ReserveResourceLifeTin", "name_en": "Reserve Life (Years, Tin)", "name_id": "Umur Cadangan Timah", "category": "OPERATIONAL", "sector_applicability": ["TIN_MINING"], "importance": "HIGH", "value_type": "FLOAT", "unit": "YEARS", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Umur Cadangan", "Umur Tambang"], "synonyms_en": ["Reserve Life", "Mine Life"]},
+    {"metric_id": "idx:ExportPermitStatus", "name_en": "Export Permit (PE) Status", "name_id": "Status Persetujuan Ekspor", "category": "OPERATIONAL", "sector_applicability": ["TIN_MINING"], "importance": "CRITICAL", "value_type": "INTEGER", "unit": "UNITS", "flow_stock_type": "EVENT", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["Persetujuan Ekspor", "PE"], "synonyms_en": ["Export Permit Status", "PE Status"]},
+    {"metric_id": "idx:IupConcessionAreaTin", "name_en": "IUP Concession Area (Hectares)", "name_id": "Luas Wilayah IUP Timah", "category": "OPERATIONAL", "sector_applicability": ["TIN_MINING"], "importance": "MEDIUM", "value_type": "FLOAT", "unit": "HECTARES", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["IUP", "Wilayah Izin Usaha Pertambangan"], "synonyms_en": ["IUP Concession Area"]},
+    {"metric_id": "idx:CooperativeMinerContribution", "name_en": "Cooperative Miner Feed Contribution (%)", "name_id": "Kontribusi Mitra Tambang / Koperasi", "category": "OPERATIONAL", "sector_applicability": ["TIN_MINING"], "importance": "MEDIUM", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Mitra Tambang", "Koperasi Tambang", "Cooperative Mining"], "synonyms_en": ["Cooperative Miner Feed", "Partner Miner Contribution"]},
+
+    # =========================================================================
+    # 32. CHEMICALS — NEW SECTOR (SMIL, SRSN, EKAD, INCI, DPNS, ETWA)
+    # =========================================================================
+    {"metric_id": "idx:PlantCapacityByProduct", "name_en": "Plant Capacity by Product (Tonnes/Year)", "name_id": "Kapasitas Pabrik per Produk", "category": "OPERATIONAL", "sector_applicability": ["CHEMICALS"], "importance": "HIGH", "value_type": "FLOAT", "unit": "TONNES", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Kapasitas Pabrik", "Kapasitas per Produk"], "synonyms_en": ["Plant Capacity", "Nameplate Capacity"], "expected_segment_fields": ["segment", "type", "product_family"]},
+    {"metric_id": "idx:CapacityUtilizationChem", "name_en": "Capacity Utilization (Chemicals, %)", "name_id": "Utilisasi Kapasitas Kimia", "category": "OPERATIONAL", "sector_applicability": ["CHEMICALS"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["Utilisasi", "Tingkat Utilisasi Pabrik"], "synonyms_en": ["Capacity Utilization"]},
+    {"metric_id": "idx:SpecialtyCommodityMix", "name_en": "Specialty vs Commodity Revenue Mix (%)", "name_id": "Bauran Pendapatan Spesialti-Komoditas", "category": "OPERATIONAL", "sector_applicability": ["CHEMICALS"], "importance": "CRITICAL", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["Bauran Spesialti", "Specialty Mix"], "synonyms_en": ["Specialty vs Commodity Mix"]},
+    {"metric_id": "idx:FeedstockCostRatio", "name_en": "Feedstock Cost Ratio (% of COGS)", "name_id": "Rasio Biaya Bahan Baku", "category": "OPERATIONAL", "sector_applicability": ["CHEMICALS"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Biaya Bahan Baku", "Feedstock Cost"], "synonyms_en": ["Feedstock Cost Ratio"]},
+    {"metric_id": "idx:AspChemicalPerTon", "name_en": "ASP per Ton (Chemicals, IDR)", "name_id": "Harga Jual Rata-rata Kimia per Ton", "category": "OPERATIONAL", "sector_applicability": ["CHEMICALS"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["ASP Kimia", "Harga Jual Rata-rata"], "synonyms_en": ["ASP Chemical", "Blended ASP"]},
+    {"metric_id": "idx:ExportRevenueMixChem", "name_en": "Export Revenue Mix (Chemicals, %)", "name_id": "Bauran Pendapatan Ekspor Kimia", "category": "OPERATIONAL", "sector_applicability": ["CHEMICALS"], "importance": "MEDIUM", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Ekspor", "Pendapatan Ekspor"], "synonyms_en": ["Export Revenue Mix"]},
+    {"metric_id": "idx:ImportSubstitutionShare", "name_en": "Import Substitution Share (%)", "name_id": "Pangsa Substitusi Impor", "category": "OPERATIONAL", "sector_applicability": ["CHEMICALS"], "importance": "MEDIUM", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["Substitusi Impor"], "synonyms_en": ["Import Substitution Share"]},
+    {"metric_id": "idx:EndMarketMixChemicals", "name_en": "End-Market Mix (Textile/F&B/Construction/Auto)", "name_id": "Bauran Pasar Akhir Kimia", "category": "OPERATIONAL", "sector_applicability": ["CHEMICALS"], "importance": "HIGH", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT", "INVESTOR_PRESENTATION"], "synonyms_id": ["Segmen Pasar", "End Market"], "synonyms_en": ["End-Market Mix"], "expected_segment_fields": ["segment", "type", "end_market", "pct_total"]},
+    {"metric_id": "idx:EnvironmentalComplianceCapex", "name_en": "Environmental Compliance Capex (PROPER)", "name_id": "Capex Kepatuhan Lingkungan", "category": "CASH_FLOW", "sector_applicability": ["CHEMICALS"], "importance": "MEDIUM", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["PROPER", "Env Capex", "Wastewater", "IPAL"], "synonyms_en": ["Environmental Capex", "Compliance Capex"]},
+    {"metric_id": "idx:BpomCertMixChemicals", "name_en": "BPOM Cert Coverage (Food/Cosmetic-Grade)", "name_id": "Cakupan Sertifikasi BPOM (Food/Cosmetic-Grade)", "category": "OPERATIONAL", "sector_applicability": ["CHEMICALS"], "importance": "MEDIUM", "value_type": "PERCENTAGE", "unit": "PERCENT", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["ANNUAL_REPORT"], "synonyms_id": ["Sertifikasi BPOM", "Food Grade"], "synonyms_en": ["BPOM Cert Mix"]},
+
+    # =========================================================================
+    # 33. STANDARD IFRS/PSAK CONCEPTS — cross-sector baseline (referenced by
+    # concept_map seed rows for many sectors).
+    # =========================================================================
+    {"metric_id": "ifrs:Inventories", "name_en": "Inventories", "name_id": "Persediaan", "category": "BALANCE_SHEET", "sector_applicability": ["ALL"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["FS_CORE_STATEMENT", "FS_NOTES_DETAIL"], "synonyms_id": ["Persediaan", "Persediaan Barang", "Barang Jadi"], "synonyms_en": ["Inventories", "Inventory", "Stock"]},
+    {"metric_id": "ifrs:TradeAndOtherReceivables", "name_en": "Trade and Other Receivables", "name_id": "Piutang Usaha dan Piutang Lainnya", "category": "BALANCE_SHEET", "sector_applicability": ["ALL"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["FS_CORE_STATEMENT", "FS_NOTES_DETAIL"], "synonyms_id": ["Piutang Usaha", "Piutang Dagang", "Piutang Lainnya"], "synonyms_en": ["Trade Receivables", "Accounts Receivable", "Other Receivables"]},
+    {"metric_id": "ifrs:PropertyPlantAndEquipment", "name_en": "Property, Plant and Equipment (Fixed Assets)", "name_id": "Aset Tetap", "category": "BALANCE_SHEET", "sector_applicability": ["ALL"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["FS_CORE_STATEMENT", "FS_NOTES_DETAIL"], "synonyms_id": ["Aset Tetap", "Aktiva Tetap", "PPE"], "synonyms_en": ["Property Plant and Equipment", "PPE", "Fixed Assets"]},
+    {"metric_id": "ifrs:ShortTermBorrowings", "name_en": "Short-Term Borrowings", "name_id": "Utang Bank Jangka Pendek", "category": "BALANCE_SHEET", "sector_applicability": ["ALL"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["FS_CORE_STATEMENT", "FS_NOTES_DETAIL"], "synonyms_id": ["Utang Bank Jangka Pendek", "Pinjaman Jangka Pendek"], "synonyms_en": ["Short-term Borrowings", "Short-term Debt", "Current Borrowings"]},
+    {"metric_id": "ifrs:LongTermBorrowings", "name_en": "Long-Term Borrowings", "name_id": "Utang Bank Jangka Panjang", "category": "BALANCE_SHEET", "sector_applicability": ["ALL"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["FS_CORE_STATEMENT", "FS_NOTES_DETAIL"], "synonyms_id": ["Utang Bank Jangka Panjang", "Pinjaman Jangka Panjang", "Obligasi"], "synonyms_en": ["Long-term Borrowings", "Long-term Debt", "Non-current Borrowings"]},
+    {"metric_id": "ifrs:DepreciationAndAmortisationExpense", "name_en": "Depreciation and Amortisation Expense", "name_id": "Beban Penyusutan dan Amortisasi", "category": "INCOME", "sector_applicability": ["ALL"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["FS_CORE_STATEMENT", "FS_NOTES_DETAIL"], "synonyms_id": ["Beban Penyusutan", "Beban Amortisasi", "Depresiasi"], "synonyms_en": ["Depreciation", "Amortisation", "D&A"]},
+    {"metric_id": "idx:OperatingExpenses", "name_en": "Operating Expenses (Total)", "name_id": "Beban Usaha / Beban Operasional", "category": "INCOME", "sector_applicability": ["ALL"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["FS_CORE_STATEMENT"], "synonyms_id": ["Beban Usaha", "Beban Operasional", "OpEx"], "synonyms_en": ["Operating Expenses", "OpEx", "Total Operating Costs"]},
+    {"metric_id": "idx:SellingAndMarketingExpense", "name_en": "Selling and Marketing Expense", "name_id": "Beban Penjualan dan Pemasaran", "category": "INCOME", "sector_applicability": ["ALL"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["FS_CORE_STATEMENT", "FS_NOTES_DETAIL"], "synonyms_id": ["Beban Penjualan", "Beban Pemasaran", "S&M"], "synonyms_en": ["Selling Expenses", "Marketing Expenses", "S&M Expense"]},
+    {"metric_id": "idx:MiningRoyalties", "name_en": "Mining Royalties Paid", "name_id": "Beban Royalti Tambang", "category": "INCOME", "sector_applicability": ["COAL", "NICKEL", "GOLD_COPPER", "TIN_MINING", "MINING"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "FLOW_PERIOD", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["FS_NOTES_DETAIL", "ANNUAL_REPORT"], "synonyms_id": ["Royalti", "Beban Royalti", "PNBP Royalti"], "synonyms_en": ["Royalties", "Mining Royalties", "Royalty Expense"]},
+    {"metric_id": "idx:BankLoans", "name_en": "Bank Loans (Borrowings from Banks)", "name_id": "Pinjaman Bank", "category": "BALANCE_SHEET", "sector_applicability": ["ALL"], "importance": "HIGH", "value_type": "MONETARY", "unit": "IDR", "flow_stock_type": "STOCK_POINT_IN_TIME", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["FS_NOTES_DETAIL"], "synonyms_id": ["Pinjaman Bank", "Utang Bank"], "synonyms_en": ["Bank Loans", "Bank Borrowings"]},
+    {"metric_id": "idx:AverageSellingPrice", "name_en": "Average Selling Price (Generic ASP)", "name_id": "Harga Jual Rata-rata (ASP Umum)", "category": "OPERATIONAL", "sector_applicability": ["ALL"], "importance": "MEDIUM", "value_type": "FLOAT", "unit": "IDR", "flow_stock_type": "RATIO", "extraction_mode": "EXTRACTED_RAW", "source_priority": ["INVESTOR_PRESENTATION"], "synonyms_id": ["ASP", "Harga Jual Rata-rata", "Blended ASP"], "synonyms_en": ["ASP", "Average Selling Price", "Realized Price"]},
 ]
 
 SECTOR_CONTRACTS_DATA: list[dict[str, Any]] = [
@@ -925,6 +1443,9 @@ async def seed_metric_ontology():
     async with pool.connect() as conn:
         log.info("Seeding metric_definitions...")
         for m in METRIC_DEFINITIONS_DATA:
+            statement_type = m.get("statement_type") or _default_statement_type(m["category"])
+            label_bilingual = m.get("label_bilingual") or f"{m['name_id']} / {m['name_en']}"
+            enrich = METRIC_ENRICHMENTS.get(m["metric_id"], {})
             params = {
                 "metric_id": m["metric_id"],
                 "name_en": m["name_en"],
@@ -941,6 +1462,11 @@ async def seed_metric_ontology():
                 "source_priority": m.get("source_priority", ["FS_CORE_STATEMENT"]),
                 "synonyms_id": m.get("synonyms_id", []),
                 "synonyms_en": m.get("synonyms_en", []),
+                "search_hints": m.get("search_hints") or enrich.get("search_hints", []),
+                "extraction_guideline": m.get("extraction_guideline") or enrich.get("extraction_guideline"),
+                "expected_segment_fields": m.get("expected_segment_fields") or enrich.get("expected_segment_fields", []),
+                "statement_type": statement_type,
+                "label_bilingual": label_bilingual,
             }
             await conn.execute(
                 text(
@@ -948,11 +1474,15 @@ async def seed_metric_ontology():
                     INSERT INTO metric_definitions (
                         metric_id, name_en, name_id, category, sector_applicability, importance,
                         value_type, unit, flow_stock_type, extraction_mode, calculation_formula,
-                        dependencies, source_priority, synonyms_id, synonyms_en, updated_at
+                        dependencies, source_priority, synonyms_id, synonyms_en,
+                        search_hints, extraction_guideline, expected_segment_fields,
+                        statement_type, label_bilingual, updated_at
                     ) VALUES (
                         :metric_id, :name_en, :name_id, :category, :sector_applicability, :importance,
                         :value_type, :unit, :flow_stock_type, :extraction_mode, :calculation_formula,
-                        :dependencies, :source_priority, :synonyms_id, :synonyms_en, now()
+                        :dependencies, :source_priority, :synonyms_id, :synonyms_en,
+                        :search_hints, :extraction_guideline, :expected_segment_fields,
+                        :statement_type, :label_bilingual, now()
                     )
                     ON CONFLICT (metric_id) DO UPDATE SET
                         name_en = EXCLUDED.name_en,
@@ -969,6 +1499,11 @@ async def seed_metric_ontology():
                         source_priority = EXCLUDED.source_priority,
                         synonyms_id = EXCLUDED.synonyms_id,
                         synonyms_en = EXCLUDED.synonyms_en,
+                        search_hints = EXCLUDED.search_hints,
+                        extraction_guideline = EXCLUDED.extraction_guideline,
+                        expected_segment_fields = EXCLUDED.expected_segment_fields,
+                        statement_type = EXCLUDED.statement_type,
+                        label_bilingual = EXCLUDED.label_bilingual,
                         updated_at = now();
                     """
                 ),
@@ -1014,7 +1549,7 @@ async def seed_metric_ontology():
         # Print summary
         m_count = (await conn.execute(text("SELECT count(*) FROM metric_definitions"))).scalar()
         c_count = (await conn.execute(text("SELECT count(*) FROM sector_metric_contracts"))).scalar()
-        print(f"=== METRIC ONTOLOGY SEEDING COMPLETE ===")
+        print("=== METRIC ONTOLOGY SEEDING COMPLETE ===")
         print(f"Total Canonical Metrics in DB: {m_count}")
         print(f"Total Sector Disclosure Contracts in DB: {c_count}")
 

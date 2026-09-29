@@ -137,6 +137,69 @@ SECTOR_KPIS: dict[str, list[str]] = {
         "idx:MonthlyActiveTransactingUsers", "idx:ContributionMargin",
         "idx:AdjustedEBITDADigital", "idx:PromotionalIncentives",
     ],
+    "INSURANCE": [
+        "idx:RiskBasedCapitalRatio", "idx:LossRatio", "idx:ExpenseRatio",
+        "idx:CombinedRatio", "idx:GrossWrittenPremium", "idx:GwpByLineOfBusiness",
+        "idx:NetRetentionRatio", "idx:UnderwritingResult",
+        "idx:InvestmentYieldInsurance", "idx:AnnualPremiumEquivalent",
+        "idx:ValueOfNewBusiness", "idx:EmbeddedValue",
+        "idx:PersistencyRatio13m", "idx:PersistencyRatio25m",
+        "idx:ClaimsSettlementRatio", "idx:ReserveAdequacyRatio",
+        "idx:CatastropheExposure", "idx:ProductMixTraditionalUL",
+        "idx:DistributionChannelMix", "idx:AgentProductivity",
+        "idx:AssetLiabilityDurationGap", "idx:DomesticVsOverseasCession",
+    ],
+    "MULTIFINANCE": [
+        "idx:GearingRatio", "idx:NpfGrossRatio", "idx:NpfNetRatio",
+        "idx:NewBookingsMultifinance", "idx:FinancingReceivablesOutstanding",
+        "idx:NimFinancing", "idx:CostOfFundsMultifinance",
+        "idx:CollectionEfficiencyRate", "idx:CkpnCoverageMultifinance",
+        "idx:ChannelMixDealerDirect", "idx:AverageContractTenor",
+        "idx:CostToIncomeMultifinance",
+    ],
+    "HOTEL_TOURISM": [
+        "idx:OccupancyRate", "idx:AverageDailyRate", "idx:RevenuePerAvailableRoom",
+        "idx:TotalRevenuePerAvailableRoom", "idx:GopParRatio", "idx:RoomInventoryCount",
+        "idx:ThemeParkVisitorCount", "idx:AverageSpendPerVisitor",
+        "idx:InternationalArrivalMix", "idx:PropertyPortfolioByLocation",
+        "idx:PropertyPortfolioByBrand", "idx:FoodBeverageRevenueMix",
+    ],
+    "JEWELRY_LUXURY": [
+        "idx:PureGoldVolumeTonnes", "idx:BullionJewelryMix", "idx:MakingChargePerGram",
+        "idx:MarketShareGoldRetail", "idx:GoldHedgeRatio", "idx:EmaskuSubscriberCount",
+        "idx:InventoryTurnoverJewelry", "idx:AverageGoldContentPerPiece",
+        "idx:JewelryStorePartnerCount",
+    ],
+    "MEDIA_BROADCAST": [
+        "idx:PrimetimeAudienceShare", "idx:AllTimeAudienceShare",
+        "idx:AdvertisingShareOfWallet", "idx:GrossRatingPointDelivery",
+        "idx:AverageCostPerGRP", "idx:AdInventoryUtilization",
+        "idx:DigitalRevenueMix", "idx:SubscriberCountOTT", "idx:ArpuOtt",
+        "idx:ContentInvestmentCapex", "idx:PayTvSubscribers",
+        "idx:ContentLibrarySize",
+    ],
+    "INVESTMENT_HOLDING": [
+        "idx:NetAssetValue", "idx:NavPerShare", "idx:DiscountToNav",
+        "idx:DividendIncomeReceived", "idx:CapitalDeployedToInvestments",
+        "idx:CapitalRealizedExits", "idx:HoldcoNetDebtToNav",
+        "idx:LookThroughEbitda", "idx:Top3HoldingConcentration",
+        "idx:PortfolioMixByAssetClass", "idx:PortfolioMixByIndustry",
+        "idx:CashHoldingsIdrUsdMix",
+    ],
+    "TIN_MINING": [
+        "idx:TinInOreProduction", "idx:RefinedTinProduction",
+        "idx:RefinedTinSalesVolume", "idx:OnshoreOffshoreMix",
+        "idx:AverageSellingPricePerTonTin", "idx:CashCostPerTonTin",
+        "idx:OreGradeSn", "idx:ReserveResourceLifeTin", "idx:ExportPermitStatus",
+        "idx:IupConcessionAreaTin", "idx:CooperativeMinerContribution",
+    ],
+    "CHEMICALS": [
+        "idx:PlantCapacityByProduct", "idx:CapacityUtilizationChem",
+        "idx:SpecialtyCommodityMix", "idx:FeedstockCostRatio", "idx:AspChemicalPerTon",
+        "idx:ExportRevenueMixChem", "idx:ImportSubstitutionShare",
+        "idx:EndMarketMixChemicals", "idx:EnvironmentalComplianceCapex",
+        "idx:BpomCertMixChemicals",
+    ],
 }
 
 # Full IDX ticker universe. (ticker, company_name, sector_code, sub_sector, index_membership)
@@ -167,6 +230,7 @@ IDX_TICKERS: list[tuple[str, str, str, str, str]] = [
     ("BNII", "PT Bank Maybank Indonesia Tbk", "BANK", "Private Commercial Banks", "IDX"),
     # ---- COAL ----
     ("ADRO", "PT Adaro Energy Indonesia Tbk", "COAL", "Thermal Coal", "LQ45"),
+    ("ADMR", "PT Alamtri Resources Indonesia Tbk", "COAL", "Metallurgical Coal", "KOMPAS100"),
     ("PTBA", "PT Bukit Asam Tbk", "COAL", "Thermal Coal", "LQ45"),
     ("ITMG", "PT Indo Tambangraya Mega Tbk", "COAL", "Thermal Coal", "LQ45"),
     ("HRUM", "PT Harum Energy Tbk", "COAL", "Coal & Nickel", "LQ45"),
@@ -373,6 +437,46 @@ IDX_TICKERS: list[tuple[str, str, str, str, str]] = [
     ("BELI", "PT Global Digital Niaga Tbk", "DIGITAL", "E-Commerce", "IDX"),
     ("NETV", "PT Net Visi Media Tbk", "DIGITAL", "Digital Media", "IDX"),
     ("KIOS", "PT Kioson Komersial Indonesia Tbk", "DIGITAL", "Digital Distribution", "IDX"),
+    # ---- KOMPAS100 / LQ45 / IDX30 GAP TICKERS (Aug 2026 – Jan 2027 rebalancing) ----
+    # ---- INSURANCE ----
+    ("PNLF", "PT Panin Financial Tbk", "INSURANCE", "Life Insurance & Financial Holding", "KOMPAS100"),
+    # ---- MULTIFINANCE ----
+    ("BFIN", "PT BFI Finance Indonesia Tbk", "MULTIFINANCE", "Auto & Consumer Financing", "KOMPAS100"),
+    # ---- HOTEL_TOURISM ----
+    ("BUVA", "PT Bukit Uluwatu Villa Tbk", "HOTEL_TOURISM", "Resort & Villa Operator", "KOMPAS100"),
+    ("MINA", "PT Sanurhasta Mitra Tbk", "HOTEL_TOURISM", "Hospitality & Tourism Assets", "KOMPAS100"),
+    # ---- JEWELRY_LUXURY ----
+    ("HRTA", "PT Hartadinata Abadi Tbk", "JEWELRY_LUXURY", "Gold Jewelry Manufacturer & Retail", "KOMPAS100"),
+    # ---- MEDIA_BROADCAST ----
+    ("SCMA", "PT Surya Citra Media Tbk", "MEDIA_BROADCAST", "Free-to-Air TV & Digital Media", "KOMPAS100"),
+    # ---- INVESTMENT_HOLDING ----
+    ("BNBR", "PT Bakrie & Brothers Tbk", "INVESTMENT_HOLDING", "Diversified Holding (Bakrie)", "KOMPAS100"),
+    # ---- TIN_MINING ----
+    ("TINS", "PT Timah Tbk", "TIN_MINING", "Integrated Tin Mining & Smelting", "KOMPAS100"),
+    # ---- CHEMICALS ----
+    ("SMIL", "PT Sinergi Multi Lestarindo Tbk", "CHEMICALS", "Specialty Chemicals Distribution", "KOMPAS100"),
+    # ---- COAL (existing sector) ----
+    ("BIPI", "PT Astrindo Nusantara Infrastruktur Tbk", "COAL", "Coal Infrastructure & Logistics", "KOMPAS100"),
+    ("CUAN", "PT Petrindo Jaya Kreasi Tbk", "COAL", "Coking Coal Mining", "IDX30"),
+    ("RMKE", "PT RMK Energy Tbk", "COAL", "Coal Trading & Logistics", "KOMPAS100"),
+    ("SGER", "PT Sumber Global Energy Tbk", "COAL", "Coal Trading & Mining Services", "KOMPAS100"),
+    # ---- PROPERTY (existing sector) ----
+    ("BKSL", "PT Sentul City Tbk", "PROPERTY", "Township & Land Development", "KOMPAS100"),
+    ("CBDK", "PT Bangun Kosambi Sukses Tbk", "PROPERTY", "Integrated Township PIK2", "KOMPAS100"),
+    ("KPIG", "PT MNC Land Tbk", "PROPERTY", "Property & Integrated Resort", "KOMPAS100"),
+    ("PANI", "PT Pantai Indah Kapuk Dua Tbk", "PROPERTY", "Integrated Township PIK2", "IDX30"),
+    ("SSIA", "PT Surya Semesta Internusa Tbk", "PROPERTY", "Industrial Estate & Construction", "KOMPAS100"),
+    # ---- TELCO (existing sector) ----
+    ("INET", "PT Sinergi Inti Andalan Prima Tbk", "TELCO", "Fixed Broadband / ISP", "KOMPAS100"),
+    ("WIFI", "PT Solusi Sinergi Digital Tbk", "TELCO", "Public Wi-Fi / Digital Connectivity", "KOMPAS100"),
+    # ---- BASIC_MATERIALS (existing sector) ----
+    ("IMPC", "PT Impack Pratama Industri Tbk", "BASIC_MATERIALS", "Building Materials & Plastics", "KOMPAS100"),
+    # ---- CONTRACTOR (existing sector) ----
+    ("PTRO", "PT Petrosea Tbk", "CONTRACTOR", "Mining Contractor & EPC", "LQ45"),
+    # ---- OIL_GAS (existing sector) ----
+    ("RATU", "PT Raharja Energi Cepu Tbk", "OIL_GAS", "Upstream Oil & Gas (Cepu Block)", "KOMPAS100"),
+    # ---- DIGITAL (existing sector) ----
+    ("WIRG", "PT WIR Asia Tbk", "DIGITAL", "AR/VR & Metaverse Tech", "KOMPAS100"),
 ]
 
 
