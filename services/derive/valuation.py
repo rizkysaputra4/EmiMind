@@ -67,7 +67,7 @@ async def calculate_valuation(
     ticker: str,
     fiscal_period: str | None = None,
     is_live: bool = True,
-) -> dict[str, Any]:
+) -> dict[str, Any] | None:
     """Calculates live on-the-fly valuation or historical release-date valuation snapshot.
 
     - If is_live is True: Uses the latest live market price against the latest reported fundamentals.
