@@ -166,8 +166,9 @@ async def test_index_pages_fs_small(tmp_path: Path) -> None:
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_index_pages_scanned(tmp_path: Path) -> None:
-    if not shutil.which("tesseract"):
-        pytest.skip("tesseract is not on PATH, skipping OCR integration test on scanned.pdf")
+    tesseract_cmd = get_settings().tesseract_cmd
+    if not shutil.which(tesseract_cmd):  # also resolves an absolute path
+        pytest.skip(f"tesseract not found ({tesseract_cmd}), skipping OCR integration test on scanned.pdf")
 
     engine = get_engine()  # type: ignore[no-untyped-call]
     settings = get_settings()

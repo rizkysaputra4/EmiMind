@@ -2,11 +2,26 @@
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_WINDOWS_TESSERACT = Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe")
+
+
+def _default_tesseract_cmd() -> str:
+    return str(_WINDOWS_TESSERACT) if _WINDOWS_TESSERACT.is_file() else "tesseract"
+
+
+def _default_tessdata_dir() -> str | None:
+    local_appdata = os.environ.get("LOCALAPPDATA")
+    if local_appdata and (Path(local_appdata) / "tessdata").is_dir():
+        return str(Path(local_appdata) / "tessdata")
+    return None
 
 
 class RoleConfig(BaseModel):
@@ -85,8 +100,26 @@ class Settings(BaseSettings):
 
     # Embeddings & Retrieval
     embedding_model: str = "BAAI/bge-m3"
-    embedding_device: str = "cpu"
+    embedding_device: str = Field(
+        default="auto", description="'auto' (cuda if available, else cpu), 'cuda', 'cpu'"
+    )
+    embedding_mode: Literal["real", "fake"] = Field(
+        default="real", description="'fake' = deterministic hash vectors (tests only)"
+    )
+    embedding_max_seq_length: int = 1024
+    embedding_batch_size: int = 32
+    embedding_fp16: bool = Field(default=True, description="Use fp16 weights on CUDA")
     reranker_model: str = "BAAI/bge-reranker-v2-m3"
+    reports_dir: str = "../EmiMind-Extraction/incoming_reports"
+
+    # OCR (Tesseract)
+    tesseract_cmd: str = Field(default_factory=_default_tesseract_cmd)
+    tessdata_dir: str | None = Field(default_factory=_default_tessdata_dir)
+    ocr_min_chars: int = 50
+    ocr_dpi: int = 300
+
+    # Page router
+    router_ann_max_pages: int = 2000
 
     # Logging
     log_level: str = "INFO"
