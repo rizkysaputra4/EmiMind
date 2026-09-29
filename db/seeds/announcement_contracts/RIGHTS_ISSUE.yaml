@@ -1,0 +1,79 @@
+doc_type: RIGHTS_ISSUE
+sector: UNIVERSAL
+period_type: instant
+required_facts:
+  - concept_id: rights_issue:ratio
+    label: Rasio HMETD / Rights ratio
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["rasio HMETD", "rasio hak"]
+    synonyms_en: ["rights ratio", "HMETD ratio"]
+    unit: RATIO
+    value_type: RATIO
+  - concept_id: rights_issue:exercise_price
+    label: Harga pelaksanaan / Exercise price
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["harga pelaksanaan", "harga HMETD"]
+    synonyms_en: ["exercise price", "subscription price"]
+    unit: IDR
+    value_type: MONETARY
+  - concept_id: rights_issue:total_shares_issued
+    label: Jumlah saham baru / New shares issued
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["jumlah saham baru"]
+    synonyms_en: ["new shares", "shares issued"]
+    unit: SHARES
+    value_type: COUNT
+  - concept_id: rights_issue:total_proceeds
+    label: Total dana hasil rights issue / Total proceeds
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["total dana", "hasil rights issue"]
+    synonyms_en: ["total proceeds", "gross proceeds"]
+    unit: IDR
+    value_type: MONETARY
+  - concept_id: rights_issue:hmetd_trading_start
+    label: Awal perdagangan HMETD
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    unit: DATE
+    value_type: DATE
+  - concept_id: rights_issue:hmetd_trading_end
+    label: Akhir perdagangan HMETD
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    unit: DATE
+    value_type: DATE
+  - concept_id: rights_issue:dilution_pct
+    label: Persentase dilusi / Dilution %
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["dilusi"]
+    synonyms_en: ["dilution"]
+    unit: PERCENT
+    value_type: PERCENT
+  - concept_id: rights_issue:standby_buyer
+    label: Standby buyer / Pembeli siaga
+    statement_type: NOTE
+    importance: OPTIONAL
+    extraction_mode: EXTRACTED_RAW
+    unit: TEXT
+    value_type: TEXT
+required_narratives:
+  - topic: use_of_proceeds
+    target_note_description: Rencana penggunaan dana hasil rights issue.
+    expected_section: MGMT_STMT
+    guideline: >
+      Summarise the use of proceeds section: how much goes to debt repayment,
+      capex, working capital, acquisitions, etc. Quote figures when disclosed.
+sector_specific_guidelines:
+  - 'Ratio format is typically "X : Y" (e.g. "3 : 1" — for every 3 existing shares, holder receives 1 right). Preserve original notation in source_label_original.'

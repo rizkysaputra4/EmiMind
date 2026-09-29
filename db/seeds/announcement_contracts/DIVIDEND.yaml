@@ -1,0 +1,90 @@
+doc_type: DIVIDEND
+sector: UNIVERSAL
+period_type: instant
+required_facts:
+  - concept_id: dividend:per_share
+    label: Dividen per saham / Dividend per share
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["dividen per saham", "DPS", "dividen tunai per saham"]
+    synonyms_en: ["dividend per share", "DPS", "cash dividend per share"]
+    search_hints: ["Rp/saham", "IDR per share"]
+    unit: IDR
+    value_type: MONETARY
+  - concept_id: dividend:total_amount
+    label: Jumlah dividen total / Total dividend amount
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["jumlah dividen", "total dividen"]
+    synonyms_en: ["total dividend", "total distribution"]
+    unit: IDR
+    value_type: MONETARY
+  - concept_id: dividend:type
+    label: Jenis dividen / Dividend type
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["dividen tunai", "dividen saham", "dividen interim", "dividen final"]
+    synonyms_en: ["cash dividend", "stock dividend", "interim", "final"]
+    unit: TEXT
+    value_type: TEXT
+  - concept_id: dividend:cum_date
+    label: Tanggal cum-dividen / Cum date
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["cum dividen", "cum date"]
+    synonyms_en: ["cum date", "cum-dividend date"]
+    unit: DATE
+    value_type: DATE
+  - concept_id: dividend:ex_date
+    label: Tanggal ex-dividen / Ex date
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["ex dividen"]
+    synonyms_en: ["ex date", "ex-dividend date"]
+    unit: DATE
+    value_type: DATE
+  - concept_id: dividend:recording_date
+    label: Tanggal pencatatan / Recording date
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["tanggal pencatatan", "recording date"]
+    synonyms_en: ["recording date"]
+    unit: DATE
+    value_type: DATE
+  - concept_id: dividend:payment_date
+    label: Tanggal pembayaran / Payment date
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["tanggal pembayaran"]
+    synonyms_en: ["payment date"]
+    unit: DATE
+    value_type: DATE
+  - concept_id: dividend:payout_ratio
+    label: Rasio pembayaran dividen / Payout ratio
+    statement_type: NOTE
+    importance: OPTIONAL
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["rasio pembayaran", "payout ratio"]
+    synonyms_en: ["payout ratio", "DPR"]
+    unit: PERCENT
+    value_type: PERCENT
+required_narratives:
+  - topic: dividend_context
+    target_note_description: Konteks persetujuan dividen dan sumber laba yang dibayarkan.
+    expected_section: MGMT_STMT
+    guideline: >
+      Summarise the source of the dividend (net profit of which fiscal year), the
+      RUPS resolution that approved it, and any special context (special dividend,
+      first-time dividend, change in payout policy).
+sector_specific_guidelines:
+  - Verify that DPS × total shares outstanding ≈ total_amount (allow ±1% rounding).
+  - If both interim and final are present in the same document, extract them as separate facts with `segment.dividend_stage`.
+do_not_extract:
+  - Do not extract historical dividend series unless the document explicitly presents them as a table.

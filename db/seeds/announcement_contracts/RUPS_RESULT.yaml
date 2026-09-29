@@ -1,0 +1,64 @@
+doc_type: RUPS_RESULT
+sector: UNIVERSAL
+period_type: instant
+required_facts:
+  - concept_id: rups:meeting_date
+    label: Tanggal RUPS / Meeting date
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    unit: DATE
+    value_type: DATE
+  - concept_id: rups:meeting_type
+    label: Jenis RUPS (Tahunan / Luar Biasa)
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["RUPST", "RUPSLB", "RUPS Tahunan", "RUPS Luar Biasa"]
+    synonyms_en: ["AGM", "EGM"]
+    unit: TEXT
+    value_type: TEXT
+  - concept_id: rups:quorum_pct
+    label: Kuorum kehadiran
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["kuorum", "kehadiran pemegang saham"]
+    unit: PERCENT
+    value_type: PERCENT
+  - concept_id: rups:agenda_outcomes
+    label: Hasil per agenda / Agenda outcomes
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["hasil rups", "keputusan rups", "mata acara"]
+    synonyms_en: ["agenda", "resolutions"]
+    expected_segment_fields: ["agenda_number", "agenda_title", "vote_for_pct", "vote_against_pct", "approved"]
+    unit: TEXT
+    value_type: TEXT
+  - concept_id: rups:dividend_approved_dps
+    label: Dividen yang disetujui (per saham)
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    unit: IDR
+    value_type: MONETARY
+  - concept_id: rups:board_changes
+    label: Perubahan direksi/komisaris
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    expected_segment_fields: ["role", "name", "action"]
+    unit: TEXT
+    value_type: TEXT
+required_narratives:
+  - topic: rups_summary
+    target_note_description: Ringkasan seluruh mata acara dan keputusan RUPS.
+    expected_section: MGMT_STMT
+    guideline: >
+      Produce a per-agenda paragraph summarising each resolution and its outcome
+      (approved / rejected / deferred). Highlight items with material financial
+      impact (dividend, capital changes, board changes).
+sector_specific_guidelines:
+  - Extract each agenda item as a separate `agenda_outcomes` fact with the segment.agenda_number.
+  - Board changes must be extracted as separate facts per person (segment.role + segment.name).

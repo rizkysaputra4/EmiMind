@@ -1,0 +1,72 @@
+doc_type: TENDER_OFFER
+sector: UNIVERSAL
+period_type: instant
+required_facts:
+  - concept_id: tender:offer_price
+    label: Harga penawaran tender
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    unit: IDR
+    value_type: MONETARY
+  - concept_id: tender:total_shares_target
+    label: Jumlah saham yang akan dibeli
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    unit: SHARES
+    value_type: COUNT
+  - concept_id: tender:offer_type
+    label: Jenis penawaran (Sukarela / Wajib)
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    search_hints: ["sukarela", "wajib", "voluntary", "mandatory"]
+    unit: TEXT
+    value_type: TEXT
+  - concept_id: tender:acceptance_start
+    label: Masa penawaran mulai
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    unit: DATE
+    value_type: DATE
+  - concept_id: tender:acceptance_end
+    label: Masa penawaran berakhir
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    unit: DATE
+    value_type: DATE
+  - concept_id: tender:settlement_date
+    label: Tanggal penyelesaian
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    unit: DATE
+    value_type: DATE
+  - concept_id: tender:offeror
+    label: Pihak yang melakukan penawaran
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    unit: TEXT
+    value_type: TEXT
+  - concept_id: tender:offer_premium_pct
+    label: Premium terhadap harga pasar
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["premium"]
+    synonyms_en: ["premium to market"]
+    unit: PERCENT
+    value_type: PERCENT
+required_narratives:
+  - topic: offer_rationale
+    target_note_description: Alasan dan tujuan penawaran tender.
+    expected_section: MGMT_STMT
+    guideline: >
+      Summarise the reason for the tender offer — change of control, going
+      private, minority buyout, etc. Note any conditions to closing.
+sector_specific_guidelines:
+  - For mandatory tender offers post-acquisition, capture the triggering transaction date in the narrative.

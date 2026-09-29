@@ -1,0 +1,18 @@
+pattern,doc_type,priority,notes
+(?i)pembayaran\s+dividen|dividen\s+tunai|dividen\s+interim|dividen\s+final|cash\s+dividend|dividend\s+distribution,DIVIDEND,10,Cash & stock dividend announcements
+(?i)hasil\s+rups|risalah\s+rups|keputusan\s+rups|rups\s+tahunan|rups\s+luar\s+biasa|agm\s+result|egm\s+result|ringkasan\s+risalah,RUPS_RESULT,10,Shareholder meeting results (excluding pre-meeting invitations)
+(?i)hmetd|rights\s+issue|penambahan\s+modal\s+dengan\s+hak\s+memesan|pmhmetd,RIGHTS_ISSUE,10,Rights issue (HMETD)
+(?i)penambahan\s+modal\s+tanpa\s+hak|pmtmhetd|private\s+placement,PRIVATE_PLACEMENT,15,Non-preemptive capital raise
+(?i)obligasi|sukuk|mtn|medium\s+term\s+notes|penerbitan\s+surat\s+utang|bond\s+issuance,BOND_ISSUE,20,Debt issuance
+(?i)transaksi\s+afiliasi|transaksi\s+material|affiliated\s+transaction|related\s+party\s+transaction,AFFILIATED_TX,20,Related-party / material transactions
+(?i)penawaran\s+tender|tender\s+offer|penawaran\s+pembelian\s+saham,TENDER_OFFER,25,Tender offers
+(?i)pembelian\s+kembali\s+saham|buyback|share\s+buyback|treasury\s+stock,SHARE_BUYBACK,25,Share buyback programs
+(?i)informasi\s+(atau\s+fakta\s+)?material|keterbukaan\s+informasi(\s+atau\s+fakta\s+material)?|informasi\s+keterbukaan\s+material|material\s+information|material\s+event,MATERIAL_INFO,30,POJK 31 material information
+(?i)perubahan\s+(susunan\s+)?(pengurus|direksi|komisaris|dewan)|pengunduran\s+diri.*(direktur|komisaris)|pengangkatan.*(direktur|komisaris),BOARD_CHANGE,40,Board/management changes
+(?i)transaksi\s+saham.*direktur|insider\s+trading|kepemilikan\s+saham.*direktur|laporan\s+kepemilikan,INSIDER_TX,50,Insider transaction disclosures
+(?i)penghentian\s+sementara|suspend(ed)?\s+trading|suspensi\s+perdagangan,SUSPEND_NOTICE,60,Trading suspensions
+(?i)pencabutan\s+penghentian|unsuspend|pembukaan\s+kembali\s+perdagangan,UNSUSPEND_NOTICE,60,Trading resumptions
+(?i)paparan\s+publik|public\s+expose,PUBLIC_EXPOSE,70,Annual public expose
+(?i)perubahan\s+anggaran\s+dasar|articles\s+of\s+association,ARTICLES_AMENDMENT,80,Articles amendments
+(?i)perubahan\s+nama|name\s+change,NAME_CHANGE,80,Corporate name changes
+(?i)pencatatan\s+saham|delisting|relisting|pemindahan\s+papan,LISTING_ACTION,80,Listing / delisting actions

@@ -1,0 +1,62 @@
+doc_type: PRIVATE_PLACEMENT
+sector: UNIVERSAL
+period_type: instant
+required_facts:
+  - concept_id: pp:shares_issued
+    label: Jumlah saham diterbitkan
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    unit: SHARES
+    value_type: COUNT
+  - concept_id: pp:issue_price
+    label: Harga penerbitan
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    unit: IDR
+    value_type: MONETARY
+  - concept_id: pp:total_proceeds
+    label: Total dana yang diperoleh
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    unit: IDR
+    value_type: MONETARY
+  - concept_id: pp:subscribers
+    label: Pihak yang mengambil bagian
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    expected_segment_fields: ["name", "shares", "pct_of_placement"]
+    unit: TEXT
+    value_type: TEXT
+  - concept_id: pp:dilution_pct
+    label: Dilusi terhadap saham beredar
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    unit: PERCENT
+    value_type: PERCENT
+  - concept_id: pp:pojk_basis
+    label: Dasar peraturan (PMTHMETD / lainnya)
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    search_hints: ["POJK 14", "POJK 32", "PMHMETD", "PMTHMETD"]
+    unit: TEXT
+    value_type: TEXT
+  - concept_id: pp:effective_date
+    label: Tanggal efektif
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    unit: DATE
+    value_type: DATE
+required_narratives:
+  - topic: use_of_proceeds
+    target_note_description: Rencana penggunaan dana.
+    expected_section: MGMT_STMT
+    guideline: Summarise the intended use of the funds raised, with allocation percentages if disclosed.
+sector_specific_guidelines:
+  - Each subscriber must be extracted as a separate segment with shares + percentage.

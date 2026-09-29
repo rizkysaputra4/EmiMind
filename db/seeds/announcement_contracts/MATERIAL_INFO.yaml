@@ -1,0 +1,62 @@
+doc_type: MATERIAL_INFO
+sector: UNIVERSAL
+period_type: instant
+required_facts:
+  - concept_id: material:event_type
+    label: Jenis kejadian material / Event type
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["jenis informasi", "kategori", "keterbukaan informasi"]
+    synonyms_en: ["event type", "category"]
+    search_hints:
+      - "controlled vocabulary: acquisition | disposal | lawsuit | contract_win | force_majeure | credit_rating_change | operational_incident | regulatory_action | ownership_change | asset_impairment | other"
+    unit: TEXT
+    value_type: TEXT
+  - concept_id: material:event_date
+    label: Tanggal kejadian / Event date
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    unit: DATE
+    value_type: DATE
+  - concept_id: material:financial_impact_amount
+    label: Nilai dampak keuangan / Financial impact amount
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["dampak", "nilai transaksi"]
+    synonyms_en: ["financial impact", "transaction value"]
+    unit: IDR
+    value_type: MONETARY
+  - concept_id: material:financial_impact_currency
+    label: Mata uang dampak
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    unit: TEXT
+    value_type: TEXT
+  - concept_id: material:counterparty
+    label: Pihak lawan / Counterparty
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    unit: TEXT
+    value_type: TEXT
+  - concept_id: material:effective_date
+    label: Tanggal efektif
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    unit: DATE
+    value_type: DATE
+required_narratives:
+  - topic: material_event_summary
+    target_note_description: Ringkasan kejadian material dan potensi dampaknya.
+    expected_section: MGMT_STMT
+    guideline: >
+      Summarise the event: what happened, when, who is involved, expected impact
+      on operations and financials, and any management action taken.
+sector_specific_guidelines:
+  - Prefer the controlled vocabulary for event_type; if none fits, use "other" and put a specific label in source_label_original.
+  - When financial impact is a range, extract midpoint as amount and note the range in the narrative.

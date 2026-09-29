@@ -28,8 +28,8 @@ class CompiledRule:
 @dataclass(frozen=True)
 class ClassificationResult:
     doc_type: str
-    source: str            # 'regex' | 'fallback'
-    confidence: float      # 1.0 for regex hit, 0.0 for fallback
+    source: str  # 'regex' | 'fallback'
+    confidence: float  # 1.0 for regex hit, 0.0 for fallback
     matched_pattern: str | None = None
 
 
@@ -59,12 +59,16 @@ async def load_rules(conn: AsyncConnection, *, force_reload: bool = False) -> li
         except re.error:
             # A broken rule shouldn't kill the classifier — log and skip.
             continue
-        compiled.append(CompiledRule(pattern=pat, doc_type=row["doc_type"], priority=row["priority"]))
+        compiled.append(
+            CompiledRule(pattern=pat, doc_type=row["doc_type"], priority=row["priority"])
+        )
     _RULE_CACHE = compiled
     return compiled
 
 
-def classify_with_rules(text_inputs: Iterable[str], rules: list[CompiledRule]) -> ClassificationResult:
+def classify_with_rules(
+    text_inputs: Iterable[str], rules: list[CompiledRule]
+) -> ClassificationResult:
     """Given one or more strings (title, filename, subject), return the first-priority match."""
     haystack = " || ".join(s for s in text_inputs if s)
     for rule in rules:
@@ -75,7 +79,9 @@ def classify_with_rules(text_inputs: Iterable[str], rules: list[CompiledRule]) -
                 confidence=1.0,
                 matched_pattern=rule.pattern.pattern,
             )
-    return ClassificationResult(doc_type=GENERIC_FALLBACK_DOC_TYPE, source="fallback", confidence=0.0)
+    return ClassificationResult(
+        doc_type=GENERIC_FALLBACK_DOC_TYPE, source="fallback", confidence=0.0
+    )
 
 
 async def classify(

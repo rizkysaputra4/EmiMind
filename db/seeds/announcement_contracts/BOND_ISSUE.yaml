@@ -1,0 +1,103 @@
+doc_type: BOND_ISSUE
+sector: UNIVERSAL
+period_type: instant
+required_facts:
+  - concept_id: bond:instrument_type
+    label: Jenis instrumen (Obligasi / Sukuk / MTN)
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["obligasi", "sukuk", "MTN"]
+    synonyms_en: ["bond", "sukuk", "medium term notes"]
+    unit: TEXT
+    value_type: TEXT
+  - concept_id: bond:principal_amount
+    label: Pokok penerbitan / Principal amount
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["pokok", "nilai emisi"]
+    synonyms_en: ["principal", "issue amount"]
+    unit: IDR
+    value_type: MONETARY
+  - concept_id: bond:currency
+    label: Mata uang
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    unit: TEXT
+    value_type: TEXT
+  - concept_id: bond:coupon_rate
+    label: Tingkat kupon / Coupon rate
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["kupon", "bunga"]
+    synonyms_en: ["coupon", "interest rate"]
+    unit: PERCENT
+    value_type: PERCENT
+  - concept_id: bond:coupon_frequency
+    label: Frekuensi pembayaran kupon
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    search_hints: ["triwulanan", "semesteran", "tahunan", "quarterly", "semi-annual", "annual"]
+    unit: TEXT
+    value_type: TEXT
+  - concept_id: bond:tenor_years
+    label: Tenor (tahun)
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["jangka waktu", "tenor"]
+    synonyms_en: ["tenor", "term"]
+    unit: YEARS
+    value_type: NUMBER
+  - concept_id: bond:issue_date
+    label: Tanggal penerbitan
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    unit: DATE
+    value_type: DATE
+  - concept_id: bond:maturity_date
+    label: Tanggal jatuh tempo
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    unit: DATE
+    value_type: DATE
+  - concept_id: bond:credit_rating
+    label: Peringkat kredit
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["peringkat"]
+    synonyms_en: ["rating", "credit rating"]
+    unit: TEXT
+    value_type: TEXT
+  - concept_id: bond:rating_agency
+    label: Lembaga pemeringkat
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    search_hints: ["Pefindo", "Fitch", "Moody's", "S&P"]
+    unit: TEXT
+    value_type: TEXT
+  - concept_id: bond:underwriters
+    label: Penjamin emisi
+    statement_type: NOTE
+    importance: OPTIONAL
+    extraction_mode: EXTRACTED_RAW
+    expected_segment_fields: ["name", "quota_pct"]
+    unit: TEXT
+    value_type: TEXT
+required_narratives:
+  - topic: use_of_proceeds
+    target_note_description: Rencana penggunaan dana hasil penerbitan.
+    expected_section: MGMT_STMT
+    guideline: >
+      Summarise use of proceeds — debt refinancing, capex, working capital, etc.
+      Include allocation percentages if disclosed.
+sector_specific_guidelines:
+  - If the issuance has multiple series/tranches (Seri A, Seri B), extract each as a separate fact per concept, differentiated by segment.series.

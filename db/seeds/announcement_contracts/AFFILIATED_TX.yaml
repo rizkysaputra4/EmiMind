@@ -1,0 +1,80 @@
+doc_type: AFFILIATED_TX
+sector: UNIVERSAL
+period_type: instant
+required_facts:
+  - concept_id: afftx:transaction_value
+    label: Nilai transaksi / Transaction value
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    synonyms_id: ["nilai transaksi", "jumlah"]
+    synonyms_en: ["transaction value", "consideration"]
+    unit: IDR
+    value_type: MONETARY
+  - concept_id: afftx:counterparty
+    label: Pihak afiliasi / Affiliated counterparty
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    unit: TEXT
+    value_type: TEXT
+  - concept_id: afftx:relationship
+    label: Hubungan afiliasi / Relationship
+    statement_type: NOTE
+    importance: CRITICAL
+    extraction_mode: EXTRACTED_RAW
+    search_hints:
+      - "parent | subsidiary | sister_company | common_control | key_management | family"
+    synonyms_id: ["hubungan afiliasi", "sifat hubungan"]
+    unit: TEXT
+    value_type: TEXT
+  - concept_id: afftx:is_material_tx
+    label: Termasuk transaksi material (POJK)
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    unit: BOOL
+    value_type: BOOL
+  - concept_id: afftx:threshold_metric
+    label: Ambang batas materialitas yang terlampaui
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    search_hints: ["20% dari ekuitas", "50% dari pendapatan"]
+    unit: TEXT
+    value_type: TEXT
+  - concept_id: afftx:independent_appraiser
+    label: Penilai independen
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    unit: TEXT
+    value_type: TEXT
+  - concept_id: afftx:appraised_fair_value
+    label: Nilai wajar hasil penilaian
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    unit: IDR
+    value_type: MONETARY
+  - concept_id: afftx:effective_date
+    label: Tanggal efektif transaksi
+    statement_type: NOTE
+    importance: HIGH
+    extraction_mode: EXTRACTED_RAW
+    unit: DATE
+    value_type: DATE
+required_narratives:
+  - topic: fairness_opinion
+    target_note_description: Ringkasan pendapat kewajaran dari penilai independen.
+    expected_section: MGMT_STMT
+    guideline: >
+      Summarise the fairness opinion — whether the transaction is deemed fair,
+      the methodology used, and any dissenting views or conditions.
+  - topic: benefit_rationale
+    target_note_description: Manfaat transaksi bagi perusahaan.
+    expected_section: MGMT_STMT
+    guideline: >
+      Summarise the business rationale management gives for the transaction.
+sector_specific_guidelines:
+  - If multiple related transactions are disclosed in one document, extract each as a separate segment.
