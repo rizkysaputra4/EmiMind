@@ -1,20 +1,29 @@
 """Deep Extraction Acceptance Gate (M9.6.2).
 
-Evaluates committed extraction results against the 9 quality thresholds defined
-in DEEP_EXTRACTION_REMEDIATION_PLAN.md (§Phase 6) and tasks/09-M9-deep-extraction.md:
-1. Router recall (core >= 0.90, notes >= 0.80)
-2. Sector KPI coverage (mandatory contract facts in committed facts UNION omissions = 100%)
-3. Concept depth (distinct concepts >= sector minimum / baseline)
-4. Segmented facts (>= 25 per annual filing)
-5. Numeric grounding (100% on pdf_text pages)
-6. Narrative genuineness (0 cross-ticker duplicates, 0 boilerplate hits)
-7. Provenance (0 null/out-of-bounds source pages)
-8. Token efficiency (input_tokens / (page_count * 2000) <= 15%)
-9. Period correctness (fiscal_period='2025Q4', period_end='2025-12-31', 100% page_count match)
+Evaluates committed extraction results, per document, against the M9 thresholds
+(`docs/DEEP_EXTRACTION_REMEDIATION_PLAN.md` §Phase 6, `tasks/09-M9-deep-extraction.md`,
+remediation spec in `docs/m9_workstreams/README.md` Workstream C). Every check is computed from
+server-side evidence; nothing the extraction agent typed in is trusted.
+
+| Check              | Source                                                  | Threshold                       |
+|--------------------|---------------------------------------------------------|---------------------------------|
+| Router recall      | `eval/reports/router_recall.json` (not in --aggregate)  | core >= .90, notes >= .80, precision >= .40 |
+| KPI coverage       | contract mandatory KPIs vs committed facts; omissions   | extracted >= 80%, no CRITICAL gap, |
+|                    | re-verified against every indexed page                  | 0 contradicted omissions        |
+| Concept depth      | distinct concept_id (annual filings)                    | >= max(2 x baseline, sector min)|
+| Segmented facts    | segment + source_page (annual filings)                  | >= 25                           |
+| Grounding          | `financial_facts.grounding` (migration 026)             | 100% cell/text on pdf_text pages|
+| Narratives         | verbatim on cited page, cross-ticker md5, boilerplate   | 100%, 0, 0, 0 in-doc duplicates |
+| Provenance         | source_page in 1..page_count                            | 0 bad                           |
+| Token efficiency   | ROUTED logs: chars/4 + 1,600 per page image             | <= 15% of page_count x 2,000    |
+| Period correctness | fiscal_period, period_end, PyMuPDF page count of the PDF| exact; PDF must exist           |
+| Embeddings         | `document_pages.embedding_model` (migration 025)        | every page 'BAAI/bge-m3'        |
+
+A missing input (column, log, report, PDF, contract) is a FAIL, never a PASS.
 
 Usage:
     uv run python eval/deep_extraction_gate.py --tickers BMRI,LSIP --out eval/reports/m9_gate.json
-    uv run python eval/deep_extraction_gate.py --aggregate --since 2026-09-27T00:00:00
+    uv run python eval/deep_extraction_gate.py --aggregate --since 2026-09-29T00:00:00+07:00
 """
 
 from __future__ import annotations
@@ -22,24 +31,44 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import os
+import re
 import sys
+from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import psycopg
 import pymupdf
 import yaml  # type: ignore[import-untyped]
-from dotenv import load_dotenv
 
+from services.mcp.narrative_checks import is_verbatim
+from services.mcp.periods import period_end_for
 from services.mcp.services.routing import get_extraction_contract
-from services.shared.logging import get_logger
+from services.shared.config import get_settings
 
-log = get_logger("eval.deep_extraction_gate")
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
-load_dotenv()
+EXPECTED_EMBEDDING_MODEL = "BAAI/bge-m3"
+TOKENS_PER_PAGE_IMAGE = 1600
+WHOLE_BOOK_TOKENS_PER_PAGE = 2000
+TOKEN_BUDGET_RATIO = 0.15
+KPI_EXTRACTED_MIN = 0.80
+SEGMENTED_MIN = 25
+RECALL_CORE_MIN = 0.90
+RECALL_NOTES_MIN = 0.80
+PRECISION_MIN = 0.40
+GROUNDED_VALUES = ("cell", "text")
+DEFAULT_SECTOR_MIN = 40
+
+# (table, column, migration that adds it)
+REQUIRED_COLUMNS: tuple[tuple[str, str, str], ...] = (
+    ("financial_facts", "grounding", "026_fact_identity_and_grounding.sql"),
+    ("document_pages", "embedding_model", "025_document_pages_v2.sql"),
+)
+
+PASS, FAIL, NA = "PASS", "FAIL", "N/A"
 
 
 @dataclass
@@ -48,584 +77,827 @@ class CheckResult:
     ticker: str
     value: Any
     threshold: str
-    status: str  # "PASS" or "FAIL"
+    status: str  # PASS | FAIL | N/A
     details: str = ""
+    doc_id: str | None = None
+    fiscal_period: str | None = None
 
 
-def _dsn() -> str:
-    dsn = os.getenv("EMI_POSTGRES_DSN_SYNC")
-    if dsn:
-        return dsn
-    async_dsn = os.getenv("EMI_POSTGRES_DSN")
-    if not async_dsn:
-        print("Error: EMI_POSTGRES_DSN_SYNC or EMI_POSTGRES_DSN must be set.", file=sys.stderr)
-        sys.exit(2)
-    return async_dsn.replace("postgresql+asyncpg://", "postgresql://")
+# ----------------------------------------------------------------------------- loaders
 
 
-def load_sector_depth_minimums(path: Path | str = "db/seeds/sector_depth_minimums.yaml") -> dict[str, int]:
+def _sync_dsn() -> str:
+    s = get_settings()
+    return s.postgres_dsn_sync or s.postgres_dsn.replace("postgresql+asyncpg://", "postgresql://")
+
+
+def load_sector_depth_minimums(
+    path: Path | str = REPO_ROOT / "db/seeds/sector_depth_minimums.yaml",
+) -> dict[str, int]:
     p = Path(path)
     if not p.exists():
-        return {"GENERIC": 30}
-    with open(p, encoding="utf-8") as f:
-        data: dict[str, int] = yaml.safe_load(f)
-    return data if isinstance(data, dict) else {"GENERIC": 30}
+        raise FileNotFoundError(f"Sector depth minimums not found: {p}")
+    data = yaml.safe_load(p.read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or "GENERIC" not in data:
+        raise ValueError(f"{p} must be a mapping with a GENERIC key")
+    return {str(k).upper(): int(v) for k, v in data.items()}
 
 
-def load_boilerplate_phrases(path: Path | str = "db/seeds/narrative_boilerplate.txt") -> list[str]:
+def load_boilerplate_phrases(
+    path: Path | str = REPO_ROOT / "db/seeds/narrative_boilerplate.txt",
+) -> list[str]:
     p = Path(path)
     if not p.exists():
         return []
-    with open(p, encoding="utf-8") as f:
-        return [line.strip().lower() for line in f if line.strip() and not line.startswith("#")]
+    lines = p.read_text(encoding="utf-8").splitlines()
+    return [_norm(line) for line in lines if line.strip() and not line.startswith("#")]
 
 
-def load_router_recall(path: Path | str = "eval/reports/router_recall.json") -> dict[str, Any]:
+def load_json(path: Path | str) -> dict[str, Any]:
     p = Path(path)
     if not p.exists():
         return {}
-    with open(p, encoding="utf-8") as f:
-        res: dict[str, Any] = json.load(f)
-        return res
+    data = json.loads(p.read_text(encoding="utf-8"))
+    return data if isinstance(data, dict) else {}
 
 
-def load_baseline(path: Path | str = "eval/reports/m9_baseline.json") -> dict[str, Any]:
-    p = Path(path)
-    if not p.exists():
-        return {}
-    with open(p, encoding="utf-8") as f:
-        res: dict[str, Any] = json.load(f)
-        return res
+# ----------------------------------------------------------------------------- pure helpers
 
 
-async def _fetch_mandatory_contract_kpis(doc_id: str) -> set[str]:
-    """Retrieve required fact concept IDs for doc_id using ExtractionContractService."""
-    try:
-        contract = await get_extraction_contract(doc_id)
-        return {f.concept_id for f in contract.required_facts if f.required}
-    except Exception as exc:
-        print(f"Warning: Failed to fetch contract for {doc_id}: {exc}", file=sys.stderr)
-        return set()
+def _norm(text: str) -> str:
+    return " ".join(re.sub(r"[^\w%]+", " ", text.lower()).split())
 
 
-def collect_metrics_for_ticker(  # noqa: PLR0912, PLR0917
-    conn: psycopg.Connection[Any],
+def is_annual(doc_type: str | None, fiscal_period: str | None) -> bool:
+    """Annual filing = audited full-year statements, an annual report, or any Q4 filing.
+
+    Q4 always counts: IDX issuers publish no separate Q4 interim, and a mislabelled doc_type
+    must not turn the depth checks into N/A.
+    """
+    if doc_type in ("FS_ANNUAL", "ANNUAL_REPORT"):
+        return True
+    return bool(fiscal_period and fiscal_period.endswith("Q4"))
+
+
+def depth_threshold(
     ticker: str,
-    period: str = "2025Q4",
-    sector_depths: dict[str, int] | None = None,
-    baseline_data: dict[str, Any] | None = None,
-    boilerplate_phrases: list[str] | None = None,
-    router_recall_data: dict[str, Any] | None = None,
+    sector: str | None,
+    sector_depths: dict[str, int],
+    baseline: dict[str, Any],
+) -> tuple[int, str]:
+    """max(2 x the ticker's pre-remediation distinct concepts, the sector minimum)."""
+    sector_key = (sector or "GENERIC").upper()
+    sector_min = sector_depths.get(sector_key, sector_depths.get("GENERIC", DEFAULT_SECTOR_MIN))
+    base = baseline.get(ticker) or {}
+    base_concepts = int(base.get("distinct_concepts") or 0)
+    threshold = max(2 * base_concepts, sector_min)
+    basis = (
+        f"max(2 x baseline {base_concepts}, {sector_key} min {sector_min})"
+        if base
+        else f"no baseline for {ticker}; {sector_key} min {sector_min}"
+    )
+    return threshold, basis
+
+
+def tokens_from_routed_logs(rows: Sequence[dict[str, Any]]) -> tuple[int | None, str]:
+    """Server-side token estimate from ROUTED log metadata; None when it cannot be computed."""
+    if not rows:
+        return None, "no ROUTED log rows (get_routed_pages never called for this document)"
+    missing = [i for i, r in enumerate(rows) if not isinstance(r.get("chars"), int | float)]
+    if missing:
+        return None, f"{len(missing)}/{len(rows)} ROUTED rows lack 'chars' (pre-M9 remediation logs)"
+    chars = sum(int(r["chars"]) for r in rows)
+    images = sum(int(r.get("images") or 0) for r in rows)
+    tokens = chars // 4 + TOKENS_PER_PAGE_IMAGE * images
+    return tokens, f"{len(rows)} ROUTED calls, {chars} chars, {images} page images"
+
+
+_BIG_NUMBER = re.compile(r"(?<![\w.,])\(?-?\d{1,3}(?:[.,]\d{3})+(?:[.,]\d+)?\)?|(?<![\w.,])\d{4,}")
+_YEAR_ONLY = re.compile(r"^(19|20)\d{2}$")
+
+
+def omission_search_terms(names: Iterable[str]) -> list[tuple[str, bool]]:
+    """(normalized term, is_acronym); words shorter than 6 chars are too ambiguous to search."""
+    terms: list[tuple[str, bool]] = []
+    for raw in names:
+        for part in re.split(r"\s*/\s*", raw or ""):
+            part = re.sub(r"\([^)]*\)", " ", part).strip()  # noqa: PLW2901
+            if not part:
+                continue
+            words = part.split()
+            if len(words) == 1 and words[0].isupper() and 2 < len(words[0]) <= 6:
+                terms.append((words[0], True))
+                continue
+            norm = _norm(part)
+            if len(norm) >= 6 and (norm, False) not in terms:
+                terms.append((norm, False))
+    return terms
+
+
+def _term_regex(term: str, acronym: bool) -> re.Pattern[str]:
+    if acronym:
+        return re.compile(rf"(?<![A-Za-z]){re.escape(term)}(?![A-Za-z])")
+    words = [re.escape(w) for w in term.split()]
+    return re.compile(r"(?<!\w)" + r"[\W_]+".join(words) + r"(?!\w)", re.IGNORECASE)
+
+
+def omission_contradictions(
+    terms: Sequence[tuple[str, bool]], pages: dict[int, str]
+) -> list[int]:
+    """Pages where a metric label is followed on the same line by a financial-size number."""
+    patterns = [_term_regex(t, a) for t, a in terms]
+    hits: list[int] = []
+    for page_index, page_text in sorted(pages.items()):
+        found = False
+        for line in (page_text or "").splitlines():
+            for rx in patterns:
+                match = rx.search(line)
+                if not match:
+                    continue
+                nums = [
+                    n for n in _BIG_NUMBER.findall(line[match.end() :])
+                    if not _YEAR_ONLY.match(n.strip("()-"))
+                ]  # fmt: skip
+                if nums:
+                    found = True
+                    break
+            if found:
+                break
+        if found:
+            hits.append(page_index)
+    return hits
+
+
+def find_pdf(source_url: str | None, ticker: str, reports_dir: str) -> Path | None:
+    if not source_url:
+        return None
+    name = Path(source_url).name
+    base = Path(reports_dir)
+    if not base.is_absolute():
+        base = (REPO_ROOT / base).resolve()
+    candidates = [
+        Path(source_url),
+        base / ticker / "processed" / name,
+        base / ticker / name,
+        base / "processed" / name,
+        REPO_ROOT / "incoming_reports" / "processed" / name,
+        REPO_ROOT / "incoming_reports" / name,
+    ]
+    for cand in candidates:
+        if cand.is_file():
+            return cand
+    return None
+
+
+def pymupdf_page_count(path: Path) -> int | None:
+    try:
+        with pymupdf.open(str(path)) as pdf:  # type: ignore[no-untyped-call]
+            return int(pdf.page_count)
+    except Exception:
+        return None
+
+
+# ----------------------------------------------------------------------------- collection
+
+
+def missing_columns(conn: psycopg.Connection[Any]) -> list[str]:
+    out: list[str] = []
+    with conn.cursor() as cur:
+        for table, column, migration in REQUIRED_COLUMNS:
+            cur.execute(
+                "SELECT 1 FROM information_schema.columns WHERE table_name = %s AND column_name = %s",
+                (table, column),
+            )
+            if cur.fetchone() is None:
+                out.append(f"{table}.{column} (migration {migration} not applied)")
+    return out
+
+
+async def _fetch_contract(doc_id: str) -> Any:
+    return await get_extraction_contract(doc_id)
+
+
+def _scalar(cur: psycopg.Cursor[Any], sql: str, params: Sequence[Any]) -> int:
+    cur.execute(sql, params)
+    row = cur.fetchone()
+    return int(row[0]) if row and row[0] is not None else 0
+
+
+_SQL_WINDOW_DOCS = """
+SELECT DISTINCT ON (d.id) d.id, d.ticker, d.fiscal_period, d.period_end, d.page_count,
+       d.source_url, d.doc_type, ip.sector
+FROM documents d
+JOIN document_processing_log l ON l.doc_id = d.id AND l.action = 'COMMITTED'
+LEFT JOIN issuer_profile ip ON ip.ticker = d.ticker
+WHERE (%(since)s::timestamptz IS NULL OR l.created_at >= %(since)s::timestamptz)
+  AND (%(tickers)s::text[] IS NULL OR d.ticker = ANY(%(tickers)s::text[]))
+ORDER BY d.id
+"""
+_SQL_TICKER_PERIOD_DOC = """
+SELECT d.id, d.ticker, d.fiscal_period, d.period_end, d.page_count,
+       d.source_url, d.doc_type, ip.sector
+FROM documents d
+LEFT JOIN issuer_profile ip ON ip.ticker = d.ticker
+WHERE d.ticker = %s AND d.fiscal_period = %s
+ORDER BY EXISTS (SELECT 1 FROM document_processing_log l
+                 WHERE l.doc_id = d.id AND l.action = 'COMMITTED') DESC,
+         d.ingested_at DESC
+LIMIT 1
+"""
+
+
+def select_documents(
+    conn: psycopg.Connection[Any],
+    tickers: list[str] | None,
+    period: str | None,
+    since: datetime | None,
+    aggregate: bool,
+) -> list[dict[str, Any]]:
+    """Target documents. Aggregate: every document COMMITTED inside the window."""
+    with conn.cursor() as cur:
+        if aggregate:
+            cur.execute(_SQL_WINDOW_DOCS, {"since": since, "tickers": tickers})
+            rows = cur.fetchall()
+        else:
+            rows = []
+            for t in tickers or []:
+                cur.execute(_SQL_TICKER_PERIOD_DOC, (t, period))
+                row = cur.fetchone()
+                rows.append(row if row else (None, t, period, None, None, None, None, None))
+    keys = ["doc_id", "ticker", "fiscal_period", "period_end", "page_count", "source_url",
+            "doc_type", "sector"]  # fmt: skip
+    return [dict(zip(keys, r, strict=True)) for r in rows]
+
+
+def collect_metrics(  # noqa: PLR0912
+    conn: psycopg.Connection[Any],
+    doc: dict[str, Any],
+    *,
+    sector_depths: dict[str, int],
+    baseline: dict[str, Any],
+    boilerplate: list[str],
+    router_recall: dict[str, Any],
+    missing_cols: list[str],
+    reports_dir: str,
+    contract_fetcher: Any = None,
 ) -> dict[str, Any]:
-    """Collects all factual extraction metrics from DB for a given ticker and fiscal period."""
-    if sector_depths is None:
-        sector_depths = load_sector_depth_minimums()
-    if baseline_data is None:
-        baseline_data = load_baseline()
-    if boilerplate_phrases is None:
-        boilerplate_phrases = load_boilerplate_phrases()
-    if router_recall_data is None:
-        router_recall_data = load_router_recall()
+    """All raw measurements for one document (no pass/fail decisions here)."""
+    ticker = str(doc["ticker"])
+    m: dict[str, Any] = {"ticker": ticker, "fiscal_period": doc.get("fiscal_period")}
+    if not doc.get("doc_id"):
+        m["error"] = f"No document found for {ticker} {doc.get('fiscal_period')}"
+        return m
+    doc_id = str(doc["doc_id"])
+    page_count = int(doc["page_count"] or 0)
+    m.update(
+        doc_id=doc_id,
+        doc_type=doc.get("doc_type"),
+        sector=doc.get("sector") or "GENERIC",
+        period_end=str(doc["period_end"]) if doc.get("period_end") else None,
+        page_count=page_count,
+        missing_columns=missing_cols,
+        annual=is_annual(doc.get("doc_type"), doc.get("fiscal_period")),
+    )
 
     with conn.cursor() as cur:
-        # 1. Fetch document metadata
+        # -- facts / depth / segments / provenance
         cur.execute(
-            """
-            SELECT d.id, d.ticker, d.fiscal_period, d.period_end, d.page_count, d.source_url,
-                   ip.sector, ip.sub_sector
-            FROM documents d
-            LEFT JOIN issuer_profile ip ON d.ticker = ip.ticker
-            WHERE d.ticker = %s AND d.fiscal_period = %s
-            ORDER BY d.ingested_at DESC
-            LIMIT 1;
-            """,
-            (ticker, period),
+            "SELECT DISTINCT concept_id FROM financial_facts WHERE source_doc_id = %s", (doc_id,)
         )
-        doc_row = cur.fetchone()
-        if not doc_row:
-            return {"ticker": ticker, "period": period, "error": f"No document found for {ticker} {period}"}
+        concepts = {str(r[0]) for r in cur.fetchall()}
+        m["fact_count"] = _scalar(
+            cur, "SELECT count(*) FROM financial_facts WHERE source_doc_id = %s", (doc_id,)
+        )
+        m["distinct_concepts_count"] = len(concepts)
+        m["depth_threshold"], m["depth_basis"] = depth_threshold(
+            ticker, m["sector"], sector_depths, baseline
+        )
+        m["segmented_facts_count"] = _scalar(
+            cur,
+            "SELECT count(*) FROM financial_facts WHERE source_doc_id = %s "
+            "AND segment IS NOT NULL AND segment <> 'null'::jsonb AND source_page IS NOT NULL",
+            (doc_id,),
+        )
+        m["bad_provenance_count"] = _scalar(
+            cur,
+            "SELECT count(*) FROM financial_facts WHERE source_doc_id = %s "
+            "AND (source_page IS NULL OR source_page < 1 OR source_page > %s)",
+            (doc_id, page_count),
+        )
 
-        doc_id = str(doc_row[0])
-        doc_ticker = str(doc_row[1])
-        doc_period = str(doc_row[2])
-        doc_period_end = str(doc_row[3])
-        doc_page_count = int(doc_row[4])
-        source_url = str(doc_row[5])
-        sector = str(doc_row[6] or "GENERIC")
-        sub_sector = str(doc_row[7] or "")
+        # -- grounding (financial_facts.grounding, migration 026)
+        if any(c.startswith("financial_facts.grounding") for c in missing_cols):
+            m["grounding_error"] = "financial_facts.grounding column missing (migration 026)"
+        else:
+            cur.execute(
+                "SELECT COALESCE(dp.text_source, 'missing_page') AS ts, ff.grounding, count(*) "
+                "FROM financial_facts ff LEFT JOIN document_pages dp "
+                "  ON dp.doc_id = ff.source_doc_id AND dp.page_index = ff.source_page "
+                "WHERE ff.source_doc_id = %s GROUP BY 1, 2",
+                (doc_id,),
+            )
+            breakdown = [(str(r[0]), r[1], int(r[2])) for r in cur.fetchall()]
+            on_text = [b for b in breakdown if b[0] == "pdf_text"]
+            m["grounding_breakdown"] = [list(b) for b in breakdown]
+            m["facts_on_text_pages"] = sum(b[2] for b in on_text)
+            m["grounded_on_text_pages"] = sum(b[2] for b in on_text if b[1] in GROUNDED_VALUES)
+            m["grounded_total"] = sum(b[2] for b in breakdown if b[1] in GROUNDED_VALUES)
 
-        # 2. Check PyMuPDF physical page count
-        candidate_paths = [
-            Path(source_url),
-            Path("incoming_reports") / Path(source_url).name,
-            Path("incoming_reports/processed") / Path(source_url).name,
-            Path(".") / Path(source_url).name,
+        # -- embeddings (document_pages.embedding_model, migration 025)
+        m["indexed_pages"] = _scalar(
+            cur, "SELECT count(*) FROM document_pages WHERE doc_id = %s", (doc_id,)
+        )
+        if any(c.startswith("document_pages.embedding_model") for c in missing_cols):
+            m["embedding_error"] = "document_pages.embedding_model column missing (migration 025)"
+        else:
+            m["pages_with_expected_embedding"] = _scalar(
+                cur,
+                "SELECT count(*) FROM document_pages WHERE doc_id = %s "
+                "AND embedding IS NOT NULL AND embedding_model = %s",
+                (doc_id, EXPECTED_EMBEDDING_MODEL),
+            )
+
+        # -- tokens from ROUTED logs
+        cur.execute(
+            "SELECT metadata FROM document_processing_log WHERE doc_id = %s AND action = 'ROUTED'",
+            (doc_id,),
+        )
+        routed = [r[0] if isinstance(r[0], dict) else {} for r in cur.fetchall()]
+        tokens, token_detail = tokens_from_routed_logs(routed)
+        m["routed_tokens"] = tokens
+        m["token_detail"] = token_detail
+        m["whole_book_est"] = page_count * WHOLE_BOOK_TOKENS_PER_PAGE
+
+        # -- narratives
+        cur.execute(
+            "SELECT nc.text_original, nc.source_page, dp.page_text FROM narrative_chunks nc "
+            "LEFT JOIN document_pages dp ON dp.doc_id = nc.source_doc_id "
+            "  AND dp.page_index = nc.source_page WHERE nc.source_doc_id = %s",
+            (doc_id,),
+        )
+        narr = cur.fetchall()
+        m["narrative_count"] = len(narr)
+        not_verbatim: list[int | None] = []
+        bp_hits = 0
+        seen: set[str] = set()
+        in_doc_dups = 0
+        for text_original, source_page, page_text in narr:
+            ok, _score = is_verbatim(str(text_original or ""), str(page_text or ""))
+            if not ok:
+                not_verbatim.append(source_page)
+            norm = _norm(str(text_original or ""))
+            if any(bp and bp in norm for bp in boilerplate):
+                bp_hits += 1
+            if norm in seen:
+                in_doc_dups += 1
+            seen.add(norm)
+        m["narratives_not_verbatim"] = len(not_verbatim)
+        m["narratives_not_verbatim_pages"] = not_verbatim[:20]
+        m["boilerplate_hits"] = bp_hits
+        m["in_doc_duplicates"] = in_doc_dups
+        m["cross_ticker_duplicates"] = _scalar(
+            cur,
+            "SELECT count(*) FROM narrative_chunks a JOIN narrative_chunks b "
+            "ON md5(a.text_original) = md5(b.text_original) AND a.ticker <> b.ticker "
+            "WHERE a.source_doc_id = %s",
+            (doc_id,),
+        )
+
+        # -- omissions recorded at commit
+        cur.execute(
+            "SELECT suggested_canonical FROM concept_review "
+            "WHERE doc_id = %s AND local_label LIKE 'OMITTED: %%'",
+            (doc_id,),
+        )
+        omitted = {str(r[0]) for r in cur.fetchall()}
+
+        cur.execute("SELECT page_index, page_text FROM document_pages WHERE doc_id = %s", (doc_id,))
+        pages = {int(r[0]): str(r[1] or "") for r in cur.fetchall()}
+
+    # -- KPI coverage against the live contract
+    fetch = contract_fetcher or (lambda d: asyncio.run(_fetch_contract(d)))
+    try:
+        contract = fetch(doc_id)
+    except Exception as exc:
+        m["contract_error"] = f"{type(exc).__name__}: {exc}"
+        contract = None
+    if contract is not None:
+        rules = [
+            r
+            for r in contract.required_facts
+            if r.required
+            and r.extraction_mode == "EXTRACTED_RAW"
+            and r.importance.upper() in ("CRITICAL", "HIGH")
         ]
-        actual_page_count = 0
-        pdf_resolved_path: str | None = None
-        for cp in candidate_paths:
-            if cp.exists() and cp.is_file():
-                try:
-                    doc_fitz = pymupdf.open(str(cp))  # type: ignore[no-untyped-call]
-                    actual_page_count = len(doc_fitz)
-                    doc_fitz.close()  # type: ignore[no-untyped-call]
-                    pdf_resolved_path = str(cp)
-                    break
-                except Exception as err:
-                    log.debug("Could not inspect candidate PDF path", path=str(cp), error=str(err))
-
-        # 3. Router Recall from router_recall.json
-        core_recalls: list[float] = []
-        notes_recalls: list[float] = []
-        if router_recall_data and "modules" in router_recall_data:
-            for mod in router_recall_data["modules"]:
-                if mod.get("ticker") == ticker:
-                    rec = float(mod.get("recall", 0.0))
-                    if mod.get("type") == "core":
-                        core_recalls.append(rec)
-                    elif mod.get("type") == "notes":
-                        notes_recalls.append(rec)
-
-        mean_core_recall = (sum(core_recalls) / len(core_recalls)) if core_recalls else None
-        mean_notes_recall = (sum(notes_recalls) / len(notes_recalls)) if notes_recalls else None
-
-        # 4. Sector KPI Coverage
-        # Run async contract retrieval
-        mandatory_kpis = asyncio.run(_fetch_mandatory_contract_kpis(doc_id))
-
-        cur.execute(
-            """
-            SELECT DISTINCT concept_id
-            FROM financial_facts
-            WHERE source_doc_id = %s;
-            """,
-            (doc_id,),
-        )
-        committed_concepts = {r[0] for r in cur.fetchall()}
-
-        cur.execute(
-            """
-            SELECT suggested_canonical
-            FROM concept_review
-            WHERE doc_id = %s AND local_label LIKE 'OMITTED: %%';
-            """,
-            (doc_id,),
-        )
-        omitted_concepts = {r[0] for r in cur.fetchall()}
-
-        covered_kpis = committed_concepts | omitted_concepts
-        missing_kpis = mandatory_kpis - covered_kpis
-        kpi_coverage_ratio = (
-            len(mandatory_kpis - missing_kpis) / len(mandatory_kpis) if mandatory_kpis else 1.0
+        mandatory = {r.concept_id for r in rules}
+        critical = {r.concept_id for r in rules if r.importance.upper() == "CRITICAL"}
+        extracted = mandatory & concepts
+        not_extracted = mandatory - extracted
+        contradicted: dict[str, list[int]] = {}
+        for r in rules:
+            if r.concept_id in not_extracted and r.concept_id in omitted:
+                terms = omission_search_terms([r.label, *r.synonyms_id, *r.synonyms_en])
+                hit_pages = omission_contradictions(terms, pages)
+                if hit_pages:
+                    contradicted[r.concept_id] = hit_pages[:10]
+        m.update(
+            mandatory_kpis_count=len(mandatory),
+            extracted_kpis_count=len(extracted),
+            kpi_extracted_ratio=(len(extracted) / len(mandatory)) if mandatory else 0.0,
+            omitted_kpis=sorted(not_extracted & omitted),
+            uncovered_kpis=sorted(not_extracted - omitted),
+            uncovered_critical=sorted((not_extracted - omitted) & critical),
+            contradicted_omissions=contradicted,
+            required_narratives_count=len(contract.required_narratives),
         )
 
-        # 5. Concept Depth
-        distinct_concepts_count = len(committed_concepts)
-        # Determine sector minimum
-        sector_min = sector_depths.get(
-            sector, sector_depths.get(sub_sector, sector_depths.get("GENERIC", 30))
-        )
-        baseline_ticker = baseline_data.get(ticker, {})
-        baseline_docs = baseline_ticker.get("documents", 1) or 1
-        baseline_raw = baseline_ticker.get("distinct_concepts", 0)
-        baseline_per_doc = max(1, baseline_raw // baseline_docs) if baseline_docs > 1 else baseline_raw
-        depth_threshold = max(sector_min, 2 * baseline_per_doc if baseline_per_doc <= sector_min // 2 else sector_min)
+    # -- period correctness against the PDF on disk
+    pdf = find_pdf(doc.get("source_url"), ticker, reports_dir)
+    m["pdf_path"] = str(pdf) if pdf else None
+    m["actual_page_count"] = pymupdf_page_count(pdf) if pdf else None
+    fp = str(doc.get("fiscal_period") or "")
+    try:
+        m["expected_period_end"] = str(period_end_for(fp))
+    except ValueError:
+        m["expected_period_end"] = None
 
-        # 6. Segmented Facts
-        cur.execute(
-            """
-            SELECT count(*)
-            FROM financial_facts
-            WHERE source_doc_id = %s AND segment IS NOT NULL AND source_page IS NOT NULL;
-            """,
-            (doc_id,),
-        )
-        row = cur.fetchone()
-        segmented_facts_count = int(row[0]) if row else 0
+    # -- router recall (from the recall report)
+    mods = [x for x in router_recall.get("modules", []) if x.get("ticker") == ticker]
+    doc_mods = [x for x in mods if x.get("doc_id") == doc_id] or mods
 
-        # 7. Numeric Grounding (on pdf_text pages)
-        cur.execute(
-            """
-            SELECT ff.extraction_method, ff.extraction_conf, count(*)
-            FROM financial_facts ff
-            JOIN document_pages dp ON dp.doc_id = ff.source_doc_id AND dp.page_index = ff.source_page
-            WHERE ff.source_doc_id = %s AND dp.text_source = 'pdf_text'
-            GROUP BY ff.extraction_method, ff.extraction_conf;
-            """,
-            (doc_id,),
-        )
-        grounding_breakdown = cur.fetchall()
-        total_facts_on_text_pages = sum(r[2] for r in grounding_breakdown)
-        grounded_facts = sum(
-            r[2]
-            for r in grounding_breakdown
-            if r[0] == "table_parser" or (r[0] == "llm_extract" and float(r[1] or 0) >= 0.70)
-        )
-        grounding_ratio = (grounded_facts / total_facts_on_text_pages) if total_facts_on_text_pages else 1.0
+    def _mean(values: list[float]) -> float | None:
+        return sum(values) / len(values) if values else None
 
-        # 8. Narrative Genuineness
-        # 8a: Cross-ticker duplicate MD5
-        cur.execute(
-            """
-            SELECT count(*)
-            FROM narrative_chunks nc1
-            JOIN narrative_chunks nc2 ON md5(nc1.text_original) = md5(nc2.text_original) AND nc1.ticker != nc2.ticker
-            WHERE nc1.source_doc_id = %s;
-            """,
-            (doc_id,),
-        )
-        row = cur.fetchone()
-        cross_ticker_duplicates = int(row[0]) if row else 0
+    m["router_modules"] = len(doc_mods)
+    m["mean_core_recall"] = _mean([float(x["recall"]) for x in doc_mods if x.get("type") == "core"])
+    m["mean_notes_recall"] = _mean(
+        [float(x["recall"]) for x in doc_mods if x.get("type") == "notes"]
+    )
+    m["mean_precision"] = _mean(
+        [float(x["precision"]) for x in doc_mods if x.get("precision") is not None]
+    )
+    return m
 
-        # 8b: Known-boilerplate hits
-        cur.execute(
-            """
-            SELECT text_original
-            FROM narrative_chunks
-            WHERE source_doc_id = %s;
-            """,
-            (doc_id,),
-        )
-        boilerplate_hits = 0
-        for (narrative_txt,) in cur.fetchall():
-            norm_txt = " ".join(narrative_txt.lower().split())
-            for bp in boilerplate_phrases:
-                if bp and bp in norm_txt:
-                    boilerplate_hits += 1
 
-        # 9. Provenance
-        cur.execute(
-            """
-            SELECT count(*)
-            FROM financial_facts
-            WHERE source_doc_id = %s
-              AND (source_page IS NULL OR source_page < 1 OR source_page > %s);
-            """,
-            (doc_id, doc_page_count),
-        )
-        row = cur.fetchone()
-        bad_provenance_count = int(row[0]) if row else 0
+# ----------------------------------------------------------------------------- evaluation
 
-        # 10. Token Efficiency
-        cur.execute(
-            """
-            SELECT metadata
-            FROM document_processing_log
-            WHERE doc_id = %s AND action = 'COMMITTED'
-            ORDER BY created_at DESC
-            LIMIT 1;
-            """,
-            (doc_id,),
-        )
-        log_row = cur.fetchone()
-        commit_meta = log_row[0] if log_row and isinstance(log_row[0], dict) else {}
-        input_tokens = int(commit_meta.get("input_tokens", 0))
-        whole_book_est = doc_page_count * 2000
-        token_ratio = (input_tokens / whole_book_est) if whole_book_est else 0.0
 
-        return {
-            "ticker": doc_ticker,
-            "period": doc_period,
-            "period_end": doc_period_end,
-            "doc_id": doc_id,
-            "page_count": doc_page_count,
-            "actual_page_count": actual_page_count,
-            "pdf_path": pdf_resolved_path,
-            "sector": sector,
-            "mean_core_recall": mean_core_recall,
-            "mean_notes_recall": mean_notes_recall,
-            "mandatory_kpis_count": len(mandatory_kpis),
-            "missing_kpis": list(missing_kpis),
-            "kpi_coverage_ratio": kpi_coverage_ratio,
-            "distinct_concepts_count": distinct_concepts_count,
-            "depth_threshold": depth_threshold,
-            "segmented_facts_count": segmented_facts_count,
-            "total_facts_on_text_pages": total_facts_on_text_pages,
-            "grounded_facts_count": grounded_facts,
-            "grounding_ratio": grounding_ratio,
-            "cross_ticker_duplicates": cross_ticker_duplicates,
-            "boilerplate_hits": boilerplate_hits,
-            "bad_provenance_count": bad_provenance_count,
-            "input_tokens": input_tokens,
-            "whole_book_est": whole_book_est,
-            "token_ratio": token_ratio,
-        }
+def _check(  # noqa: PLR0917
+    results: list[CheckResult],
+    m: dict[str, Any],
+    dimension: str,
+    ok: bool | None,
+    value: Any,
+    threshold: str,
+    details: str = "",
+) -> None:
+    status = NA if ok is None else (PASS if ok else FAIL)
+    results.append(
+        CheckResult(
+            dimension=dimension,
+            ticker=str(m.get("ticker", "UNKNOWN")),
+            value=value,
+            threshold=threshold,
+            status=status,
+            details=details,
+            doc_id=m.get("doc_id"),
+            fiscal_period=m.get("fiscal_period"),
+        )
+    )
+
+
+def evaluate_document(  # noqa: PLR0912
+    m: dict[str, Any], *, is_aggregate: bool = False, expected_period: str | None = None
+) -> list[CheckResult]:
+    results: list[CheckResult] = []
+    if "error" in m:
+        _check(results, m, "Document lookup", False, m["error"], "document exists", m["error"])
+        return results
+
+    # 1. Router recall (skipped in aggregate mode: batch filings have no gold labels)
+    if not is_aggregate:
+        core, notes, prec = m.get("mean_core_recall"), m.get("mean_notes_recall"), m.get(
+            "mean_precision"
+        )
+        ok = (
+            core is not None and core >= RECALL_CORE_MIN
+            and notes is not None and notes >= RECALL_NOTES_MIN
+            and prec is not None and prec >= PRECISION_MIN
+        )  # fmt: skip
+
+        def fmt(x: float | None) -> str:
+            return "missing" if x is None else f"{x:.2f}"
+
+        _check(
+            results, m, "Router recall", ok,
+            f"core={fmt(core)} notes={fmt(notes)} prec={fmt(prec)}",
+            f"core>={RECALL_CORE_MIN} notes>={RECALL_NOTES_MIN} prec>={PRECISION_MIN}",
+            f"{m.get('router_modules', 0)} gold modules in router_recall.json",
+        )  # fmt: skip
+
+    # 2. KPI coverage
+    if m.get("contract_error") or "mandatory_kpis_count" not in m:
+        err = m.get("contract_error") or "contract not evaluated"
+        _check(results, m, "KPI coverage", False, "contract error", "contract loads", err)
+    else:
+        n = int(m["mandatory_kpis_count"])
+        ratio = float(m.get("kpi_extracted_ratio", 0.0))
+        contradicted = m.get("contradicted_omissions") or {}
+        uncovered_crit = m.get("uncovered_critical") or []
+        ok = n > 0 and ratio >= KPI_EXTRACTED_MIN and not contradicted and not uncovered_crit
+        details = (
+            f"extracted {m.get('extracted_kpis_count')}/{n}; omitted {len(m.get('omitted_kpis', []))};"
+            f" uncovered {m.get('uncovered_kpis', [])}; CRITICAL uncovered {uncovered_crit};"
+            f" contradicted omissions {contradicted}"
+        )
+        if n == 0:
+            details = "contract has no mandatory EXTRACTED_RAW KPIs"
+        _check(
+            results, m, "KPI coverage", ok, f"{ratio:.1%} extracted",
+            f">= {KPI_EXTRACTED_MIN:.0%} extracted, 0 CRITICAL gaps, 0 contradicted omissions",
+            details,
+        )  # fmt: skip
+
+    # 3. Concept depth and 4. segmented facts: per annual filing
+    annual = bool(m.get("annual"))
+    depth = int(m.get("distinct_concepts_count", 0))
+    thr = int(m.get("depth_threshold", DEFAULT_SECTOR_MIN))
+    _check(
+        results, m, "Concept depth", (depth >= thr) if annual else None, str(depth), f">= {thr}",
+        f"{m.get('depth_basis')}" if annual else "not an annual filing",
+    )  # fmt: skip
+    seg = int(m.get("segmented_facts_count", 0))
+    _check(
+        results, m, "Segmented facts", (seg >= SEGMENTED_MIN) if annual else None, str(seg),
+        f">= {SEGMENTED_MIN}", "segment + source_page" if annual else "not an annual filing",
+    )  # fmt: skip
+
+    # 5. Grounding share from financial_facts.grounding
+    if m.get("grounding_error"):
+        _check(results, m, "Grounding", False, "column missing", "100%", m["grounding_error"])
+    else:
+        total = int(m.get("facts_on_text_pages", 0))
+        grounded = int(m.get("grounded_on_text_pages", 0))
+        facts = int(m.get("fact_count", 0))
+        ok = facts > 0 and total > 0 and grounded == total
+        _check(
+            results, m, "Grounding", ok,
+            f"{grounded}/{total}" if total else "0 facts on text pages",
+            "100% cell/text on pdf_text pages", f"breakdown {m.get('grounding_breakdown')}",
+        )  # fmt: skip
+
+    # 6. Narratives
+    n_narr = int(m.get("narrative_count", 0))
+    bad_verb = int(m.get("narratives_not_verbatim", 0))
+    dups = int(m.get("cross_ticker_duplicates", 0))
+    bps = int(m.get("boilerplate_hits", 0))
+    in_doc = int(m.get("in_doc_duplicates", 0))
+    required_n = int(m.get("required_narratives_count", 0))
+    ok = bad_verb == 0 and dups == 0 and bps == 0 and in_doc == 0 and not (
+        required_n > 0 and n_narr == 0
+    )
+    _check(
+        results, m, "Narratives", ok,
+        f"{n_narr - bad_verb}/{n_narr} verbatim",
+        "100% verbatim, 0 dup, 0 boilerplate",
+        f"not verbatim pages {m.get('narratives_not_verbatim_pages', [])}; cross-ticker dups {dups};"
+        f" boilerplate {bps}; in-doc dups {in_doc}; required sections {required_n}",
+    )  # fmt: skip
+
+    # 7. Provenance
+    bad = int(m.get("bad_provenance_count", 0))
+    _check(results, m, "Provenance", bad == 0, str(bad), "0", "source_page outside 1..page_count")
+
+    # 8. Token efficiency (server-side, ROUTED logs)
+    tokens = m.get("routed_tokens")
+    est = int(m.get("whole_book_est", 0))
+    if tokens is None or est <= 0:
+        _check(
+            results, m, "Token efficiency", False, "missing", f"<= {TOKEN_BUDGET_RATIO:.0%}",
+            str(m.get("token_detail")),
+        )  # fmt: skip
+    else:
+        ratio = int(tokens) / est
+        _check(
+            results, m, "Token efficiency", ratio <= TOKEN_BUDGET_RATIO, f"{ratio:.1%}",
+            f"<= {TOKEN_BUDGET_RATIO:.0%}", f"{tokens} tokens vs {est}; {m.get('token_detail')}",
+        )  # fmt: skip
+
+    # 9. Period correctness (PDF must exist)
+    fp = m.get("fiscal_period")
+    pc, apc = int(m.get("page_count") or 0), m.get("actual_page_count")
+    problems: list[str] = []
+    if expected_period and fp != expected_period:
+        problems.append(f"fiscal_period {fp} != {expected_period}")
+    if not m.get("expected_period_end") or m.get("period_end") != m.get("expected_period_end"):
+        problems.append(f"period_end {m.get('period_end')} != {m.get('expected_period_end')}")
+    if not m.get("pdf_path"):
+        problems.append("PDF not found on disk")
+    elif apc is None:
+        problems.append("PDF unreadable")
+    elif int(apc) != pc or pc <= 0:
+        problems.append(f"page_count {pc} != PyMuPDF {apc}")
+    _check(
+        results, m, "Period correctness", not problems,
+        f"{fp} / {m.get('period_end')} / {pc}p", "exact match", "; ".join(problems) or "ok",
+    )  # fmt: skip
+
+    # 10. Embeddings
+    if m.get("embedding_error"):
+        _check(results, m, "Embeddings", False, "column missing", "all pages", m["embedding_error"])
+    else:
+        idx = int(m.get("indexed_pages", 0))
+        good = int(m.get("pages_with_expected_embedding", 0))
+        ok = idx > 0 and idx == pc and good == idx
+        why = []
+        if idx != pc:
+            why.append(f"{idx} indexed pages != page_count {pc}")
+        if good != idx:
+            why.append(f"{idx - good} pages without a {EXPECTED_EMBEDDING_MODEL} embedding")
+        _check(
+            results, m, "Embeddings", ok, f"{good}/{idx} pages ({pc} in PDF)",
+            f"every page {EXPECTED_EMBEDDING_MODEL}", "; ".join(why) or "ok",
+        )  # fmt: skip
+    return results
 
 
 def evaluate_gate(
     metrics_list: list[dict[str, Any]],
     is_aggregate: bool = False,
+    expected_period: str | None = None,
 ) -> tuple[bool, list[CheckResult], dict[str, Any]]:
-    """Evaluates the gate acceptance criteria against a list of per-ticker metrics.
-
-    Returns:
-        all_passed (bool): True if 100% of applicable checks pass.
-        results (list[CheckResult]): Detail for each dimension and ticker.
-        summary (dict): Aggregated overview stats.
-    """
+    """Pure evaluation of collected metrics. Returns (all_passed, results, summary)."""
     results: list[CheckResult] = []
-    all_passed = True
-
+    per_doc: list[dict[str, Any]] = []
     for m in metrics_list:
-        ticker = m.get("ticker", "UNKNOWN")
-        if "error" in m:
-            all_passed = False
-            results.append(
-                CheckResult(
-                    dimension="document_lookup",
-                    ticker=ticker,
-                    value=m.get("error"),
-                    threshold="Document exists in DB",
-                    status="FAIL",
-                    details=m.get("error", ""),
-                )
-            )
-            continue
-
-        # 1. Router recall (skipped in aggregate mode per M9.6.3)
-        if not is_aggregate:
-            core_recall = m.get("mean_core_recall")
-            notes_recall = m.get("mean_notes_recall")
-
-            passed_core = core_recall is not None and core_recall >= 0.90
-            passed_notes = notes_recall is not None and notes_recall >= 0.80
-
-            recall_pass = passed_core and passed_notes
-            if not recall_pass:
-                all_passed = False
-            results.append(
-                CheckResult(
-                    dimension="Router recall (core >= 0.90, notes >= 0.80)",
-                    ticker=ticker,
-                    value=f"core={f'{core_recall:.2f}' if core_recall is not None else 'N/A'}, notes={f'{notes_recall:.2f}' if notes_recall is not None else 'N/A'}",
-                    threshold="core >= 0.90, notes >= 0.80",
-                    status="PASS" if recall_pass else "FAIL",
-                    details="Evaluated from router_recall.json",
-                )
-            )
-
-        # 2. Sector KPI coverage
-        kpi_ratio = float(m.get("kpi_coverage_ratio", 0.0))
-        missing_kpis = m.get("missing_kpis", [])
-        kpi_pass = kpi_ratio >= 1.0 and len(missing_kpis) == 0
-        if not kpi_pass:
-            all_passed = False
-        results.append(
-            CheckResult(
-                dimension="Sector KPI coverage",
-                ticker=ticker,
-                value=f"{kpi_ratio:.1%}",
-                threshold="100%",
-                status="PASS" if kpi_pass else "FAIL",
-                details=f"Missing {len(missing_kpis)}: {missing_kpis}" if missing_kpis else "All covered",
-            )
+        doc_results = evaluate_document(
+            m, is_aggregate=is_aggregate, expected_period=None if is_aggregate else expected_period
         )
-
-        # 3. Concept depth
-        distinct_count = int(m.get("distinct_concepts_count", 0))
-        depth_threshold = int(m.get("depth_threshold", 30))
-        depth_pass = distinct_count >= depth_threshold
-        if not depth_pass:
-            all_passed = False
-        results.append(
-            CheckResult(
-                dimension="Concept depth",
-                ticker=ticker,
-                value=str(distinct_count),
-                threshold=f">= {depth_threshold}",
-                status="PASS" if depth_pass else "FAIL",
-                details=f"Sector={m.get('sector')}, distinct concepts={distinct_count}",
-            )
+        results.extend(doc_results)
+        per_doc.append(
+            {
+                "ticker": m.get("ticker"),
+                "doc_id": m.get("doc_id"),
+                "fiscal_period": m.get("fiscal_period"),
+                "passed": all(r.status != FAIL for r in doc_results),
+                "failed_checks": [r.dimension for r in doc_results if r.status == FAIL],
+            }
         )
-
-        # 4. Segmented facts
-        seg_count = int(m.get("segmented_facts_count", 0))
-        seg_pass = seg_count >= 25
-        if not seg_pass:
-            all_passed = False
-        results.append(
-            CheckResult(
-                dimension="Segmented facts",
-                ticker=ticker,
-                value=str(seg_count),
-                threshold=">= 25",
-                status="PASS" if seg_pass else "FAIL",
-                details="Granular note segments with valid page provenance",
-            )
-        )
-
-        # 5. Numeric grounding
-        grounding_ratio = float(m.get("grounding_ratio", 0.0))
-        grounding_pass = grounding_ratio >= 1.0
-        if not grounding_pass:
-            all_passed = False
-        results.append(
-            CheckResult(
-                dimension="Numeric grounding",
-                ticker=ticker,
-                value=f"{grounding_ratio:.1%}",
-                threshold="100%",
-                status="PASS" if grounding_pass else "FAIL",
-                details=f"{m.get('grounded_facts_count')}/{m.get('total_facts_on_text_pages')} on text pages",
-            )
-        )
-
-        # 6. Narrative genuineness
-        cross_dups = int(m.get("cross_ticker_duplicates", 0))
-        bp_hits = int(m.get("boilerplate_hits", 0))
-        narrative_pass = cross_dups == 0 and bp_hits == 0
-        if not narrative_pass:
-            all_passed = False
-        results.append(
-            CheckResult(
-                dimension="Narrative genuineness",
-                ticker=ticker,
-                value=f"dups={cross_dups}, boilerplate={bp_hits}",
-                threshold="0 and 0",
-                status="PASS" if narrative_pass else "FAIL",
-                details=f"Cross-ticker md5 dups={cross_dups}, seed boilerplate hits={bp_hits}",
-            )
-        )
-
-        # 7. Provenance
-        bad_provenance = int(m.get("bad_provenance_count", 0))
-        prov_pass = bad_provenance == 0
-        if not prov_pass:
-            all_passed = False
-        results.append(
-            CheckResult(
-                dimension="Provenance",
-                ticker=ticker,
-                value=str(bad_provenance),
-                threshold="0",
-                status="PASS" if prov_pass else "FAIL",
-                details="Facts with null source_page or > page_count",
-            )
-        )
-
-        # 8. Token efficiency
-        token_ratio = float(m.get("token_ratio", 0.0))
-        token_pass = token_ratio <= 0.15
-        if not token_pass:
-            all_passed = False
-        results.append(
-            CheckResult(
-                dimension="Token efficiency",
-                ticker=ticker,
-                value=f"{token_ratio:.2%}",
-                threshold="<= 15%",
-                status="PASS" if token_pass else "FAIL",
-                details=f"{m.get('input_tokens', 0)} tokens vs {m.get('whole_book_est', 0)} est",
-            )
-        )
-
-        # 9. Period correctness
-        p_match = m.get("period") == "2025Q4" or is_aggregate
-        pe_match = m.get("period_end") == "2025-12-31" or is_aggregate
-        pc = int(m.get("page_count", 0))
-        apc = int(m.get("actual_page_count", 0))
-        pc_match = (pc == apc and pc > 0) if apc > 0 else True
-        period_pass = p_match and pe_match and pc_match
-        if not period_pass:
-            all_passed = False
-        results.append(
-            CheckResult(
-                dimension="Period correctness",
-                ticker=ticker,
-                value=f"period={m.get('period')}, end={m.get('period_end')}, pages={pc}/{apc}",
-                threshold="100% match",
-                status="PASS" if period_pass else "FAIL",
-                details="Fiscal period & PyMuPDF page count verification",
-            )
-        )
-
+    all_passed = bool(metrics_list) and all(r.status != FAIL for r in results)
     summary = {
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "all_passed": all_passed,
         "is_aggregate": is_aggregate,
-        "evaluated_tickers": [m.get("ticker") for m in metrics_list],
+        "documents": len(metrics_list),
+        "documents_passed": sum(1 for d in per_doc if d["passed"]),
+        "per_document": per_doc,
         "total_checks": len(results),
-        "passed_checks": sum(1 for r in results if r.status == "PASS"),
-        "failed_checks": sum(1 for r in results if r.status == "FAIL"),
+        "passed_checks": sum(1 for r in results if r.status == PASS),
+        "failed_checks": sum(1 for r in results if r.status == FAIL),
+        "na_checks": sum(1 for r in results if r.status == NA),
     }
-
+    if not metrics_list:
+        summary["error"] = "no documents to evaluate"
     return all_passed, results, summary
 
 
 def print_results_table(results: list[CheckResult], summary: dict[str, Any]) -> None:
-    """Prints a formatted ASCII/Markdown table of gate check results."""
-    header = f"| {'Dimension':<38} | {'Ticker':<6} | {'Value':<26} | {'Threshold':<26} | {'Status':<6} |"
-    sep = f"|{'-' * 40}|{'-' * 8}|{'-' * 28}|{'-' * 28}|{'-' * 8}|"
-    print("\n" + "=" * 116)
-    print(f" DEEP EXTRACTION ACCEPTANCE GATE REPORT — {'ALL CHECKS PASSED' if summary['all_passed'] else 'GATE FAILED'}")
-    print("=" * 116)
-    print(header)
-    print(sep)
+    width = 128
+    print("\n" + "=" * width)
+    verdict = "ALL CHECKS PASSED" if summary["all_passed"] else "GATE FAILED"
+    print(f" DEEP EXTRACTION ACCEPTANCE GATE - {verdict}")
+    print("=" * width)
+    print(f"| {'Dimension':<20} | {'Ticker':<6} | {'Period':<6} | {'Value':<30} | "
+          f"{'Threshold':<40} | {'Status':<6} |")  # fmt: skip
+    print("|" + "-" * (width - 2) + "|")
     for r in results:
-        # Plain version for standard terminals
-        val_str = str(r.value)[:25]
-        thresh_str = str(r.threshold)[:25]
-        print(f"| {r.dimension:<38} | {r.ticker:<6} | {val_str:<26} | {thresh_str:<26} | {r.status:<6} |")
-    print(sep)
+        print(
+            f"| {r.dimension:<20} | {r.ticker:<6} | {r.fiscal_period or ''!s:<6} | "
+            f"{str(r.value)[:30]:<30} | {str(r.threshold)[:40]:<40} | {r.status:<6} |"
+        )
+        if r.status == FAIL and r.details:
+            print(f"|   -> {r.details[: width - 10]}")
+    print("|" + "-" * (width - 2) + "|")
+    if summary.get("error"):
+        print(f"ERROR: {summary['error']}")
     print(
-        f"Summary: {summary['passed_checks']}/{summary['total_checks']} checks passed. "
-        f"Overall: {'PASS (Exit 0)' if summary['all_passed'] else 'FAIL (Exit 1)'}\n"
+        f"Summary: {summary['passed_checks']} PASS, {summary['failed_checks']} FAIL, "
+        f"{summary['na_checks']} N/A over {summary['documents']} document(s); "
+        f"{summary['documents_passed']} document(s) fully passing. "
+        f"Overall: {'PASS (exit 0)' if summary['all_passed'] else 'FAIL (exit 1)'}\n"
     )
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Evaluate deep extraction acceptance criteria.")
-    parser.add_argument("--tickers", type=str, default="BMRI,LSIP", help="Comma-separated tickers to evaluate")
-    parser.add_argument("--period", type=str, default="2025Q4", help="Fiscal period (default: 2025Q4)")
-    parser.add_argument("--out", type=str, default=None, help="Output path for JSON report")
-    parser.add_argument("--aggregate", action="store_true", help="Run in aggregate batch mode (skips router recall)")
-    parser.add_argument("--since", type=str, default=None, help="Optional timestamp filter for aggregate mode")
-    parser.add_argument("--sector-depth", type=str, default="db/seeds/sector_depth_minimums.yaml")
-    parser.add_argument("--baseline", type=str, default="eval/reports/m9_baseline.json")
-    parser.add_argument("--router-recall", type=str, default="eval/reports/router_recall.json")
-    parser.add_argument("--boilerplate", type=str, default="db/seeds/narrative_boilerplate.txt")
-
-    args = parser.parse_args()
-
-    sector_depths = load_sector_depth_minimums(args.sector_depth)
-    baseline_data = load_baseline(args.baseline)
-    boilerplate_phrases = load_boilerplate_phrases(args.boilerplate)
-    router_recall_data = load_router_recall(args.router_recall)
-
-    tickers = [t.strip().upper() for t in args.tickers.split(",") if t.strip()]
-
-    metrics_list: list[dict[str, Any]] = []
-    with psycopg.connect(_dsn()) as conn:
-        for ticker in tickers:
-            m = collect_metrics_for_ticker(
-                conn=conn,
-                ticker=ticker,
-                period=args.period,
-                sector_depths=sector_depths,
-                baseline_data=baseline_data,
-                boilerplate_phrases=boilerplate_phrases,
-                router_recall_data=router_recall_data,
-            )
-            metrics_list.append(m)
-
-    all_passed, results, summary = evaluate_gate(metrics_list, is_aggregate=args.aggregate)
+def report(
+    metrics_list: list[dict[str, Any]],
+    *,
+    is_aggregate: bool,
+    expected_period: str | None,
+    out: Path | None = None,
+    extra: dict[str, Any] | None = None,
+) -> int:
+    """Evaluates, prints, optionally writes JSON, and returns the process exit code."""
+    all_passed, results, summary = evaluate_gate(metrics_list, is_aggregate, expected_period)
+    if extra:
+        summary.update(extra)
     print_results_table(results, summary)
+    if out:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "summary": summary,
+            "results": [asdict(r) for r in results],
+            "metrics": metrics_list,
+        }
+        out.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+        print(f"Wrote gate report to {out}")
+    return 0 if all_passed else 1
 
-    output_payload = {
-        "summary": summary,
-        "results": [asdict(r) for r in results],
-        "metrics": metrics_list,
+
+def run_gate(
+    *,
+    tickers: list[str] | None,
+    period: str | None,
+    aggregate: bool,
+    since: datetime | None,
+    sector_depth_path: Path | str = REPO_ROOT / "db/seeds/sector_depth_minimums.yaml",
+    baseline_path: Path | str = REPO_ROOT / "eval/reports/m9_baseline.json",
+    router_recall_path: Path | str = REPO_ROOT / "eval/reports/router_recall.json",
+    boilerplate_path: Path | str = REPO_ROOT / "db/seeds/narrative_boilerplate.txt",
+    dsn: str | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Collects metrics for the requested documents. Returns (metrics_list, run_info)."""
+    sector_depths = load_sector_depth_minimums(sector_depth_path)
+    baseline = load_json(baseline_path)
+    router_recall = load_json(router_recall_path)
+    boilerplate = load_boilerplate_phrases(boilerplate_path)
+    reports_dir = get_settings().reports_dir
+    metrics: list[dict[str, Any]] = []
+    with psycopg.connect(dsn or _sync_dsn()) as conn:
+        cols = missing_columns(conn)
+        docs = select_documents(conn, tickers, period, since, aggregate)
+        for doc in docs:
+            metrics.append(
+                collect_metrics(
+                    conn, doc, sector_depths=sector_depths, baseline=baseline,
+                    boilerplate=boilerplate, router_recall=router_recall, missing_cols=cols,
+                    reports_dir=reports_dir,
+                )
+            )  # fmt: skip
+    info = {
+        "missing_columns": cols,
+        "since": since.isoformat() if since else None,
+        "tickers": tickers,
+        "period": None if aggregate else period,
+        "router_recall_report": str(router_recall_path) if router_recall else None,
     }
+    return metrics, info
 
-    if args.out:
-        out_path = Path(args.out)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(output_payload, f, indent=2, default=str)
-        print(f"Wrote gate report to {out_path}")
 
-    sys.exit(0 if all_passed else 1)
+def _parse_since(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    dt = datetime.fromisoformat(value)
+    if isinstance(dt, datetime) and dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return dt
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Evaluate deep extraction acceptance criteria.")
+    parser.add_argument("--tickers", default=None, help="Comma-separated tickers")
+    parser.add_argument("--period", default="2025Q4", help="Fiscal period (non-aggregate mode)")
+    parser.add_argument("--out", default=None, help="Output JSON path")
+    parser.add_argument(
+        "--aggregate", action="store_true",
+        help="Evaluate every document COMMITTED in the --since window (skips router recall)",
+    )  # fmt: skip
+    parser.add_argument("--since", default=None, help="ISO timestamp: window start (aggregate)")
+    parser.add_argument("--sector-depth", default=str(REPO_ROOT / "db/seeds/sector_depth_minimums.yaml"))
+    parser.add_argument("--baseline", default=str(REPO_ROOT / "eval/reports/m9_baseline.json"))
+    parser.add_argument("--router-recall", default=str(REPO_ROOT / "eval/reports/router_recall.json"))
+    parser.add_argument("--boilerplate", default=str(REPO_ROOT / "db/seeds/narrative_boilerplate.txt"))
+    args = parser.parse_args(argv)
+
+    tickers = [t.strip().upper() for t in (args.tickers or "").split(",") if t.strip()] or None
+    if not args.aggregate and not tickers:
+        tickers = ["BMRI", "LSIP"]
+    if args.since and not args.aggregate:
+        parser.error("--since is only meaningful with --aggregate")
+    since = _parse_since(args.since)
+    metrics, info = run_gate(
+        tickers=tickers, period=args.period, aggregate=args.aggregate, since=since,
+        sector_depth_path=args.sector_depth, baseline_path=args.baseline,
+        router_recall_path=args.router_recall, boilerplate_path=args.boilerplate,
+    )  # fmt: skip
+    return report(
+        metrics,
+        is_aggregate=args.aggregate,
+        expected_period=None if args.aggregate else args.period,
+        out=Path(args.out) if args.out else None,
+        extra=info,
+    )
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
+

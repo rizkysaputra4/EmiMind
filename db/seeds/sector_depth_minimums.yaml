@@ -1,12 +1,48 @@
-# Minimum distinct concept count per annual filing (FS_ANNUAL / Q4) by sector
-BANK: 40
-CPO: 45
-PLANTATION: 45
+# Minimum distinct concept_id count per ANNUAL filing (FS_ANNUAL / Q4), by issuer_profile.sector.
+# Used by eval/deep_extraction_gate.py:
+#   depth threshold = max(2 x ticker baseline distinct concepts (eval/reports/m9_baseline.json),
+#                         sector minimum below)
+# Sectors not listed fall back to GENERIC. Every value must be >= 40 (M9 remediation spec):
+# BANK 60, PLANTATION/CPO 50, everything else 40.
+GENERIC: 40
+
+BANK: 60
+CPO: 50
+PLANTATION: 50
+
+# All other sector codes used by scripts/seed_idx_tickers.py / issuer_profile: explicit 40 so a
+# typo in a sector code is visible here rather than silently becoming GENERIC.
+AUTOMOTIVE: 40
+BASIC_MATERIALS: 40
+CHEMICALS: 40
+COAL: 40
+CONSUMER: 40
+CONSUMER_STAPLES: 40
+CONTRACTOR: 40
+DIGITAL: 40
+GOLD_COPPER: 40
+HEALTHCARE: 40
+HOSPITAL: 40
+HOTEL_TOURISM: 40
+INFRASTRUCTURE: 40
+INSURANCE: 40
+INVESTMENT_HOLDING: 40
+JEWELRY_LUXURY: 40
+MEDIA_BROADCAST: 40
 MINING: 40
-PROPERTY: 35
-TELCO: 35
-CONSUMER: 35
-HEALTHCARE: 35
-POULTRY: 35
-INFRASTRUCTURE: 35
-GENERIC: 30
+MULTIFINANCE: 40
+NICKEL: 40
+OIL_GAS: 40
+PETROCHEMICAL: 40
+PHARMACEUTICAL: 40
+PORT: 40
+POULTRY: 40
+PROPERTY: 40
+PULP_PAPER: 40
+RENEWABLE_ENERGY: 40
+RETAIL: 40
+SHIPPING: 40
+TELCO: 40
+TIN_MINING: 40
+TOLL_ROAD: 40
+TOWER: 40
