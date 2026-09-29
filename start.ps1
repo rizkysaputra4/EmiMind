@@ -57,17 +57,21 @@ if (-not $redisUp -or -not $minioUp -or -not $pgUp) {
 }
 
 try {
-    Write-Host "[1/3] Starting FastAPI Backend on http://localhost:8000..." -ForegroundColor Green
+    Write-Host "[1/4] Starting FastAPI Backend on http://localhost:8000..." -ForegroundColor Green
     $api = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "uv run uvicorn services.api.main:app --reload --host 0.0.0.0 --port 8000" -PassThru -NoNewWindow
     $processes += $api
 
-    Write-Host "[2/3] Starting arq Background Worker..." -ForegroundColor Green
+    Write-Host "[2/4] Starting arq Background Worker..." -ForegroundColor Green
     $worker = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "uv run arq services.ingest.worker.WorkerSettings" -PassThru -NoNewWindow
     $processes += $worker
 
-    Write-Host "[3/3] Starting Next.js Web UI on http://localhost:3000..." -ForegroundColor Green
+    Write-Host "[3/4] Starting Next.js Web UI on http://localhost:3000..." -ForegroundColor Green
     $web = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "cd /d `"$PSScriptRoot\web`" && pnpm.cmd dev" -PassThru -NoNewWindow
     $processes += $web
+
+    Write-Host "[4/4] Starting MCP Server (stdio; spawned per-client)..." -ForegroundColor Green
+    $mcp = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "uv run python scripts/run_mcp_server.py" -PassThru -NoNewWindow
+    $processes += $mcp
 
     Write-Host ""
     Write-Host "----------------------------------------------------" -ForegroundColor Yellow
@@ -75,10 +79,12 @@ try {
     Write-Host "  - API:      http://localhost:8000" -ForegroundColor White
     Write-Host "  - Swagger:  http://localhost:8000/docs" -ForegroundColor White
     Write-Host "  - Web App:  http://localhost:3000" -ForegroundColor White
+    Write-Host "  - MCP:      stdio (scripts/run_mcp_server.py)" -ForegroundColor White
     Write-Host "----------------------------------------------------" -ForegroundColor Yellow
     Write-Host ""
 
-    # Keep script alive until interrupted or a process stops
+    # Keep script alive until interrupted or a core process stops.
+    # MCP stdio may exit if no client is attached — that's expected, don't tear down other services for it.
     while ($true) {
         Start-Sleep -Seconds 1
         if ($api.HasExited -or $worker.HasExited -or $web.HasExited) {

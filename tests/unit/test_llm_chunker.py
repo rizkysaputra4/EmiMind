@@ -1,6 +1,7 @@
 """Unit tests for LLM-powered narrative chunk extraction."""
 
 import pytest
+
 from services.narrative.llm_chunker import _clean_json_response, extract_narrative_chunks_llm
 from services.shared.types import PageContent
 

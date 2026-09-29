@@ -35,6 +35,14 @@ foreach ($port in $ports) {
 # Terminate any dangling uvicorn and minio processes
 Get-Process -Name "uvicorn", "minio" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
+# Terminate MCP server (stdio, no listening port — match by command line)
+Get-CimInstance Win32_Process -Filter "Name = 'python.exe' OR Name = 'py.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -match 'run_mcp_server\.py|services\.mcp\.server' } |
+    ForEach-Object {
+        Write-Host "Terminating MCP server (PID: $($_.ProcessId))..." -ForegroundColor Yellow
+        cmd.exe /c "taskkill /PID $($_.ProcessId) /T /F >nul 2>&1"
+    }
+
 Write-Host "====================================================" -ForegroundColor Green
 Write-Host "  All EmiMind application services have stopped.    " -ForegroundColor Green
 Write-Host "====================================================" -ForegroundColor Green

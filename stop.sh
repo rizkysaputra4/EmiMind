@@ -22,6 +22,15 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" || -n
     # Kill any lingering uvicorn and minio processes
     taskkill //IM uvicorn.exe //T //F 2>/dev/null || true
     taskkill //IM minio.exe //T //F 2>/dev/null || true
+
+    # Kill MCP server (stdio, no listening port — match by command line via wmic)
+    mcp_pids=$(wmic process where "name='python.exe' or name='py.exe'" get processid,commandline 2>/dev/null | grep -E "run_mcp_server\.py|services\.mcp\.server" | awk '{print $NF}')
+    for pid in $mcp_pids; do
+        if [[ "$pid" =~ ^[0-9]+$ ]] && [ "$pid" -ne 0 ]; then
+            echo "Terminating MCP server (PID: $pid)..."
+            taskkill //PID "$pid" //T //F 2>/dev/null || true
+        fi
+    done
 else
     # Linux / macOS / WSL
     echo "Stopping services on Unix..."
@@ -34,9 +43,11 @@ else
         fi
     done
 
-    # Kill background arq / uvicorn by process signature
+    # Kill background arq / uvicorn / mcp by process signature
     pkill -f "arq services.ingest.worker" 2>/dev/null || true
     pkill -f "uvicorn services.api.main" 2>/dev/null || true
+    pkill -f "scripts/run_mcp_server.py" 2>/dev/null || true
+    pkill -f "services.mcp.server" 2>/dev/null || true
 fi
 
 echo "===================================================="

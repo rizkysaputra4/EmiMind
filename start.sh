@@ -42,16 +42,20 @@ cleanup() {
 trap cleanup SIGINT SIGTERM EXIT
 
 # 1. FastAPI API Server
-echo "[1/3] Starting FastAPI Backend on http://localhost:8000..."
+echo "[1/4] Starting FastAPI Backend on http://localhost:8000..."
 uv run uvicorn services.api.main:app --reload --host 0.0.0.0 --port 8000 &
 
 # 2. Background arq Ingestion Worker
-echo "[2/3] Starting arq Background Worker..."
+echo "[2/4] Starting arq Background Worker..."
 uv run arq services.ingest.worker.WorkerSettings &
 
 # 3. Next.js Web Frontend
-echo "[3/3] Starting Next.js Web UI on http://localhost:3000..."
+echo "[3/4] Starting Next.js Web UI on http://localhost:3000..."
 (cd web && pnpm dev) &
+
+# 4. MCP Server (stdio — spawned per-client; will exit immediately without a peer)
+echo "[4/4] Starting MCP Server (stdio; scripts/run_mcp_server.py)..."
+uv run python scripts/run_mcp_server.py &
 
 echo ""
 echo "----------------------------------------------------"
@@ -59,6 +63,7 @@ echo "  All services running! Press Ctrl+C to stop all.   "
 echo "  - API:      http://localhost:8000"
 echo "  - Swagger:  http://localhost:8000/docs"
 echo "  - Web App:  http://localhost:3000"
+echo "  - MCP:      stdio (scripts/run_mcp_server.py)"
 echo "----------------------------------------------------"
 echo ""
 

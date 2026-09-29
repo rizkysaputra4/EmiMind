@@ -10,6 +10,8 @@
 Database calculates reality → Memory stores context → Retrieval selects evidence → LLM reasons over evidence → User gets a challengeable, cited answer.
 ```
 
+> **Extraction agents run in a sibling workspace:** [`../EmiMind-Extraction/`](../EmiMind-Extraction/README.md). That folder holds the agent runbook (`AGENTS.md`), `mcp_config.json`, and `incoming_reports/`. This repo is server-side only (MCP tools, DB, schema, seeds, tests). Extraction agents have deny-writes permissions on this repo so they cannot mutate server code — they can only call MCP tools.
+
 - **Backend:** FastAPI (Python 3.11+ async monorepo managed with `uv`)
 - **Database:** PostgreSQL 16 + `pgvector` + `pg_trgm` + `uuid-ossp`
 - **Object Storage:** MinIO (S3-compatible) for raw PDF storage and XBRL sidecars

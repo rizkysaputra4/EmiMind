@@ -296,7 +296,7 @@ async def test_key_stats_recipes() -> None:
     assert dio is not None and dio.value == Decimal("22.50")  # (20k / 80k) * 90
 
     dpo = await recipe_dpo(ctx)
-    assert dpo is not None and dpo.value == Decimal("28.12") or dpo.value == Decimal("28.13")  # (25k / 80k) * 90
+    assert (dpo is not None and dpo.value == Decimal("28.12")) or dpo.value == Decimal("28.13")  # (25k / 80k) * 90
 
     bvps = await recipe_bvps(ctx)
     assert bvps is not None and bvps.value == Decimal("0.30")  # 300k / 1M

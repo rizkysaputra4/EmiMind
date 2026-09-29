@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from services.mcp.server import mcp
 
 if __name__ == "__main__":

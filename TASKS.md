@@ -8,7 +8,7 @@
 ## How to use this file
 
 1. **Read `tasks/00-conventions.md` before writing any code.** It defines the folder layout, naming rules, dependency direction, and non-negotiable architectural constraints. Every task in every milestone assumes these rules are followed.
-2. **Work milestones in order (M1 → M7).** Each milestone builds on the previous one. Do not skip ahead.
+2. **Work milestones in order (M1 → M7, then M8).** Each milestone builds on the previous one. Do not skip ahead.
 3. **Inside a milestone, work tasks in order** unless a task explicitly says `Parallel-safe with: <task-ids>`.
 4. **Every task has an `Acceptance` section.** A task is only complete when every acceptance bullet is satisfied. Do not mark a task done because "the code compiles" — run the acceptance checks.
 5. **If a task references a schema, copy it verbatim from `tasks/appendix-schemas.md`.** Do not paraphrase SQL — column names, indexes, and constraint names are load-bearing.
@@ -28,6 +28,8 @@
 | M5 | [`tasks/05-M5-kg-guidance.md`](tasks/05-M5-kg-guidance.md) | 21–26 | KG nodes/edges; guidance miner; actual matcher; causal linker; rolling conversation summary; sticky slots |
 | M6 | [`tasks/06-M6-screener-technical.md`](tasks/06-M6-screener-technical.md) | 27–32 | Screener DSL + SQL compiler + executor; yfinance ingest; `technical_state` with regime labels; 50-ticker coverage |
 | M7 | [`tasks/07-M7-polish.md`](tasks/07-M7-polish.md) | 33–36 | Eval regressions fixed; onboarding; session persistence; coverage to LQ45 + KOMPAS100 |
+| M8 | [`tasks/08-M8-pengumuman-extraction.md`](tasks/08-M8-pengumuman-extraction.md) | 37+ | IDX pengumuman ingestion & extraction — CF-solve UX, doc-class classifier, generic disclosure safety net + 8 bespoke contracts (dividend, rights issue, RUPS, material info, bond, affiliated tx, private placement, tender offer). Design: [`docs/PENGUMUMAN_EXTRACTION_DESIGN.md`](docs/PENGUMUMAN_EXTRACTION_DESIGN.md) |
+| M9 | [`tasks/09-M9-deep-extraction.md`](tasks/09-M9-deep-extraction.md) | 38+ | Deep extraction remediation — period/metadata + commit-path fixes, page index with table cell grids, RRF page router MCP tool, cell-grounded validator, BMRI/LSIP lighthouse gate. Design: [`docs/DEEP_EXTRACTION_REMEDIATION_PLAN.md`](docs/DEEP_EXTRACTION_REMEDIATION_PLAN.md) |
 
 ## Appendices
 
