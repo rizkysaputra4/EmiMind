@@ -94,7 +94,7 @@ async def inspect_document(
     file_path: str,
     ticker: str | None = None,
     fiscal_period: str | None = None,
-    doc_type: str = "FS_QUARTERLY",
+    doc_type: str | None = None,
 ) -> DocumentInspectionResult:
     """Inspects a PDF document by computing its SHA-256 fingerprint and checking processing status in EMIMIND."""
     return await inspect_document_impl(

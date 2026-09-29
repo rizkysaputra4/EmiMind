@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import re
 import uuid
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -12,7 +14,14 @@ import pymupdf
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from services.mcp.periods import resolve_fiscal_period
+from services.extraction.metadata_extractor import propose_metadata_from_text
+from services.mcp.periods import (
+    ResolvedPeriod,
+    normalize_period,
+    period_end_for,
+    resolve_fiscal_period,
+    resolve_period_from_text,
+)
 from services.mcp.services.common import (
     _archive_processed_file,
     _log_processing_event,
@@ -28,52 +37,198 @@ from services.shared.logging import get_logger
 
 log = get_logger("mcp.services.inspection")
 
+COVER_PAGES = 3
+SHORT_DOC_MAX_PAGES = 3
+# Letters bundled in front of a full statement are kept; only short letter files are skipped.
+LETTER_MAX_PAGES = 10
+
+_NOT_FS_NAME = [
+    ("checklist", re.compile(r"c\s*h?\s*e\s*c?\s*k\s*l\s*i\s*s\s*t|ceklis", re.I)),
+    (
+        "esg_sustainability",
+        re.compile(r"(?<![a-z])esg|sustainab|keberlanjutan|berkelanjutan", re.I),
+    ),
+    ("public_expose", re.compile(r"public\s*expos|pubex|paparan\s*publik", re.I)),
+]
+_LETTER_NAME = [
+    ("cover_letter", re.compile(r"pengantar", re.I)),
+    ("directors_statement", re.compile(r"pernyataan\s*direksi|surat\s*pernyataan", re.I)),
+    (
+        "directors_statement",
+        re.compile(r"(?<![a-z])(spd|(dir(ectors?)?|bod)'?s?\s*statement)(?![a-z])", re.I),
+    ),
+    ("explanation_letter", re.compile(r"penjelasan", re.I)),
+    (
+        # condensed statements published in newspapers ("Bukti Iklan", "Iklan Investor Daily")
+        "newspaper_publication",
+        re.compile(
+            r"(?<![a-z])(iklan|koran|surat\s*kabar|e\s*-?\s*paper)(?![a-z])|investor\s*daily"
+            r"|media\s*indonesia|bisnis\s*indonesia|(?<![a-z])kontan(?![a-z])"
+            r"|(news|press)\s*release|siaran\s*pers",
+            re.I,
+        ),
+    ),
+    (
+        "change_over_20_percent",
+        re.compile(
+            r"perubahan.{0,40}(20\s*(persen|%)|lebih\s+dari)"
+            r"|perubahan\s+(total\s+|jumlah\s+)?(aset|aktiva|liabilitas|kewajiban)",
+            re.I,
+        ),
+    ),
+]
+_FS_CONTENT = re.compile(
+    r"posisi\s+keuangan|financial\s+position|neraca|laba\s*[/\s-]?\s*rugi|profit\s+or\s+loss"
+    r"|balance\s+sheet|income\s+statement|comprehensive\s+income|penghasilan\s+komprehensif",
+    re.I,
+)
+_DOC_TYPES = {"PUBEX", "FS_QUARTERLY", "FS_ANNUAL", "ANNUAL_REPORT"}
+_PREFIX = re.compile(r"^[A-Za-z0-9]+_\d{4}_(TW1|TW2|TW3|AUDIT|ANNUAL)_([A-Za-z0-9]+)_", re.I)
+_ANNUAL_REPORT_NAME = re.compile(r"annual\s*report|laporan\s*tahunan", re.I)
+
+
+@dataclass(frozen=True)
+class PdfFacts:
+    page_count: int
+    cover_text: str
+
+
+def read_pdf_facts(path: Path, cover_pages: int = COVER_PAGES) -> PdfFacts | None:
+    """Real page count plus the text of the first pages; None when the PDF is unreadable."""
+    try:
+        with pymupdf.open(str(path)) as pdf:  # type: ignore[no-untyped-call]
+            count = int(pdf.page_count)
+            cover = "\n".join(str(pdf[i].get_text()) for i in range(min(cover_pages, count)))
+    except Exception as exc:
+        log.warning("PDF could not be opened", path=str(path), error=str(exc))
+        return None
+    return PdfFacts(page_count=count, cover_text=cover) if count >= 1 else None
+
+
+def classify_administrative(filename: str, facts: PdfFacts | None) -> str | None:
+    """Returns a skip reason for non-financial/administrative filings, else None."""
+    name = re.sub(r"[_\-.]+", " ", Path(filename).stem)
+    m = _PREFIX.match(Path(filename).name)
+    title = re.sub(r"[_\-.]+", " ", Path(filename).name[m.end() :]) if m else name
+    for reason, rx in _NOT_FS_NAME:
+        if rx.search(title):
+            return f"filename:{reason}"
+    for reason, rx in _LETTER_NAME:
+        if rx.search(title) and (facts is None or facts.page_count <= LETTER_MAX_PAGES):
+            return f"filename:{reason}"
+    if (
+        facts is not None
+        and facts.page_count <= SHORT_DOC_MAX_PAGES
+        and not _FS_CONTENT.search(facts.cover_text)
+    ):
+        return "content:short_document_without_financial_statement"
+    return None
+
+
+def is_announcement(path: Path, sidecar_meta: dict[str, Any] | None) -> bool:
+    """Announcement domain: downloader sidecar says so, or the file sits under announcements/."""
+    if sidecar_meta and str(sidecar_meta.get("kind") or "").lower() == "announcement":
+        return True
+    return any(part.lower() == "announcements" for part in path.parts[:-1])
+
+
+def infer_doc_type(
+    filename: str,
+    fiscal_period: str,
+    content_doc_type: str | None,
+    *,
+    period_from_prefix: bool = True,
+) -> str:
+    """Infers documents.doc_type for periodic filings (the announcement domain is decided first).
+
+    Domain token of the downloader prefix first: `ANNUAL_AAR` -> ANNUAL_REPORT; for `_RDF_`
+    filings an "Annual Report" title is still an ANNUAL_REPORT, `AUDIT` -> FS_ANNUAL and
+    `TW1..TW3` -> FS_QUARTERLY. Without a prefix: title, then cover-page content, then period.
+    """
+    base = Path(filename).name
+    m = _PREFIX.match(base)
+    title = base[m.end() :] if m else base
+    if m:
+        period_tok, kind = m.group(1).upper(), m.group(2).upper()
+        if kind == "AAR" or period_tok == "ANNUAL" or _ANNUAL_REPORT_NAME.search(title):
+            return "ANNUAL_REPORT"
+        if period_from_prefix:
+            return "FS_ANNUAL" if period_tok == "AUDIT" else "FS_QUARTERLY"
+        # the prefix period was overridden (cover page / agent): the real period decides
+        return "FS_ANNUAL" if fiscal_period.endswith("Q4") else "FS_QUARTERLY"
+    if _ANNUAL_REPORT_NAME.search(title):
+        return "ANNUAL_REPORT"
+    if content_doc_type in _DOC_TYPES:
+        return str(content_doc_type)
+    return "FS_ANNUAL" if fiscal_period.endswith("Q4") else "FS_QUARTERLY"
+
+
+def _period_from_cover(cover_text: str) -> ResolvedPeriod | None:
+    res = resolve_period_from_text(cover_text)
+    if res:
+        return res
+    raw = propose_metadata_from_text(cover_text).fiscal_period if cover_text.strip() else None
+    if not raw:
+        return None
+    try:
+        fp = normalize_period(raw)
+    except ValueError:
+        return None
+    return ResolvedPeriod(fiscal_period=fp, period_end=period_end_for(fp), source="cover_page")
+
+
+def _resolve_local_path(file_path: str) -> Path:
+    p = Path(file_path)
+    if p.is_absolute() or p.exists():
+        return p
+    repo_root = Path(__file__).resolve().parents[3]
+    base_name = p.name
+    # `{TICKER}` prefix in downloader filenames → also probe the per-ticker subfolder.
+    ticker_prefix = base_name.split("_", 1)[0].upper() if "_" in base_name else None
+    roots = [repo_root, Path.cwd()]
+    rel = ["incoming_reports", "incoming_reports/processed"]
+    if ticker_prefix:
+        rel += [f"incoming_reports/{ticker_prefix}", f"incoming_reports/{ticker_prefix}/processed"]
+    candidates = [(r / file_path).resolve() for r in roots]
+    candidates += [(r / sub / base_name).resolve() for r in roots for sub in rel]
+    for cand in candidates:
+        if cand.exists() and cand.is_file():
+            return cand
+    return p
+
+
+async def _default_enqueue(doc_id: str) -> None:
+    from services.shared.redis_client import enqueue_job, get_redis_pool
+
+    r_pool = await get_redis_pool()
+    try:
+        await enqueue_job(r_pool, "index_pages_task", doc_id)
+    finally:
+        await r_pool.aclose()
+
+
+def _sha256(path: Path) -> str:
+    hasher = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(65536):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
 
 async def inspect_document(
     file_path: str,
     ticker: str | None = None,
     fiscal_period: str | None = None,
-    doc_type: str = "FS_QUARTERLY",
+    doc_type: str | None = None,
     *,
     engine: AsyncEngine | None = None,
     log_event_fn: Callable[..., Any] = _log_processing_event,
+    enqueue_fn: Callable[[str], Awaitable[None]] | None = None,
 ) -> DocumentInspectionResult:
-    """Inspects a PDF document by computing its SHA-256 fingerprint and checking processing status in EMIMIND."""
-    p = Path(file_path)
-    if not p.is_absolute() and not p.exists():
-        repo_root = Path(__file__).resolve().parents[3]
-        base_name = Path(file_path).name
-        # `{TICKER}` prefix in downloader filenames like NCKL_2025_TW3_RDF_*.pdf
-        # → also probe the per-ticker subfolder created by the IDX bulk downloader.
-        ticker_prefix = base_name.split("_", 1)[0].upper() if "_" in base_name else None
-        candidates = [
-            (repo_root / file_path).resolve(),
-            (repo_root / "incoming_reports" / base_name).resolve(),
-            (repo_root / "incoming_reports" / "processed" / base_name).resolve(),
-            (Path.cwd() / file_path).resolve(),
-            (Path.cwd() / "incoming_reports" / base_name).resolve(),
-            (Path.cwd() / "incoming_reports" / "processed" / base_name).resolve(),
-        ]
-        if ticker_prefix:
-            candidates.extend(
-                [
-                    (repo_root / "incoming_reports" / ticker_prefix / base_name).resolve(),
-                    (
-                        repo_root / "incoming_reports" / ticker_prefix / "processed" / base_name
-                    ).resolve(),
-                    (Path.cwd() / "incoming_reports" / ticker_prefix / base_name).resolve(),
-                    (
-                        Path.cwd() / "incoming_reports" / ticker_prefix / "processed" / base_name
-                    ).resolve(),
-                ]
-            )
-        for cand in candidates:
-            if cand.exists() and cand.is_file():
-                p = cand
-                break
+    """Inspects a PDF: fingerprint, dedupe, administrative triage, period and page-count metadata."""
+    p = _resolve_local_path(file_path)
 
     if not p.exists() or not p.is_file():
-        # Best-effort log write for file-not-found; opens its own transaction.
         try:
             eng = engine or get_engine()
             async with eng.connect() as conn:
@@ -95,30 +250,19 @@ async def inspect_document(
             message=f"File not found on disk at path: {file_path}",
         )
 
-    # Compute SHA-256 hash of raw file bytes
-    hasher = hashlib.sha256()
-    with open(p, "rb") as f:
-        while chunk := f.read(65536):
-            hasher.update(chunk)
-    doc_hash = hasher.hexdigest()
+    doc_hash = _sha256(p)
 
-    # Sidecar-driven doc_type: if the downloader dropped a .meta.json alongside this
-    # PDF, prefer the doc_class_hint over the caller-supplied doc_type. Design §9.
+    # Sidecar (downloader .meta.json): doc_class_hint and ticker only. The announcement date
+    # is a publication date, not a fiscal period, so it is never used as a period hint.
     sidecar_meta = _read_sidecar_meta(p)
+    sidecar_doc_type: str | None = None
     if sidecar_meta:
-        hint = (sidecar_meta.get("doc_class_hint") or "").upper()
-        if hint:
-            doc_type = hint
+        sidecar_doc_type = (sidecar_meta.get("doc_class_hint") or "").upper() or None
         if not ticker and sidecar_meta.get("ticker"):
             ticker = str(sidecar_meta["ticker"]).upper()
-        # Announcements don't have a fiscal_period in the FS sense — synthesise one
-        # from the announcement date so the downstream partition key stays stable.
-        if not fiscal_period and sidecar_meta.get("announcement_date"):
-            fiscal_period = str(sidecar_meta["announcement_date"])[:10]
 
     eng = engine or get_engine()
     async with eng.connect() as conn:
-        # Check if hash already exists in documents
         res = await conn.execute(
             text(
                 "SELECT id, ticker, fiscal_period, doc_type, status FROM documents WHERE doc_hash = :hash"
@@ -131,8 +275,6 @@ async def inspect_document(
             t = doc["ticker"]
             fp = doc["fiscal_period"]
             d_id = str(doc["id"])
-
-            # Check if facts are already extracted
             f_res = await conn.execute(
                 text("SELECT count(*) FROM financial_facts WHERE source_doc_id = :d_id"),
                 {"d_id": d_id},
@@ -140,7 +282,6 @@ async def inspect_document(
             facts_count = f_res.scalar() or 0
 
             if facts_count > 0 and doc["status"] in ("parsed", "facts_extracted"):
-                # Archive to processed subfolder if located in incoming_reports
                 new_path = _archive_processed_file(str(p))
                 if new_path:
                     await conn.execute(
@@ -171,42 +312,133 @@ async def inspect_document(
                     existing_facts_count=facts_count,
                 )
 
-        # Resolve ticker and fiscal period from metadata or filename if not provided
         t_clean = (ticker or (p.stem.split("_")[0] if "_" in p.stem else "UNKNOWN")).upper()
-        resolved_period = resolve_fiscal_period(p.name, fiscal_period)
-        if not resolved_period:
-            try:
-                from services.extraction.metadata_extractor import propose_metadata
+        t_log = t_clean if t_clean != "UNKNOWN" else None
+        facts = read_pdf_facts(p)
 
-                meta = await propose_metadata(p.read_bytes())
-                if meta and meta.fiscal_period:
-                    resolved_period = resolve_fiscal_period(p.name, meta.fiscal_period)
-            except Exception as exc:
-                log.warning("Metadata extractor fallback failed", error=str(exc))
+        # ---- DOMAIN FIRST: announcements are 1-10 page disclosures, not statements, so the
+        # financial-statement triage below must not skip them.
+        announcement = is_announcement(p, sidecar_meta)
 
-        if not resolved_period:
+        # ---- ADMINISTRATIVE TRIAGE (deterministic: filename + first-pages keywords) ----
+        admin_reason = None if announcement else classify_administrative(p.name, facts)
+        if admin_reason:
+            await log_event_fn(
+                conn,
+                action="SKIPPED_ADMINISTRATIVE",
+                source="inspect_document",
+                file_name=p.name,
+                ticker=t_log,
+                file_path=str(p),
+                doc_hash=doc_hash,
+                reason=f"Administrative / non-financial filing ({admin_reason}).",
+                metadata={
+                    "rule": admin_reason,
+                    "page_count": facts.page_count if facts else None,
+                },
+            )
+            await conn.commit()
+            return DocumentInspectionResult(
+                status=InspectionStatus.SKIPPED_ADMINISTRATIVE,
+                doc_hash=doc_hash,
+                ticker=t_log,
+                message=(
+                    f"Skipped: administrative or non-financial filing ({admin_reason}). "
+                    "Not registered for extraction. Move on to the next file."
+                ),
+            )
+
+        # ---- PERIOD (hint > downloader prefix > filename tokens; cover page on conflict) ----
+        needs_reason: str | None = None
+        period_meta: dict[str, Any] = {}
+        try:
+            resolved = resolve_fiscal_period(p.name, fiscal_period)
+        except ValueError as exc:
+            resolved = None
+            needs_reason = f"Invalid fiscal_period {fiscal_period!r}: {exc}. Use YYYYQ1..YYYYQ4."
+
+        cover_text = facts.cover_text if facts else ""
+        if resolved and resolved.conflict:
+            period_meta = {
+                "filename_period": resolved.fiscal_period,
+                "conflicting_period": resolved.conflicting_period,
+            }
+            cover = _period_from_cover(cover_text)
+            if cover:
+                period_meta["cover_period"] = cover.fiscal_period
+                resolved = cover
+            else:
+                resolved = None
+                needs_reason = (
+                    f"Filename prefix says {period_meta['filename_period']} but the title says "
+                    f"{period_meta['conflicting_period']}, and the cover page does not resolve it."
+                )
+        elif resolved is None and needs_reason is None:
+            resolved = _period_from_cover(cover_text)
+
+        if not resolved:
+            reason = needs_reason or (
+                "Cannot resolve fiscal period from filename or cover page; "
+                "fiscal_period required from agent."
+            )
             await log_event_fn(
                 conn,
                 action="NEEDS_METADATA",
                 source="inspect_document",
                 file_name=p.name,
-                ticker=t_clean if t_clean != "UNKNOWN" else None,
+                ticker=t_log,
                 file_path=str(p),
                 doc_hash=doc_hash,
-                reason="Cannot resolve fiscal period from filename or cover page; fiscal_period required from agent.",
+                reason=reason,
+                metadata=period_meta,
             )
             await conn.commit()
             return DocumentInspectionResult(
                 status=InspectionStatus.NEEDS_METADATA,
                 doc_hash=doc_hash,
-                ticker=t_clean if t_clean != "UNKNOWN" else None,
+                ticker=t_log,
                 fiscal_period=None,
                 doc_type=doc_type,
-                message="Cannot determine fiscal period from filename or cover page. Please call inspect_document again passing fiscal_period explicitly (e.g. '2025Q2').",
+                message=(
+                    f"{reason} Please call inspect_document again passing fiscal_period "
+                    "explicitly (e.g. '2025Q2') after checking the cover page."
+                ),
             )
 
-        fp_clean = resolved_period.fiscal_period
-        period_end_dt = resolved_period.period_end
+        if facts is None:
+            await log_event_fn(
+                conn,
+                action="ERROR",
+                source="inspect_document",
+                file_name=p.name,
+                ticker=t_log,
+                file_path=str(p),
+                doc_hash=doc_hash,
+                reason="PDF could not be opened; page count unknown.",
+            )
+            await conn.commit()
+            return DocumentInspectionResult(
+                status=InspectionStatus.ERROR,
+                doc_hash=doc_hash,
+                ticker=t_log,
+                fiscal_period=resolved.fiscal_period,
+                message="PDF could not be opened (corrupt or encrypted); page count unknown. Not registered.",
+            )
+
+        fp_clean = resolved.fiscal_period
+        period_end_dt = resolved.period_end
+        if doc_type:
+            doc_type_source = "argument"
+        elif sidecar_doc_type:
+            doc_type, doc_type_source = sidecar_doc_type, "sidecar"
+        elif announcement:
+            doc_type, doc_type_source = "GENERIC_DISCLOSURE", "announcement_default"
+        else:
+            content_type = propose_metadata_from_text(cover_text).doc_type if cover_text else None
+            prefix = resolve_fiscal_period(p.name)
+            from_prefix = bool(prefix and prefix.fiscal_period == fp_clean)
+            doc_type = infer_doc_type(p.name, fp_clean, content_type, period_from_prefix=from_prefix)
+            doc_type_source = "inferred"
 
         # ---- SCOPE GATE ----
         gate_res = await conn.execute(
@@ -243,16 +475,9 @@ async def inspect_document(
         company_name = gate_row["name"] or f"PT {t_clean} Tbk"
         sector_name = gate_row["sector"]
 
-        # Register document if new
         if not doc:
-            doc_uuid = uuid.uuid4()
-            d_id = str(doc_uuid)
+            d_id = str(uuid.uuid4())
             minio_key = f"raw/{doc_type}/{t_clean}/{fp_clean}/{p.name}"
-            try:
-                real_page_count = pymupdf.open(str(p)).page_count  # type: ignore[no-untyped-call]
-            except Exception:
-                real_page_count = 1
-
             await conn.execute(
                 text(
                     """
@@ -270,12 +495,11 @@ async def inspect_document(
                     "url": str(p),
                     "minio_key": minio_key,
                     "doc_hash": doc_hash,
-                    "page_count": real_page_count,
+                    "page_count": facts.page_count,
                 },
             )
             if sidecar_meta and (
-                sidecar_meta.get("kind") == "announcement"
-                or (sidecar_meta.get("doc_class_hint") or "").upper() != ""
+                sidecar_meta.get("kind") == "announcement" or sidecar_doc_type is not None
             ):
                 await conn.execute(
                     text(
@@ -292,9 +516,7 @@ async def inspect_document(
                         "doc_id": d_id,
                         "title": sidecar_meta.get("announcement_title") or "",
                         "date": (sidecar_meta.get("announcement_date") or "1970-01-01")[:10],
-                        "doc_class": (
-                            sidecar_meta.get("doc_class_hint") or "GENERIC_DISCLOSURE"
-                        ).upper(),
+                        "doc_class": (sidecar_doc_type or "GENERIC_DISCLOSURE"),
                         "src_url": sidecar_meta.get("source_url"),
                         "file_id": sidecar_meta.get("idx_file_id"),
                     },
@@ -317,44 +539,38 @@ async def inspect_document(
                 "sector": sector_name,
                 "sub_sector": gate_row.get("sub_sector"),
                 "fiscal_period": fp_clean,
+                "period_source": resolved.source,
                 "doc_type": doc_type,
+                "doc_type_source": doc_type_source,
+                "page_count": facts.page_count,
+                **period_meta,
             },
         )
         await conn.commit()
 
-        # Enqueue page indexing worker for authorized document
-        try:
-            from services.shared.redis_client import enqueue_job, get_redis_pool
+    try:
+        await (enqueue_fn or _default_enqueue)(d_id)
+    except Exception as exc:
+        log.warning("Failed to enqueue index_pages_task", doc_id=d_id, error=str(exc))
 
-            r_pool = await get_redis_pool()
-            try:
-                await enqueue_job(r_pool, "index_pages_task", d_id)
-            finally:
-                await r_pool.aclose()
-        except Exception as exc:
-            log.warning("Failed to enqueue index_pages_task", doc_id=d_id, error=str(exc))
-
-        return DocumentInspectionResult(
-            status=InspectionStatus.AUTHORIZED,
-            doc_hash=doc_hash,
-            doc_id=d_id,
-            ticker=t_clean,
-            fiscal_period=fp_clean,
-            doc_type=doc_type,
-            company_name=company_name,
-            sector=sector_name,
-            message=(
-                "Document authorized for extraction. IMPORTANT: First, read the "
-                "first 2 pages of the PDF to verify it contains financial or "
-                "narrative business content. If it is administrative (cover "
-                "letter, OJK compliance checklist, transmittal, board statement "
-                "of responsibility, newspaper ad), call "
-                "mark_document_skipped(doc_id, reason='NOT_FINANCIAL_CONTENT', "
-                "notes='...') to log the skip and archive the file. Otherwise "
-                "call get_extraction_contract(doc_id) to receive the extraction schema."
-            ),
-            existing_facts_count=0,
-        )
+    return DocumentInspectionResult(
+        status=InspectionStatus.AUTHORIZED,
+        doc_hash=doc_hash,
+        doc_id=d_id,
+        ticker=t_clean,
+        fiscal_period=fp_clean,
+        doc_type=doc_type,
+        company_name=company_name,
+        sector=sector_name,
+        message=(
+            f"Document authorized for extraction ({doc_type}, {fp_clean}, "
+            f"{facts.page_count} pages, period from {resolved.source}). Next: call "
+            "get_extraction_contract(doc_id), then get_routed_pages(doc_id, module) per module. "
+            "If the routed pages show this is not a financial filing, call "
+            "mark_document_skipped(doc_id, reason='NOT_FINANCIAL_CONTENT', notes='...')."
+        ),
+        existing_facts_count=0,
+    )
 
 
 async def mark_document_skipped(

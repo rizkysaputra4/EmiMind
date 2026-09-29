@@ -295,6 +295,32 @@ async def _llm_fallback(
     return None
 
 
+def propose_metadata_from_text(text: str) -> ProposedMetadata:
+    """Deterministic regex-only proposal from cover-page text; never calls an LLM.
+
+    `fiscal_period` keeps the extractor's raw form (`2025Q2`, `2025FY`, `2025H1`); the
+    caller normalizes it.
+    """
+    ticker, ticker_snip = _extract_ticker_regex(text)
+    period, period_snip = _extract_period_regex(text)
+    doc_type, doctype_snip = _extract_doctype_regex(text)
+    confidence = {
+        field: 1.0
+        for field, value in (("ticker", ticker), ("fiscal_period", period), ("doc_type", doc_type))
+        if value
+    }
+    snippets = [s for s in (ticker_snip, period_snip, doctype_snip) if s]
+    return ProposedMetadata(
+        ticker=ticker,
+        fiscal_period=period,
+        doc_type=doc_type,
+        language=detect_language(text) if text.strip() else "id",
+        confidence=confidence,
+        evidence_snippet=" • ".join(snippets)[:MAX_SNIPPET_CHARS] or None,
+        source="regex" if confidence else "none",
+    )
+
+
 async def propose_metadata(pdf_bytes: bytes) -> ProposedMetadata:
     """Proposes ticker/fiscal_period/doc_type/language from a PDF's opening pages.
 
