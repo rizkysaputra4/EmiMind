@@ -1,10 +1,12 @@
 # Seed query dictionary for page router (M9 Phase 3).
 # Keyed by module name, then sector ('ALL' default, overridable per sector).
 # Fields:
-#   terms_id: Indonesian search terms for FTS / semantic matching
-#   terms_en: English search terms for FTS / semantic matching
-#   max_pages: maximum page span to retrieve
-#   anchor_patterns: note-heading regexes used as FTS anchors
+#   terms_id: Indonesian search terms (FTS leg + bge-m3 query text)
+#   terms_en: English search terms (FTS leg + bge-m3 query text)
+#   max_pages: TOTAL page budget for the module across all returned spans. Default 6
+#              (services/mcp/types.py RouteQuery). Override only with a stated reason.
+#   anchor_patterns: note-heading / statement-title regexes. They form the third ranked
+#              list of the RRF (pages whose heading matches), never the sole mechanism.
 
 BALANCE_SHEET:
   ALL:
@@ -22,7 +24,7 @@ BALANCE_SHEET:
       - "total assets"
       - "liabilities"
       - "equity"
-    max_pages: 4
+    max_pages: 6
     anchor_patterns:
       - "LAPORAN POSISI KEUANGAN"
       - "STATEMENT OF FINANCIAL POSITION"
@@ -39,6 +41,7 @@ BALANCE_SHEET:
       - "total assets"
       - "liabilities"
       - "equity"
+    # bank balance sheets run 4-7 pages (assets, liabilities, temporary syirkah funds, equity)
     max_pages: 8
     anchor_patterns:
       - "LAPORAN POSISI KEUANGAN"
@@ -60,7 +63,7 @@ INCOME_STATEMENT:
       - "profit for the year"
       - "revenue"
       - "expenses"
-    max_pages: 4
+    max_pages: 6
     anchor_patterns:
       - "LAPORAN LABA RUGI"
       - "STATEMENT OF PROFIT OR LOSS"
@@ -79,7 +82,7 @@ CASH_FLOW:
       - "operating activities"
       - "investing activities"
       - "financing activities"
-    max_pages: 4
+    max_pages: 6
     anchor_patterns:
       - "LAPORAN ARUS KAS"
       - "STATEMENT OF CASH FLOWS"
@@ -94,6 +97,7 @@ MDA:
       - "management discussion and analysis"
       - "operational review"
       - "financial performance"
+    # MD&A is narrative prose over many pages; a note-sized budget truncates it
     max_pages: 10
     anchor_patterns:
       - "ANALISIS DAN PEMBAHASAN MANAJEMEN"
@@ -111,7 +115,7 @@ CASH_BANKS:
       - "current accounts in banks"
       - "time deposits"
       - "third parties"
-    max_pages: 4
+    max_pages: 6
     anchor_patterns:
       - "KAS DAN SETARA KAS"
       - "CASH AND CASH EQUIVALENTS"
@@ -147,7 +151,7 @@ REVENUE_CUSTOMERS:
       - "revenue by product"
       - "customers exceeding 10%"
       - "major customers"
-    max_pages: 5
+    max_pages: 6
     anchor_patterns:
       - "PENDAPATAN"
       - "REVENUE"
@@ -164,7 +168,7 @@ REVENUE_CUSTOMERS:
       - "sharia income"
       - "fees and commissions"
       - "other operating income"
-    max_pages: 5
+    max_pages: 6
     anchor_patterns:
       - "PENDAPATAN BUNGA"
       - "INTEREST INCOME"
@@ -185,7 +189,7 @@ COGS_BREAKDOWN:
       - "raw materials"
       - "direct labour"
       - "depreciation"
-    max_pages: 5
+    max_pages: 6
     anchor_patterns:
       - "BEBAN POKOK PENJUALAN"
       - "BEBAN POKOK PENDAPATAN"
@@ -201,7 +205,7 @@ COGS_BREAKDOWN:
       - "interest expense"
       - "sharia expense"
       - "fees and commissions expense"
-    max_pages: 5
+    max_pages: 6
     anchor_patterns:
       - "BEBAN BUNGA"
       - "INTEREST EXPENSE"
@@ -220,7 +224,7 @@ DEBT_FACILITIES:
       - "credit facilities"
       - "interest rate"
       - "maturity"
-    max_pages: 5
+    max_pages: 6
     anchor_patterns:
       - "UTANG BANK"
       - "PINJAMAN JANGKA PANJANG"
@@ -266,6 +270,8 @@ BANK_LOANS_NPL:
       - "doubtful"
       - "loss"
       - "allowance for impairment losses"
+    # loan quality spans the loans note (collectibility, stage, CKPN movement) plus the
+    # credit-risk note (e.g. BMRI 2025: 7 pages); 6 pages cannot cover both
     max_pages: 12
     anchor_patterns:
       - "KREDIT YANG DIBERIKAN"
@@ -303,13 +309,15 @@ REVENUE_BREAKDOWN:
   ALL:
     terms_id:
       - "pendapatan usaha"
+      - "pendapatan dari kontrak dengan pelanggan"
       - "rincian penjualan"
       - "penjualan per produk"
     terms_en:
       - "operating revenue"
+      - "revenue from contracts with customers"
       - "revenue breakdown"
       - "sales by product"
-    max_pages: 4
+    max_pages: 6
     anchor_patterns:
       - "PENDAPATAN"
       - "REVENUE"
@@ -324,7 +332,7 @@ REVENUE_BREAKDOWN:
       - "sharia income"
       - "fees and commissions"
       - "other operating income"
-    max_pages: 5
+    max_pages: 6
     anchor_patterns:
       - "PENDAPATAN BUNGA"
       - "INTEREST INCOME"
@@ -341,7 +349,7 @@ CUSTOMER_CONCENTRATION:
       - "sales exceeding 10%"
       - "customer concentration"
       - "single customer"
-    max_pages: 3
+    max_pages: 6
     anchor_patterns:
       - "PELANGGAN TUNGGAL"
       - "MELEBIHI 10%"
@@ -360,7 +368,7 @@ CUSTOMER_CONCENTRATION:
       - "sharia income"
       - "fees and commissions"
       - "other operating income"
-    max_pages: 5
+    max_pages: 6
     anchor_patterns:
       - "PENDAPATAN BUNGA"
       - "INTEREST INCOME"
@@ -377,7 +385,7 @@ COGS_COMPONENTS:
       - "raw materials"
       - "direct labor"
       - "manufacturing overhead"
-    max_pages: 4
+    max_pages: 6
     anchor_patterns:
       - "BEBAN POKOK PENJUALAN"
       - "COST OF GOODS SOLD"
@@ -391,7 +399,7 @@ COGS_COMPONENTS:
       - "interest expense"
       - "sharia expense"
       - "fees and commissions expense"
-    max_pages: 5
+    max_pages: 6
     anchor_patterns:
       - "BEBAN BUNGA"
       - "INTEREST EXPENSE"
@@ -408,7 +416,7 @@ DEBT_BY_LENDER:
       - "bank loans"
       - "creditor"
       - "interest rate"
-    max_pages: 5
+    max_pages: 6
     anchor_patterns:
       - "UTANG BANK"
       - "PINJAMAN JANGKA PANJANG"
@@ -466,7 +474,7 @@ BANK_LOANS_BY_SEGMENT:
       - "consumer"
       - "micro"
       - "retail"
-    max_pages: 5
+    max_pages: 6
     anchor_patterns:
       - "KREDIT YANG DIBERIKAN"
 
@@ -484,7 +492,7 @@ BIOLOGICAL_ASSETS_DETAIL:
       - "mature area"
       - "immature area"
       - "planted hectares"
-    max_pages: 4
+    max_pages: 6
     anchor_patterns:
       - "ASET BIOLOGIS"
       - "BIOLOGICAL ASSETS"

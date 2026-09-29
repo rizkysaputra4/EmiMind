@@ -1,54 +1,218 @@
-"""Unit tests for page router pure functions (RRF fusion, continuation, span merging)."""
+"""Unit tests for the page router: pure helpers plus route_pages over an in-memory DB."""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
 
-from services.retrieval.page_router import is_continuation, merge_spans, rrf_fuse
+import pytest
+
+from services.mcp.types import RouteQuery
+from services.narrative.embedder import Embedder, EmbeddingUnavailableError
+from services.retrieval import page_router as pr
+from services.retrieval.page_router import (
+    anchor_ranking,
+    cosine_top,
+    excluded_pages,
+    is_continuation,
+    merge_spans,
+    note_headings,
+    rrf_fuse,
+    select_pages,
+    statement_title,
+)
 from tests.fixtures.m9.build_fixtures import build_fs_small
+from tests.unit._fake_async_db import FakeConn
+
+HDR = "PT CONTOH Tbk\nDAN ENTITAS ANAKNYA\n"
+NOTES_HDR = HDR + "CATATAN ATAS LAPORAN KEUANGAN KONSOLIDASIAN (lanjutan)\n(Disajikan dalam jutaan Rupiah)\n"
+
+
+def _doc() -> dict[int, str]:
+    """A 10-page synthetic filing: BS pp2-3, IS p4, notes 5 (p5-6), 6 (p7), 7 (p8-9), 8 (p10)."""
+    return {
+        1: "DAFTAR ISI\nLaporan posisi keuangan 2\nCatatan 5",
+        2: HDR + "LAPORAN POSISI KEUANGAN KONSOLIDASIAN\nKas dan setara kas 5 1.000\nJumlah aset 9.000",
+        3: HDR + "LAPORAN POSISI KEUANGAN KONSOLIDASIAN\nLiabilitas\nJumlah ekuitas 4.000",
+        4: HDR + "LAPORAN LABA RUGI KONSOLIDASIAN\nPendapatan 7.000\nBeban pokok penjualan 3.000",
+        5: NOTES_HDR + "4. PERSEDIAAN (lanjutan)\nBahan baku 10\n5. KAS DAN SETARA KAS\nKas 100\nBank 900",
+        6: NOTES_HDR + "5. KAS DAN SETARA KAS (lanjutan)\nDeposito berjangka 300\nJumlah kas dan setara kas 1.000",
+        7: NOTES_HDR + "6. PIUTANG USAHA\nPihak ketiga 50\nkas dan setara kas tidak dijaminkan",
+        8: NOTES_HDR + "7. PENDAPATAN DARI KONTRAK DENGAN\nPELANGGAN\nPenjualan minyak sawit 7.000",
+        9: NOTES_HDR + "7. PENDAPATAN DARI KONTRAK DENGAN\nPELANGGAN (lanjutan)\nPelanggan melebihi 10% 4.000",
+        10: NOTES_HDR + "8. BEBAN POKOK PENJUALAN\nBahan baku 1.000",
+    }
 
 
 def test_rrf_fuse_ranks_expected_first() -> None:
-    """rrf_fuse([[3,1,2],[1,4]]) ranks page 1 first."""
     ranked = rrf_fuse([[3, 1, 2], [1, 4]])
-    assert len(ranked) == 4
-    top_page, _ = ranked[0]
-    assert top_page == 1, f"Expected page 1 first, got {top_page}"
-
-    # Verify order of the rest
-    pages_in_order = [p for p, _ in ranked]
-    assert pages_in_order[0] == 1
+    assert len(ranked) == 4 and ranked[0][0] == 1
+    # duplicates within one list count once
+    assert rrf_fuse([[5, 5, 5]]) == [(5, 1.0 / 61)]
 
 
-def test_is_continuation_fixture_headers(tmp_path: Path) -> None:
-    """is_continuation is True for a p5 -> p6 header pair from the fixture and False for p4 -> p5."""
-    import pymupdf
-
-    pdf_path = build_fs_small(tmp_path / "fs_small.pdf")
-    doc: Any = pymupdf.open(str(pdf_path))  # type: ignore[no-untyped-call]
-
-    p4_text = doc[3].get_text()  # physical page 4
-    p5_text = doc[4].get_text()  # physical page 5
-    p6_text = doc[5].get_text()  # physical page 6
-
-    # p5 -> p6 is a continuation of note 12 (Kredit yang Diberikan lanjutan)
-    assert is_continuation(p5_text, p6_text) is True
-
-    # p4 -> p5 is Cash Flow Statement -> Note 12 (not a continuation)
-    assert is_continuation(p4_text, p5_text) is False
-
-    doc.close()
-
-
-def test_merge_spans() -> None:
-    """merge_spans([(5, 6), (6, 8)]) == [(5, 8)]."""
-    spans = [(5, 6), (6, 8)]
-    merged = merge_spans(spans)
-    assert merged == [(5, 8)]
-
-    # Additional test cases: non-overlapping, fully contained, empty
+def test_merge_spans_merges_touching_spans() -> None:
+    assert merge_spans([(5, 6), (6, 8)]) == [(5, 8)]
+    assert merge_spans([(5, 6), (7, 8)]) == [(5, 8)]
     assert merge_spans([]) == []
     assert merge_spans([(1, 2), (4, 5)]) == [(1, 2), (4, 5)]
     assert merge_spans([(1, 4), (2, 3)]) == [(1, 4)]
-    assert merge_spans([(1, 2), (2, 3), (3, 4)]) == [(1, 4)]
+    assert merge_spans([(3, 4), (1, 2)]) == [(1, 4)]
+
+
+def test_note_headings_detect_wrapped_continuation() -> None:
+    doc = _doc()
+    assert [(n, c) for n, _h, c in note_headings(doc[5])] == [("4", True), ("5", False)]
+    assert [(n, c) for n, _h, c in note_headings(doc[9])] == [("7", True)]
+    # title-case headings (JKON style) are headings; numbered sentences are not
+    assert note_headings("4. Kas dan Setara Kas\n2021 2020")[0][0] == "4"
+    assert note_headings("1. Perusahaan telah menerima pembayaran sebesar Rp 100 juta.") == []
+
+
+def test_is_continuation() -> None:
+    doc = _doc()
+    assert is_continuation(doc[5], doc[6]) is True  # note 5 continues
+    assert is_continuation(doc[6], doc[7]) is False  # note 6 starts
+    assert is_continuation(doc[8], doc[9]) is True  # note 7 (lanjutan on the wrapped line)
+    assert is_continuation(doc[2], doc[3]) is True  # same statement title repeated
+    assert is_continuation(doc[3], doc[4]) is False  # a different statement
+    assert statement_title(doc[5]) is None  # notes pages are not statements
+
+
+def test_is_continuation_fixture_headers(tmp_path: Path) -> None:
+    import pymupdf
+
+    pdf_path = build_fs_small(tmp_path / "fs_small.pdf")
+    doc: Any = pymupdf.open(str(pdf_path))
+    try:
+        p4, p5, p6 = (doc[i].get_text() for i in (3, 4, 5))
+        assert is_continuation(p5, p6) is True  # note 12 (lanjutan)
+        assert is_continuation(p4, p5) is False  # cash flow statement -> note 12
+    finally:
+        doc.close()
+
+
+def test_exclusions_and_anchor_ranking() -> None:
+    doc = _doc()
+    assert 1 in excluded_pages(doc, core_query=True)  # table of contents
+    note_ex = excluded_pages(doc, core_query=False)
+    assert {1, 2, 3, 4} <= note_ex and 5 not in note_ex
+    ranked, starts = anchor_ranking(doc, ["PENDAPATAN DARI KONTRAK"], note_ex)
+    assert ranked == [8, 9] and starts == {8}
+    ranked, starts = anchor_ranking(doc, ["KAS DAN SETARA KAS"], note_ex)
+    assert ranked == [5, 6] and starts == {5}
+    ranked, _ = anchor_ranking(doc, ["LAPORAN POSISI KEUANGAN"], excluded_pages(doc, True))
+    assert ranked == [2, 3]
+
+
+def test_select_pages_respects_total_budget_and_seed_ratio() -> None:
+    doc = _doc()
+    fused = [(6, 0.05), (9, 0.049), (7, 0.048), (10, 0.047)]
+    units = select_pages(fused, doc, budget=3, top_k=3, seed_ratio=0.7, heading_starts={5})
+    pages = [p for _s, ps, _sc in units for p in ps]
+    assert len(pages) <= 3
+    assert pages[:2] == [5, 6]  # seed 6 continues note 5 -> takes its start page
+    # a weak second seed is not added
+    units = select_pages([(6, 0.05), (10, 0.02)], doc, budget=6, seed_ratio=0.7)
+    assert [ps for _s, ps, _sc in units] == [[5, 6]]
+
+
+def test_select_pages_statement_mode_walks_back_to_statement_start() -> None:
+    doc = _doc()
+    units = select_pages(
+        [(3, 0.05), (4, 0.049)], doc, budget=6, top_k=1, statement_mode=True, exclude={1}
+    )
+    assert [ps for _s, ps, _sc in units] == [[2, 3]]
+
+
+def test_cosine_top() -> None:
+    vecs = {1: [1.0, 0.0], 2: [0.0, 1.0], 3: [0.7, 0.7], 4: [0.0, 0.0]}
+    assert cosine_top([1.0, 0.1], vecs, limit=3) == [1, 3, 2]
+    assert cosine_top([1.0, 0.0], {}) == []
+
+
+def _router_handler(doc: dict[int, str], has_pgvector: bool, model: str) -> Any:
+    def handle(sql: str, p: dict[str, Any]) -> Any:  # noqa: PLR0911 - one branch per query
+        if sql.startswith("SET LOCAL statement_timeout"):
+            return None
+        if sql.startswith("SELECT page_index, page_text FROM document_pages"):
+            return [{"page_index": i, "page_text": t} for i, t in sorted(doc.items())]
+        if sql.startswith("WITH q AS"):
+            return [{"page_index": 6, "rank": 0.3}, {"page_index": 5, "rank": 0.2},
+                    {"page_index": 7, "rank": 0.1}, {"page_index": 2, "rank": 0.05}]
+        if sql.startswith("SELECT count(*) FROM document_pages"):
+            assert p["model"] == model
+            return [{"count": len(doc)}]
+        if "FROM pg_extension" in sql:
+            return [{"x": 1}] if has_pgvector else []
+        if sql.startswith("SELECT page_index FROM document_pages") and "halfvec" in sql:
+            return [{"page_index": 6}, {"page_index": 5}]
+        if sql.startswith("SELECT page_index, embedding FROM document_pages"):
+            assert "embedding_model = :model" in sql
+            return [{"page_index": i, "embedding": [1.0, 0.0] if i in (5, 6) else [0.0, 1.0]}
+                    for i in doc]
+        raise AssertionError(f"unexpected SQL: {sql}")
+
+    return handle
+
+
+class _QueryEmbedder(Embedder):
+    def __init__(self) -> None:
+        super().__init__(mode="fake")
+        self.queries: list[str] = []
+
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        self.queries.extend(texts)
+        return [[1.0, 0.0] for _ in texts]
+
+
+CASH_QUERY = RouteQuery(
+    terms_id=["kas dan setara kas", "deposito berjangka"],
+    terms_en=["cash and cash equivalents"],
+    max_pages=3,
+    anchor_patterns=["KAS DAN SETARA KAS"],
+)
+
+
+@pytest.mark.asyncio
+async def test_route_pages_numpy_ann_and_budget() -> None:
+    emb = _QueryEmbedder()
+    conn = FakeConn(_router_handler(_doc(), has_pgvector=False, model=emb.model_id))
+    spans = await pr.route_pages(conn, "d1", CASH_QUERY, top_k=3, embedder=emb)  # type: ignore[arg-type]
+    pages = [p for s in spans for p in s.pages]
+    assert pages[:2] == [5, 6] and len(pages) <= CASH_QUERY.max_pages
+    assert conn.calls[0][0] == "SET LOCAL statement_timeout = '5000ms'"
+    assert emb.queries and "cash and cash equivalents" in emb.queries[0]
+    assert not any("::vector" in s for s, _p in conn.calls)
+
+
+@pytest.mark.asyncio
+async def test_route_pages_pgvector_bind_is_a_cast() -> None:
+    emb = _QueryEmbedder()
+    conn = FakeConn(_router_handler(_doc(), has_pgvector=True, model=emb.model_id))
+    await pr.route_pages(conn, "d1", CASH_QUERY, embedder=emb)  # type: ignore[arg-type]
+    ann_sql = [(s, p) for s, p in conn.calls if "halfvec" in s]
+    assert ann_sql and "CAST(:q_vec AS halfvec(1024))" in ann_sql[0][0]
+    assert ann_sql[0][1]["q_vec"].startswith("[1.0,")
+
+
+@pytest.mark.asyncio
+async def test_route_pages_fts_only_mode_skips_embedder() -> None:
+    emb = _QueryEmbedder()
+    conn = FakeConn(_router_handler(_doc(), has_pgvector=False, model=emb.model_id))
+    spans = await pr.route_pages(conn, "d1", CASH_QUERY, embedder=emb, use_ann=False)  # type: ignore[arg-type]
+    assert [p for s in spans for p in s.pages][:2] == [5, 6]
+    assert emb.queries == []
+
+
+class _BrokenEmbedder(_QueryEmbedder):
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        raise EmbeddingUnavailableError("CUDA out of memory")
+
+
+@pytest.mark.asyncio
+async def test_route_pages_raises_when_query_embedding_fails() -> None:
+    emb = _BrokenEmbedder()
+    conn = FakeConn(_router_handler(_doc(), has_pgvector=False, model=emb.model_id))
+    with pytest.raises(EmbeddingUnavailableError, match="CUDA out of memory"):
+        await pr.route_pages(conn, "d1", CASH_QUERY, embedder=emb)  # type: ignore[arg-type]
