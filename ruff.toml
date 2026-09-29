@@ -1,6 +1,6 @@
 line-length = 100
 target-version = "py311"
-exclude = ["scratch", ".venv"]
+exclude = ["scratch", ".venv", "eval/review_tools"]
 
 [lint]
 select = ["E", "F", "I", "N", "B", "UP", "PL", "RUF", "T20", "ASYNC", "S"]
