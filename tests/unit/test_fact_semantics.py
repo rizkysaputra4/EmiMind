@@ -38,3 +38,41 @@ def test_net_interest_income_rejects_gross_interest_lines(label: str) -> None:
 
 def test_net_word_stays_optional_for_other_concepts() -> None:
     assert check_concept_label("Laba tahun berjalan", PROFIT).ok
+
+
+PPE = ConceptDefinition(
+    metric_id="ifrs:PropertyPlantAndEquipment",
+    name_id="Aset Tetap",
+    name_en="Property, Plant and Equipment",
+    flow_stock_type="STOCK_POINT_IN_TIME",
+)
+CAPEX = ConceptDefinition(
+    metric_id="idx:Capex",
+    name_id="Belanja Modal / Perolehan Aset Tetap",
+    name_en="Capital Expenditures (Capex)",
+    flow_stock_type="FLOW_PERIOD",
+)
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        "Aset tetap - setelah dikurangi akumulasi penyusutan",
+        "Property, plant and equipment - net of accumulated depreciation",
+        "Aset tetap - setelah dikurangi akumulasi penyusutan dan cadangan penurunan nilai",
+    ],
+)
+def test_ppe_accepts_net_of_depreciation_caption(label: str) -> None:
+    assert check_concept_label(label, PPE).ok
+
+
+def test_ppe_still_rejects_construction_in_progress() -> None:
+    assert not check_concept_label("Aset tetap dalam penyelesaian", PPE).ok
+
+
+def test_capex_accepts_fixed_assets_and_bearer_plants() -> None:
+    assert check_concept_label("Perolehan aset tetap dan tanaman produktif", CAPEX).ok
+
+
+def test_capex_still_rejects_intangible_assets() -> None:
+    assert not check_concept_label("Perolehan aset takberwujud", CAPEX).ok

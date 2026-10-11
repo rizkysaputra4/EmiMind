@@ -433,6 +433,29 @@ COGS_COMPONENTS:
     anchor_patterns:
       - "BEBAN BUNGA"
       - "INTEREST EXPENSE"
+  MINING:
+    # Miners title the note "beban pokok pendapatan" (cost of revenue), not "beban pokok
+    # penjualan", and break it into mining, hauling, contractor and royalty costs.
+    terms_id:
+      - "beban pokok pendapatan"
+      - "biaya penambangan"
+      - "jasa kontraktor penambangan"
+      - "biaya angkutan batubara"
+      - "royalti"
+      - "pemindahan tanah penutup"
+    terms_en:
+      - "cost of revenue"
+      - "mining costs"
+      - "mining contractor services"
+      - "coal transportation costs"
+      - "royalties"
+      - "overburden removal"
+    max_pages: 6
+    anchor_patterns:
+      - "BEBAN POKOK PENDAPATAN"
+      - "COST OF REVENUE"
+      - "BEBAN POKOK PENJUALAN"
+      - "COST OF GOODS SOLD"
 
 DEBT_BY_LENDER:
   ALL:
@@ -605,3 +628,55 @@ CPO_UPSTREAM_KPIS:
       - "SEGMENT INFORMATION"
       - "UMUM"
       - "GENERAL"
+
+MINING_PRODUCTION_AND_SALES:
+  ALL:
+    # Production and sales volumes (tonnes of coal / ore, FeNi, MHP) and the domestic vs export
+    # split. Financial statements give them, if at all, in the revenue note, segment note or
+    # general-information note; an empty result is usually an honest omission.
+    terms_id:
+      - "volume penjualan"
+      - "volume produksi"
+      - "penjualan batubara"
+      - "penjualan ekspor"
+      - "penjualan domestik"
+      - "ton"
+    terms_en:
+      - "sales volume"
+      - "production volume"
+      - "coal sales"
+      - "export sales"
+      - "domestic sales"
+      - "tonnes"
+    max_pages: 3
+    anchor_patterns:
+      - "PENDAPATAN"
+      - "REVENUE"
+      - "INFORMASI SEGMEN"
+      - "SEGMENT INFORMATION"
+
+MINING_RESERVES_AND_RESOURCES:
+  ALL:
+    # Reserves and resources (JORC / KCMI proved and probable) and the mining licences (IUP).
+    # In financial statements they appear in the mining-properties, exploration-and-evaluation
+    # or general-information notes; tonnages are often absent, so omission is the norm.
+    terms_id:
+      - "cadangan batubara"
+      - "cadangan terbukti"
+      - "sumber daya"
+      - "properti pertambangan"
+      - "aset eksplorasi dan evaluasi"
+      - "izin usaha pertambangan"
+    terms_en:
+      - "coal reserves"
+      - "proved and probable reserves"
+      - "resources"
+      - "mining properties"
+      - "exploration and evaluation assets"
+      - "mining business permit"
+    max_pages: 3
+    anchor_patterns:
+      - "PROPERTI PERTAMBANGAN"
+      - "MINING PROPERTIES"
+      - "ASET EKSPLORASI DAN EVALUASI"
+      - "EXPLORATION AND EVALUATION ASSETS"

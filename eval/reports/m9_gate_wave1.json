@@ -1,0 +1,207 @@
+{
+  "summary": {
+    "timestamp": "2026-10-11T16:31:44.663730+00:00",
+    "all_passed": false,
+    "is_aggregate": false,
+    "documents": 1,
+    "documents_passed": 0,
+    "per_document": [
+      {
+        "ticker": "TAPG",
+        "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+        "fiscal_period": "2025Q4",
+        "passed": false,
+        "failed_checks": [
+          "Router recall",
+          "KPI coverage",
+          "Concept depth",
+          "Segmented facts",
+          "Token efficiency"
+        ]
+      }
+    ],
+    "total_checks": 10,
+    "passed_checks": 5,
+    "failed_checks": 5,
+    "na_checks": 0,
+    "missing_columns": [],
+    "since": null,
+    "tickers": [
+      "TAPG"
+    ],
+    "period": "2025Q4",
+    "router_recall_report": "eval/reports/router_recall_random_wave1.json"
+  },
+  "results": [
+    {
+      "dimension": "Router recall",
+      "ticker": "TAPG",
+      "value": "core=1.00 notes=0.57 prec=0.84",
+      "threshold": "core>=0.9 notes>=0.8 prec>=0.4",
+      "status": "FAIL",
+      "details": "9 gold modules in router_recall.json",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "fiscal_period": "2025Q4"
+    },
+    {
+      "dimension": "KPI coverage",
+      "ticker": "TAPG",
+      "value": "75.8% extracted",
+      "threshold": ">= 80% extracted, 0 CRITICAL gaps, 0 contradicted omissions",
+      "status": "FAIL",
+      "details": "extracted 25/33; omitted 6; uncovered ['idx:BankLoans', 'ifrs:DepreciationAndAmortisationExpense']; CRITICAL uncovered []; contradicted omissions {}",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "fiscal_period": "2025Q4"
+    },
+    {
+      "dimension": "Concept depth",
+      "ticker": "TAPG",
+      "value": "29",
+      "threshold": ">= 62",
+      "status": "FAIL",
+      "details": "max(2 x baseline 31, CPO min 50)",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "fiscal_period": "2025Q4"
+    },
+    {
+      "dimension": "Segmented facts",
+      "ticker": "TAPG",
+      "value": "18",
+      "threshold": ">= 25",
+      "status": "FAIL",
+      "details": "segment + source_page",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "fiscal_period": "2025Q4"
+    },
+    {
+      "dimension": "Grounding",
+      "ticker": "TAPG",
+      "value": "42/42",
+      "threshold": "100% cell/text on pdf_text pages",
+      "status": "PASS",
+      "details": "breakdown [['pdf_text', 'cell', 34], ['pdf_text', 'text', 8]]",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "fiscal_period": "2025Q4"
+    },
+    {
+      "dimension": "Narratives",
+      "ticker": "TAPG",
+      "value": "4/4 verbatim",
+      "threshold": "100% verbatim, 0 dup, 0 boilerplate",
+      "status": "PASS",
+      "details": "not verbatim pages []; cross-ticker dups 0; boilerplate 0; in-doc dups 0; required sections 6",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "fiscal_period": "2025Q4"
+    },
+    {
+      "dimension": "Provenance",
+      "ticker": "TAPG",
+      "value": "0",
+      "threshold": "0",
+      "status": "PASS",
+      "details": "source_page outside 1..page_count",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "fiscal_period": "2025Q4"
+    },
+    {
+      "dimension": "Token efficiency",
+      "ticker": "TAPG",
+      "value": "56,330 tokens (21.5%)",
+      "threshold": "<= 50,000 (max(15% of 262,000, 50,000))",
+      "status": "FAIL",
+      "details": "14 ROUTED calls, 225320 chars, 0 page images",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "fiscal_period": "2025Q4"
+    },
+    {
+      "dimension": "Period correctness",
+      "ticker": "TAPG",
+      "value": "2025Q4 / 2025-12-31 / 131p",
+      "threshold": "exact match",
+      "status": "PASS",
+      "details": "ok",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "fiscal_period": "2025Q4"
+    },
+    {
+      "dimension": "Embeddings",
+      "ticker": "TAPG",
+      "value": "131/131 pages (131 in PDF)",
+      "threshold": "every page BAAI/bge-m3",
+      "status": "PASS",
+      "details": "ok",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "fiscal_period": "2025Q4"
+    }
+  ],
+  "metrics": [
+    {
+      "ticker": "TAPG",
+      "fiscal_period": "2025Q4",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "doc_type": "FS_ANNUAL",
+      "sector": "CPO",
+      "period_end": "2025-12-31",
+      "page_count": 131,
+      "missing_columns": [],
+      "annual": true,
+      "fact_count": 42,
+      "distinct_concepts_count": 29,
+      "depth_threshold": 62,
+      "depth_basis": "max(2 x baseline 31, CPO min 50)",
+      "segmented_facts_count": 18,
+      "bad_provenance_count": 0,
+      "grounding_breakdown": [
+        [
+          "pdf_text",
+          "cell",
+          34
+        ],
+        [
+          "pdf_text",
+          "text",
+          8
+        ]
+      ],
+      "facts_on_text_pages": 42,
+      "grounded_on_text_pages": 42,
+      "grounded_total": 42,
+      "indexed_pages": 131,
+      "pages_with_expected_embedding": 131,
+      "routed_tokens": 56330,
+      "token_detail": "14 ROUTED calls, 225320 chars, 0 page images",
+      "whole_book_est": 262000,
+      "narrative_count": 4,
+      "narratives_not_verbatim": 0,
+      "narratives_not_verbatim_pages": [],
+      "boilerplate_hits": 0,
+      "in_doc_duplicates": 0,
+      "cross_ticker_duplicates": 0,
+      "mandatory_kpis_count": 33,
+      "extracted_kpis_count": 25,
+      "kpi_extracted_ratio": 0.7575757575757576,
+      "omitted_kpis": [
+        "idx:CPOAveragePriceASP",
+        "idx:CPOCashCostPerKg",
+        "idx:CPOProductionVolume",
+        "idx:MaturePlantedArea",
+        "idx:OilExtractionRate",
+        "idx:OperatingExpenses"
+      ],
+      "uncovered_kpis": [
+        "idx:BankLoans",
+        "ifrs:DepreciationAndAmortisationExpense"
+      ],
+      "uncovered_critical": [],
+      "contradicted_omissions": {},
+      "required_narratives_count": 6,
+      "pdf_path": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\m9_stage\\TAPG\\TAPG_2025_AUDIT_RDF_TAPG LK Q4 2025.pdf",
+      "actual_page_count": 131,
+      "expected_period_end": "2025-12-31",
+      "router_modules": 9,
+      "mean_core_recall": 1.0,
+      "mean_notes_recall": 0.5694444444444444,
+      "mean_precision": 0.8407407407407407
+    }
+  ]
+}

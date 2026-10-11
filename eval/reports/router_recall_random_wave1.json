@@ -1,0 +1,549 @@
+{
+  "summary": {
+    "core_mean_recall": 1.0,
+    "notes_mean_recall": 0.5682,
+    "mean_precision": 0.8422,
+    "mean_pages_per_module": 3.1765,
+    "total_evaluated_modules": 17,
+    "core_module_count": 6,
+    "notes_module_count": 11,
+    "failures": 2,
+    "thresholds": {
+      "core_recall": 0.9,
+      "notes_recall": 0.8,
+      "precision": 0.4
+    },
+    "thresholds_met": false,
+    "fail_reasons": [
+      "2 gold document/module(s) could not be evaluated",
+      "notes recall 0.568 < 0.8"
+    ],
+    "per_ticker": {
+      "PTBA": {
+        "core_mean_recall": 1.0,
+        "notes_mean_recall": 0.5666666666666667,
+        "mean_precision": 0.84375,
+        "mean_pages_per_module": 3.25,
+        "modules": 8
+      },
+      "TAPG": {
+        "core_mean_recall": 1.0,
+        "notes_mean_recall": 0.5694444444444444,
+        "mean_precision": 0.8407407407407407,
+        "mean_pages_per_module": 3.111111111111111,
+        "modules": 9
+      }
+    }
+  },
+  "modules": [
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "ticker": "PTBA",
+      "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
+      "module": "BALANCE_SHEET",
+      "type": "core",
+      "gold_pages": [
+        14,
+        15,
+        16
+      ],
+      "returned_pages": [
+        14,
+        15,
+        16
+      ],
+      "hits": [
+        14,
+        15,
+        16
+      ],
+      "missed": [],
+      "pages_returned": 3,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "ticker": "PTBA",
+      "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
+      "module": "INCOME_STATEMENT",
+      "type": "core",
+      "gold_pages": [
+        17,
+        18
+      ],
+      "returned_pages": [
+        17,
+        18
+      ],
+      "hits": [
+        17,
+        18
+      ],
+      "missed": [],
+      "pages_returned": 2,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "ticker": "PTBA",
+      "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
+      "module": "CASH_FLOW",
+      "type": "core",
+      "gold_pages": [
+        20,
+        21
+      ],
+      "returned_pages": [
+        20,
+        21
+      ],
+      "hits": [
+        20,
+        21
+      ],
+      "missed": [],
+      "pages_returned": 2,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "ticker": "PTBA",
+      "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
+      "module": "MDA",
+      "type": "notes",
+      "gold_pages": [
+        22,
+        23,
+        24,
+        25,
+        26,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157,
+        164,
+        165
+      ],
+      "returned_pages": [
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157
+      ],
+      "hits": [
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157
+      ],
+      "missed": [
+        22,
+        23,
+        24,
+        25,
+        26,
+        164,
+        165
+      ],
+      "pages_returned": 7,
+      "recall": 0.5,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "ticker": "PTBA",
+      "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
+      "module": "COGS_COMPONENTS",
+      "type": "notes",
+      "gold_pages": [
+        128
+      ],
+      "returned_pages": [
+        91,
+        115,
+        116,
+        117,
+        118,
+        137
+      ],
+      "hits": [],
+      "missed": [
+        128
+      ],
+      "pages_returned": 6,
+      "recall": 0.0,
+      "precision": 0.0
+    },
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "ticker": "PTBA",
+      "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
+      "module": "CUSTOMER_CONCENTRATION",
+      "type": "notes",
+      "gold_pages": [
+        127
+      ],
+      "returned_pages": [
+        127
+      ],
+      "hits": [
+        127
+      ],
+      "missed": [],
+      "pages_returned": 1,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "ticker": "PTBA",
+      "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
+      "module": "DEBT_BY_LENDER",
+      "type": "notes",
+      "gold_pages": [
+        119,
+        120,
+        121
+      ],
+      "returned_pages": [
+        119,
+        120,
+        121,
+        122
+      ],
+      "hits": [
+        119,
+        120,
+        121
+      ],
+      "missed": [],
+      "pages_returned": 4,
+      "recall": 1.0,
+      "precision": 0.75
+    },
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "ticker": "PTBA",
+      "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
+      "module": "REVENUE_BREAKDOWN",
+      "type": "notes",
+      "gold_pages": [
+        127,
+        159,
+        160
+      ],
+      "returned_pages": [
+        127
+      ],
+      "hits": [
+        127
+      ],
+      "missed": [
+        159,
+        160
+      ],
+      "pages_returned": 1,
+      "recall": 0.3333333333333333,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "TAPG_2025Q4.yaml",
+      "ticker": "TAPG",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "module": "BALANCE_SHEET",
+      "type": "core",
+      "gold_pages": [
+        14,
+        15,
+        16
+      ],
+      "returned_pages": [
+        14,
+        15,
+        16
+      ],
+      "hits": [
+        14,
+        15,
+        16
+      ],
+      "missed": [],
+      "pages_returned": 3,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "TAPG_2025Q4.yaml",
+      "ticker": "TAPG",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "module": "INCOME_STATEMENT",
+      "type": "core",
+      "gold_pages": [
+        17,
+        18
+      ],
+      "returned_pages": [
+        17,
+        18
+      ],
+      "hits": [
+        17,
+        18
+      ],
+      "missed": [],
+      "pages_returned": 2,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "TAPG_2025Q4.yaml",
+      "ticker": "TAPG",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "module": "CASH_FLOW",
+      "type": "core",
+      "gold_pages": [
+        20,
+        21
+      ],
+      "returned_pages": [
+        20,
+        21
+      ],
+      "hits": [
+        20,
+        21
+      ],
+      "missed": [],
+      "pages_returned": 2,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "TAPG_2025Q4.yaml",
+      "ticker": "TAPG",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "module": "MDA",
+      "type": "notes",
+      "gold_pages": [
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127
+      ],
+      "returned_pages": [
+        62,
+        63,
+        64,
+        124,
+        125,
+        126,
+        127,
+        129,
+        130,
+        131
+      ],
+      "hits": [
+        124,
+        125,
+        126,
+        127
+      ],
+      "missed": [
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        122,
+        123
+      ],
+      "pages_returned": 10,
+      "recall": 0.3333333333333333,
+      "precision": 0.4
+    },
+    {
+      "gold_file": "TAPG_2025Q4.yaml",
+      "ticker": "TAPG",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "module": "COGS_COMPONENTS",
+      "type": "notes",
+      "gold_pages": [
+        110
+      ],
+      "returned_pages": [
+        110
+      ],
+      "hits": [
+        110
+      ],
+      "missed": [],
+      "pages_returned": 1,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "TAPG_2025Q4.yaml",
+      "ticker": "TAPG",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "module": "CUSTOMER_CONCENTRATION",
+      "type": "notes",
+      "gold_pages": [
+        109
+      ],
+      "returned_pages": [
+        109
+      ],
+      "hits": [
+        109
+      ],
+      "missed": [],
+      "pages_returned": 1,
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "TAPG_2025Q4.yaml",
+      "ticker": "TAPG",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "module": "DEBT_BY_LENDER",
+      "type": "notes",
+      "gold_pages": [
+        81,
+        82,
+        83,
+        84,
+        98,
+        99,
+        100,
+        101
+      ],
+      "returned_pages": [
+        84,
+        99,
+        100,
+        101,
+        120,
+        121
+      ],
+      "hits": [
+        84,
+        99,
+        100,
+        101
+      ],
+      "missed": [
+        81,
+        82,
+        83,
+        98
+      ],
+      "pages_returned": 6,
+      "recall": 0.5,
+      "precision": 0.6666666666666666
+    },
+    {
+      "gold_file": "TAPG_2025Q4.yaml",
+      "ticker": "TAPG",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "module": "REVENUE_BREAKDOWN",
+      "type": "notes",
+      "gold_pages": [
+        109,
+        115,
+        116
+      ],
+      "returned_pages": [
+        86,
+        109
+      ],
+      "hits": [
+        109
+      ],
+      "missed": [
+        115,
+        116
+      ],
+      "pages_returned": 2,
+      "recall": 0.3333333333333333,
+      "precision": 0.5
+    },
+    {
+      "gold_file": "TAPG_2025Q4.yaml",
+      "ticker": "TAPG",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "module": "BIOLOGICAL_ASSETS_DETAIL",
+      "type": "notes",
+      "gold_pages": [
+        69,
+        72,
+        73,
+        75
+      ],
+      "returned_pages": [
+        69
+      ],
+      "hits": [
+        69
+      ],
+      "missed": [
+        72,
+        73,
+        75
+      ],
+      "pages_returned": 1,
+      "recall": 0.25,
+      "precision": 1.0
+    }
+  ],
+  "failures": [
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "module": "MINING_PRODUCTION_AND_SALES",
+      "reason": "no route query for module MINING_PRODUCTION_AND_SALES (sector MINING)"
+    },
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "module": "MINING_RESERVES_AND_RESOURCES",
+      "reason": "no route query for module MINING_RESERVES_AND_RESOURCES (sector MINING)"
+    }
+  ],
+  "notes": [
+    "FAIL PTBA_2025Q4.yaml: no route query for module MINING_PRODUCTION_AND_SALES (sector MINING)",
+    "FAIL PTBA_2025Q4.yaml: no route query for module MINING_RESERVES_AND_RESOURCES (sector MINING)",
+    "PTBA MDA: missed gold pages [22, 23, 24, 25, 26, 164, 165] (returned [151, 152, 153, 154, 155, 156, 157])",
+    "PTBA MDA: recall 0.50, precision 1.00 (7 pages for 14 gold)",
+    "PTBA COGS_COMPONENTS: missed gold pages [128] (returned [91, 115, 116, 117, 118, 137])",
+    "PTBA COGS_COMPONENTS: recall 0.00, precision 0.00 (6 pages for 1 gold)",
+    "PTBA REVENUE_BREAKDOWN: missed gold pages [159, 160] (returned [127])",
+    "PTBA REVENUE_BREAKDOWN: recall 0.33, precision 1.00 (1 pages for 3 gold)",
+    "TAPG MDA: missed gold pages [22, 23, 24, 25, 26, 27, 122, 123] (returned [62, 63, 64, 124, 125, 126, 127, 129, 130, 131])",
+    "TAPG MDA: recall 0.33, precision 0.40 (10 pages for 12 gold)",
+    "TAPG DEBT_BY_LENDER: missed gold pages [81, 82, 83, 98] (returned [84, 99, 100, 101, 120, 121])",
+    "TAPG DEBT_BY_LENDER: recall 0.50, precision 0.67 (6 pages for 8 gold)",
+    "TAPG REVENUE_BREAKDOWN: missed gold pages [115, 116] (returned [86, 109])",
+    "TAPG REVENUE_BREAKDOWN: recall 0.33, precision 0.50 (2 pages for 3 gold)",
+    "TAPG BIOLOGICAL_ASSETS_DETAIL: missed gold pages [72, 73, 75] (returned [69])",
+    "TAPG BIOLOGICAL_ASSETS_DETAIL: recall 0.25, precision 1.00 (1 pages for 4 gold)"
+  ]
+}

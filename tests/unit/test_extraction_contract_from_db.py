@@ -13,15 +13,25 @@ import pytest
 from services.mcp.contracts import build_extraction_contract
 
 
-def _make_mock_conn(metric_rows: list[dict], module_rows: list[dict], narrative_rows: list[dict]) -> AsyncMock:
-    """Return an AsyncMock connection whose .execute returns three canned result sets in order:
-    metrics, modules, narratives (matching the order in build_extraction_contract)."""
+def _make_mock_conn(
+    metric_rows: list[dict],
+    module_rows: list[dict],
+    narrative_rows: list[dict],
+    sub_sector: str | None = None,
+) -> AsyncMock:
+    """Return an AsyncMock connection whose .execute returns canned results in order: the
+    issuer's sub-sector, then metrics, modules, narratives (matching build_extraction_contract)."""
     call_iter = iter([metric_rows, module_rows, narrative_rows])
+    first = True
 
     async def execute(stmt, params=None):
-        rows = next(call_iter)
+        nonlocal first
         cursor = MagicMock()
-        cursor.mappings.return_value = rows
+        if first:
+            first = False
+            cursor.scalar_one_or_none.return_value = sub_sector
+            return cursor
+        cursor.mappings.return_value = next(call_iter)
         return cursor
 
     conn = AsyncMock()
@@ -131,3 +141,35 @@ async def test_build_extraction_contract_empty_sector_still_valid() -> None:
     assert contract.granular_note_modules == []
     assert contract.required_narratives == []
     assert contract.sector == "UNKNOWN_SECTOR"
+
+
+@pytest.mark.asyncio
+async def test_build_extraction_contract_drops_other_mining_sub_sectors() -> None:
+    """A coal miner is not asked for gold or nickel metrics; sector-wide mining metrics stay."""
+
+    def metric(mid: str, applicability: list[str]) -> dict:
+        return {
+            "metric_id": mid, "name_en": mid, "name_id": mid, "label_bilingual": mid,
+            "category": "OPERATIONAL", "sector_applicability": applicability,
+            "importance": "CRITICAL", "value_type": "VOLUME", "unit": "TONNES",
+            "statement_type": "NOTE", "extraction_mode": "EXTRACTED_RAW",
+            "calculation_formula": None, "dependencies": [], "synonyms_id": [],
+            "synonyms_en": [], "search_hints": [], "extraction_guideline": None,
+            "expected_segment_fields": [],
+        }
+
+    rows = [
+        metric("idx:CoalProductionVolume", ["MINING", "ENERGY", "COAL"]),
+        metric("idx:GoldProductionOz", ["GOLD_COPPER", "MINING", "BASIC_MATERIALS"]),
+        metric("idx:NickelOreProduction", ["MINING", "BASIC_MATERIALS", "NICKEL"]),
+        metric("idx:MiningReservesMt", ["MINING", "ENERGY", "BASIC_MATERIALS"]),
+    ]
+    conn = _make_mock_conn(rows, [], [], sub_sector="COAL")
+    contract = await build_extraction_contract(
+        conn, doc_id="doc_ptba", ticker="PTBA", company_name="PT Bukit Asam Tbk",
+        sector="MINING", fiscal_period="2025Q4",
+    )
+    assert {r.concept_id for r in contract.required_facts} == {
+        "idx:CoalProductionVolume", "idx:MiningReservesMt",
+    }
+    assert "MINING / COAL" in "\n".join(contract.sector_specific_guidelines)

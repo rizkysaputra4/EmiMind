@@ -121,7 +121,36 @@ _UNIVERSAL_GUIDELINES = [
 ]
 
 
-async def _load_metrics(conn: AsyncConnection, sector: str) -> list[ExtractionFactRule]:
+# Sub-sector tags that sit next to their parent sector in `metric_definitions.sector_applicability`
+# (e.g. ['COAL', 'MINING', 'ENERGY']). A metric carrying one of them belongs to that sub-sector
+# only, so a coal miner is not asked for gold ounces or nickel ore. A metric with no sub-sector
+# tag (e.g. idx:MiningReservesMt) applies to the whole sector.
+_SUB_SECTOR_TAGS: dict[str, frozenset[str]] = {
+    "MINING": frozenset({"COAL", "NICKEL", "GOLD_COPPER", "TIN_MINING"}),
+}
+
+
+def applies_to_sub_sector(applicability: list[str], sector: str, sub_sector: str | None) -> bool:
+    """False only when the metric is tagged for other sub-sectors of the issuer's sector."""
+    tags = _SUB_SECTOR_TAGS.get(sector.upper())
+    if not tags or not sub_sector or sub_sector.upper() not in tags:
+        return True
+    own = {a.upper() for a in applicability} & tags
+    return not own or sub_sector.upper() in own
+
+
+async def _load_sub_sector(conn: AsyncConnection, ticker: str) -> str | None:
+    result = await conn.execute(
+        text("SELECT sub_sector FROM issuer_profile WHERE ticker = :ticker"),
+        {"ticker": ticker.upper()},
+    )
+    value = result.scalar_one_or_none()
+    return value if isinstance(value, str) else None
+
+
+async def _load_metrics(
+    conn: AsyncConnection, sector: str, sub_sector: str | None = None
+) -> list[ExtractionFactRule]:
     result = await conn.execute(
         text(
             """
@@ -147,6 +176,8 @@ async def _load_metrics(conn: AsyncConnection, sector: str) -> list[ExtractionFa
     )
     rules: list[ExtractionFactRule] = []
     for row in result.mappings():
+        if not applies_to_sub_sector(list(row["sector_applicability"] or []), sector, sub_sector):
+            continue
         importance = (row["importance"] or "HIGH").upper()
         extraction_mode = (row["extraction_mode"] or "EXTRACTED_RAW").upper()
         # Only EXTRACTED_RAW metrics are extraction-mandatory. CALCULATED_DETERMINISTIC
@@ -507,7 +538,8 @@ async def build_extraction_contract(
 
     sector_upper = (sector or "GENERIC").upper()
 
-    required_facts = await _load_metrics(conn, sector_upper)
+    sub_sector = await _load_sub_sector(conn, ticker)
+    required_facts = await _load_metrics(conn, sector_upper, sub_sector)
     granular_modules = await _load_granular_modules(conn, sector_upper)
     required_narratives = await _load_narrative_rules(conn, sector_upper)
 
@@ -515,7 +547,8 @@ async def build_extraction_contract(
     high_count = sum(1 for r in required_facts if r.importance == "HIGH")
 
     sector_guidelines = [
-        f"Target Issuer: {company_name} ({ticker}) — Sector: {sector_upper}, Period: {fiscal_period}.",
+        f"Target Issuer: {company_name} ({ticker}) — Sector: {sector_upper}"
+        f"{f' / {sub_sector}' if sub_sector else ''}, Period: {fiscal_period}.",
         f"Coverage bar for this sector: {critical_count} CRITICAL metrics (non-negotiable) + {high_count} HIGH-priority metrics.",
         *_UNIVERSAL_GUIDELINES,
     ]

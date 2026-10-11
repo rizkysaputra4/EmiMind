@@ -11,7 +11,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from services.mcp.contracts import build_extraction_contract, load_page_router_queries
+from services.mcp.contracts import (
+    applies_to_sub_sector,
+    build_extraction_contract,
+    get_route_query,
+    load_page_router_queries,
+)
 from tests.unit._mcp_contract_fixtures import make_test_contract
 
 
@@ -147,3 +152,28 @@ async def test_build_extraction_contract_includes_core_modules() -> None:
         assert len(rq.terms_id) > 0
         assert len(rq.terms_en) > 0
 
+
+
+@pytest.mark.parametrize(
+    ("applicability", "sub_sector", "expected"),
+    [
+        (["GOLD_COPPER", "MINING", "BASIC_MATERIALS"], "COAL", False),
+        (["MINING", "BASIC_MATERIALS", "NICKEL"], "COAL", False),
+        (["COAL", "MINING", "ENERGY"], "COAL", True),
+        (["COAL", "NICKEL", "GOLD_COPPER", "TIN_MINING", "MINING"], "COAL", True),
+        (["MINING", "ENERGY", "BASIC_MATERIALS"], "COAL", True),  # no sub-sector tag
+        (["GOLD_COPPER", "MINING"], None, True),  # sub-sector unknown: keep everything
+        (["GOLD_COPPER", "MINING"], "OTHER", True),
+    ],
+)
+def test_mining_metrics_follow_issuer_sub_sector(
+    applicability: list[str], sub_sector: str | None, expected: bool
+) -> None:
+    assert applies_to_sub_sector(applicability, "MINING", sub_sector) is expected
+
+
+def test_mining_modules_have_route_queries() -> None:
+    for mod in ("MINING_PRODUCTION_AND_SALES", "MINING_RESERVES_AND_RESOURCES"):
+        assert get_route_query(mod, "MINING") is not None
+    rq = get_route_query("COGS_COMPONENTS", "MINING")
+    assert rq is not None and "beban pokok pendapatan" in rq.terms_id

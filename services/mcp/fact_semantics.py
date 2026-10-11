@@ -52,6 +52,9 @@ SUPPLEMENTAL_SYNONYMS: dict[str, list[str]] = {
         "Perolehan Aset Tetap",
         "Pembelian Aset Tetap",
         "Acquisitions of Fixed Assets",
+        # Bearer plants are property, plant and equipment (PSAK 16), so their purchase is capex.
+        "Perolehan Aset Tetap dan Tanaman Produktif",
+        "Acquisitions of Fixed Assets and Bearer Plants",
     ],
     "idx:SellingAndMarketingExpense": [
         "Beban Penjualan dan Distribusi",
@@ -90,6 +93,13 @@ _NEUTRAL = frozenset(
     interim bersih neto net kategori category rp idr juta jutaan million millions rugi loss
     tbk pt entitas anak subsidiaries this ini tersebut sebelumnya
     """.split()
+)
+# "Aset tetap - setelah dikurangi akumulasi penyusutan" is the carrying amount the balance sheet
+# reports, not a different line, so the net-of-depreciation phrase is dropped before matching.
+_NET_OF_DEPRECIATION_RE = re.compile(
+    r"(setelah dikurangi akumulasi (penyusutan|amortisasi)( dan [a-z ]*?penurunan nilai)?"
+    r"|net of accumulated (depreciation|amortization|amortisation)( and [a-z ]*?impairment)?)",
+    re.IGNORECASE,
 )
 _FLOW_NAME_RE = re.compile(
     r"(expense|expenses|cost|costs|component|revenue|revenues|income|production|sales|"
@@ -178,7 +188,7 @@ def check_concept_label(
     """Does `label` plausibly denote the concept? All tokens of one name variant must be in the
     label, and every other label word must belong to the concept's vocabulary, the segment,
     or a small neutral list (year/period/net/consolidated...)."""
-    label_toks = _tokens(label)
+    label_toks = _tokens(_NET_OF_DEPRECIATION_RE.sub(" ", label))
     if not label_toks:
         return ConceptLabelVerdict(False, "empty label")
     variants = name_variants(cdef)
