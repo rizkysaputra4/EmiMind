@@ -22,7 +22,14 @@ Tracks the work to fix the findings in [`docs/M9_REVIEW.md`](M9_REVIEW.md) (scor
     - TAPG committed 28 distinct concepts.
     - **User decision 2026-10-14: contract-relative depth.** Pass when at least 90% of the filing's extractable contract concepts are committed. Extractable = EXTRACTED_RAW contract concepts, less omissions recorded at commit that the page search does not contradict. The old max(2 × baseline, sector min) stays in the report as info only (`eval/deep_extraction_gate.py` `contract_depth`).
     - TAPG under the new check: 24/29 (82.8%), FAIL. Misses: BankLoans, FfbProduction, D&A. Router notes for TAPG are now 0.76 (were 0.57).
-  - **Next:** Wave 1b (PTBA resume + TAPG gap fill) OPENED in `m9_comms/ORDERS.md` on 2026-10-14. It needs an `emimind` MCP restart first. After that, grade wave 1b with the gate, then open wave 2 (NISP, BSDE, ISAT) and wave 3 (UNVR). The gold labeller still has to do UNVR and ISAT.
+  - **Validator fixes `857118e` (2026-10-14), from the PTBA runbook friction.**
+    - Fixed: hierarchy labels with section headers (concept label and text grounding), and bilingual or multi-column wrapped labels joined column by column (text lines and table rows).
+    - Verified on real PTBA p15, p119 and p120: LongTermBorrowings 1,277,425 and BRI 1,950,000 now pass.
+    - S&M already passed on HEAD; no change.
+    - Not fixed:
+      - 4 module targets missing from the ontology (warning only; adding them changes contracts).
+      - AGENTS.md gaps: retry_attempt on micro-submits, MDA narrative on a statutory FS, no page-fetch tool, ~20 KB micro-submit responses.
+  - **Next:** Wave 1b (PTBA resume + TAPG gap fill) OPENED in `m9_comms/ORDERS.md` on 2026-10-14. It needs an `emimind` MCP restart first; a second restart after `857118e`. After that, grade wave 1b with the gate, then open wave 2 (NISP, BSDE, ISAT) and wave 3 (UNVR). The gold labeller still has to do UNVR and ISAT.
 - **Previous resume point (saved 2026-10-12 ~01:00).** Step 7 is paused; PTBA and wave 2 are ON HOLD in `EmiMind-Extraction/m9_comms/ORDERS.md`.
   - **Done this session:**
     - Created the comms channel `m9_comms/`: Lead writes ORDERS, Tester writes STATUS and issues.
