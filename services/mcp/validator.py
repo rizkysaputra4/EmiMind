@@ -545,18 +545,37 @@ def validate_draft_submission(
                 if terms
                 else []
             )
-            if mentions:
-                shown = "; ".join(f"p.{m.page}: '{m.line}'" for m in mentions[:3])
+            mention_pages = sorted({m.page for m in mentions})
+            shown = "; ".join(f"p.{m.page}: '{m.line}'" for m in mentions[:3])
+            if mentions and set(mention_pages) <= set(omitted_item.rebutted_pages):
+                # the agent saw these lines and says the number is not this metric: accepted,
+                # but held for Lead review (stored open; the gate needs a ruling)
+                add(
+                    _issue(
+                        WARNING,
+                        "OMISSION_REBUTTED_NEEDS_REVIEW",
+                        f"Omission for '{rule.label}' ({rule.concept_id}) rebuts the caption next to "
+                        f"a number on page(s) {mention_pages} ({shown}): "
+                        f"'{omitted_item.explanation}'. Accepted for commit; held for Lead review.",
+                        mention_pages,
+                        concept_id=rule.concept_id,
+                        details={"pages": mention_pages},
+                    )
+                )
+            elif mentions:
                 omission_error = _issue(
                     ERROR,
                     "OMISSION_CONTRADICTED",
                     f"Omission for '{rule.label}' ({rule.concept_id}) is contradicted by the document: "
                     f"its caption appears next to a reported number on page(s) "
-                    f"{sorted({m.page for m in mentions})} ({shown}). Extract the value from there "
-                    f"instead of declaring it not disclosed.",
-                    [m.page for m in mentions],
+                    f"{mention_pages} ({shown}). Extract the value from there instead of declaring "
+                    f"it not disclosed. Only if that number is NOT this metric (a valuation input, "
+                    f"a regulatory threshold, a component line), list those pages in "
+                    f"'rebutted_pages' and say why in 'explanation'; the omission is then held for "
+                    f"Lead review.",
+                    mention_pages,
                     concept_id=rule.concept_id,
-                    details={"pages": sorted({m.page for m in mentions})},
+                    details={"pages": mention_pages},
                 )
         if omission_error is not None:
             add(omission_error)

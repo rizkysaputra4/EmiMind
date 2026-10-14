@@ -317,3 +317,19 @@ def test_token_budget_floor_passes(whole_book_est: int, tokens: int) -> None:
 def test_token_budget_is_max_of_ratio_and_floor() -> None:
     assert gate.token_budget(138_000) == gate.TOKEN_BUDGET_FLOOR
     assert gate.token_budget(1_074_000) == 161_100
+
+
+def test_omission_rulings_only_count_approved(tmp_path: Path) -> None:
+    f = tmp_path / "rulings.yaml"
+    f.write_text(
+        "\n".join(
+            [
+                "rulings:",
+                "  - {doc_id: d1, concept_id: 'idx:FfbProduction', decision: approved}",
+                "  - {doc_id: d1, concept_id: 'idx:BankLoans', decision: rejected}",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    assert gate.load_omission_rulings(f) == {("d1", "idx:FfbProduction")}
+    assert gate.load_omission_rulings(tmp_path / "missing.yaml") == set()

@@ -215,6 +215,27 @@ def test_validator_omission_contradicted_by_document_text() -> None:
     assert 23 in issue.target_pages
 
 
+def test_validator_rebutted_omission_passes_with_review_warning() -> None:
+    facts = _core_facts() + _bank_extra_facts()
+    document_text = {p: ev.page_text for p, ev in _evidence(facts).items()}
+    document_text[23] = HEADER + "Rasio cakupan NPL 245,10% 230,00%"
+    omission = _npl_coverage_omission([22, 23, 24])
+    omission.rebutted_pages = [23]
+    report = _validate(
+        facts, sector="BANK", ticker="BMRI", omitted_kpis=[omission], document_text=document_text,
+    )
+    assert report.status == "VALID", report.issues
+    warn = next(i for i in report.issues if i.category == "OMISSION_REBUTTED_NEEDS_REVIEW")
+    assert warn.concept_id == "idx:NPLCoverageRatio" and 23 in warn.target_pages
+    # rebutting another page does not cover the contradicting one
+    omission.rebutted_pages = [24]
+    report = _validate(
+        facts, sector="BANK", ticker="BMRI", omitted_kpis=[omission], document_text=document_text,
+    )
+    assert report.status == "INVALID"
+    assert any(i.category == "OMISSION_CONTRADICTED" for i in report.issues)
+
+
 def test_validator_omission_pages_outside_document_rejected() -> None:
     facts = _core_facts() + _bank_extra_facts()
     report = _validate(facts, sector="BANK", ticker="BMRI", omitted_kpis=[_npl_coverage_omission(list(range(1, 200)))])

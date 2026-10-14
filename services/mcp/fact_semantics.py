@@ -56,6 +56,8 @@ SUPPLEMENTAL_SYNONYMS: dict[str, list[str]] = {
         "Perolehan Aset Tetap dan Tanaman Produktif",
         "Acquisitions of Fixed Assets and Bearer Plants",
     ],
+    # PTBA 2025 cost-of-revenue note: royalties are paid to the government by definition
+    "idx:MiningRoyalties": ["Royalti ke Pemerintah", "Royalties to the Government"],
     "idx:SellingAndMarketingExpense": [
         "Beban Penjualan dan Distribusi",
         "Selling and Distribution Expenses",

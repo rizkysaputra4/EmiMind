@@ -122,6 +122,25 @@ def load_boilerplate_phrases(
     return [_norm(line) for line in lines if line.strip() and not line.startswith("#")]
 
 
+def load_omission_rulings(
+    path: Path | str = REPO_ROOT / "eval/omission_rulings.yaml",
+) -> set[tuple[str, str]]:
+    """(doc_id, concept_id) of rebutted omissions the Lead approved.
+
+    A rebutted omission names pages where the caption sits next to a number the agent says is
+    not the metric. It stays a contradicted omission here until a ruling approves it.
+    """
+    p = Path(path)
+    if not p.exists():
+        return set()
+    data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+    return {
+        (str(r["doc_id"]), str(r["concept_id"]))
+        for r in data.get("rulings") or []
+        if str(r.get("decision", "")).lower() == "approved"
+    }
+
+
 def load_json(path: Path | str) -> dict[str, Any]:
     p = Path(path)
     if not p.exists():
@@ -371,6 +390,7 @@ def collect_metrics(  # noqa: PLR0912
     missing_cols: list[str],
     reports_dir: str,
     contract_fetcher: Any = None,
+    approved_rebuttals: set[tuple[str, str]] | None = None,
 ) -> dict[str, Any]:
     """All raw measurements for one document (no pass/fail decisions here)."""
     ticker = str(doc["ticker"])
@@ -496,11 +516,14 @@ def collect_metrics(  # noqa: PLR0912
 
         # -- omissions recorded at commit
         cur.execute(
-            "SELECT suggested_canonical FROM concept_review "
+            "SELECT suggested_canonical, status FROM concept_review "
             "WHERE doc_id = %s AND local_label LIKE 'OMITTED: %%'",
             (doc_id,),
         )
-        omitted = {str(r[0]) for r in cur.fetchall()}
+        omission_rows = [(str(r[0]), str(r[1])) for r in cur.fetchall()]
+        omitted = {c for c, _s in omission_rows}
+        # rebutted omissions are stored open until the Lead reviews them
+        rebutted = {c for c, s in omission_rows if s == "open"}
 
         cur.execute("SELECT page_index, page_text FROM document_pages WHERE doc_id = %s", (doc_id,))
         pages = {int(r[0]): str(r[1] or "") for r in cur.fetchall()}
@@ -528,13 +551,16 @@ def collect_metrics(  # noqa: PLR0912
             if r.concept_id not in concepts and r.concept_id in omitted:
                 terms = omission_search_terms([r.label, *r.synonyms_id, *r.synonyms_en])
                 hit_pages = omission_contradictions(terms, pages)
-                if hit_pages:
+                if hit_pages and (doc_id, r.concept_id) not in (approved_rebuttals or set()):
                     contradicted_any[r.concept_id] = hit_pages[:10]
         contradicted = {k: v for k, v in contradicted_any.items() if k in not_extracted}
         hit, extractable = contract_depth(
             {r.concept_id for r in raw_rules}, concepts, omitted, set(contradicted_any)
         )
+        approved = {c for d, c in (approved_rebuttals or set()) if d == doc_id}
         m.update(
+            rebuttals_pending=sorted(rebutted - approved),
+            rebuttals_approved=sorted(rebutted & approved),
             depth_extractable_count=extractable,
             depth_hit_count=hit,
             depth_ratio=(hit / extractable) if extractable else 0.0,
@@ -647,7 +673,8 @@ def evaluate_document(  # noqa: PLR0912
         details = (
             f"extracted {m.get('extracted_kpis_count')}/{n}; omitted {len(m.get('omitted_kpis', []))};"
             f" uncovered {m.get('uncovered_kpis', [])}; CRITICAL uncovered {uncovered_crit};"
-            f" contradicted omissions {contradicted}"
+            f" contradicted omissions {contradicted}; rebuttals pending Lead review"
+            f" {m.get('rebuttals_pending', [])}, approved {m.get('rebuttals_approved', [])}"
         )
         if n == 0:
             details = "contract has no mandatory EXTRACTED_RAW KPIs"
@@ -876,6 +903,7 @@ def run_gate(
     baseline_path: Path | str = REPO_ROOT / "eval/reports/m9_baseline.json",
     router_recall_path: Path | str = REPO_ROOT / "eval/reports/router_recall.json",
     boilerplate_path: Path | str = REPO_ROOT / "db/seeds/narrative_boilerplate.txt",
+    rulings_path: Path | str = REPO_ROOT / "eval/omission_rulings.yaml",
     dsn: str | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Collects metrics for the requested documents. Returns (metrics_list, run_info)."""
@@ -883,6 +911,7 @@ def run_gate(
     baseline = load_json(baseline_path)
     router_recall = load_json(router_recall_path)
     boilerplate = load_boilerplate_phrases(boilerplate_path)
+    approved_rebuttals = load_omission_rulings(rulings_path)
     reports_dir = get_settings().reports_dir
     metrics: list[dict[str, Any]] = []
     with psycopg.connect(dsn or _sync_dsn()) as conn:
@@ -893,7 +922,7 @@ def run_gate(
                 collect_metrics(
                     conn, doc, sector_depths=sector_depths, baseline=baseline,
                     boilerplate=boilerplate, router_recall=router_recall, missing_cols=cols,
-                    reports_dir=reports_dir,
+                    reports_dir=reports_dir, approved_rebuttals=approved_rebuttals,
                 )
             )  # fmt: skip
     info = {

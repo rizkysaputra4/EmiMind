@@ -308,3 +308,35 @@ def test_column_wrap_does_not_borrow_a_neighbouring_label() -> None:
     lines = grounding._parse_lines(_PTBA_LENDERS)
     cands = grounding._line_label_candidates(lines, 2)  # the BRI value line
     assert grounding.best_label_score("BNI (Kredit Modal Kerja)", cands) < grounding.LABEL_MATCH_THRESHOLD
+
+
+def _ptba_note_table() -> PageEvidence:
+    """PTBA 2025 p120 shape: lender header row, then a label wrapped over two grid rows."""
+    cells = [
+        PageTableCell(row=0, col=0, text="Pinjaman bank", value=None),
+        PageTableCell(row=0, col=2, text="Bank borrowings", value=None),
+        PageTableCell(row=1, col=0, text="Bagian jangka", value=None),
+        PageTableCell(row=1, col=2, text="Long-term", value=None),
+        PageTableCell(row=2, col=0, text="Panjang", value=None),
+        PageTableCell(row=2, col=1, text="1.277.425", value=1277425.0),
+        PageTableCell(row=2, col=2, text="Portion", value=None),
+    ]
+    return PageEvidence(
+        page_index=5, tables=[PageTable(table_index=0, unit_hint="IDR_MN", cells=cells)]
+    )
+
+
+@pytest.mark.parametrize(
+    ("label", "ok"),
+    [
+        ("Pinjaman bank - Bagian jangka Panjang", True),
+        ("Bank borrowings - Long-term Portion", True),
+        ("Liabilitas sewa - Bagian jangka Panjang", False),  # header not printed above
+    ],
+)
+def test_cell_hierarchy_label_with_row_wrapped_over_two_grid_rows(label: str, ok: bool) -> None:
+    fact = ExtractedFactItem(
+        concept_id="ifrs:LongTermBorrowings", value_numeric=Decimal("1277425000000"), source_page=5,
+        statement="NOTE", source_label_original=label, cell_ref=CellRef(table_index=0, row=2, col=1),
+    )
+    assert ground_fact(fact, _ptba_note_table(), period_end=None).ok is ok

@@ -1,0 +1,16 @@
+# Lead rulings on rebutted omissions (OmittedMetricItem.rebutted_pages).
+# A rebutted omission names pages where the metric's caption sits next to a number the
+# extraction agent says is NOT the metric. The validator accepts it with a warning and the
+# commit stores it open; eval/deep_extraction_gate.py counts it as a contradicted omission
+# until a ruling here approves it. Add one entry per (doc_id, concept_id) after reading the
+# cited pages yourself.
+#
+# - doc_id: <uuid>
+#   ticker: <TICKER>
+#   concept_id: <concept>
+#   decision: approved | rejected
+#   pages: [<page_index>, ...]
+#   reason: <why the printed number is not the metric>
+#   by: Lead
+#   date: YYYY-MM-DD
+rulings: []

@@ -721,6 +721,14 @@ def ground_cell(
         if own_text:
             cands.append(own_text)
         score = best_label_score(label, cands)
+        if score < LABEL_MATCH_THRESHOLD and " - " in label:
+            # hierarchy label: the row part matches this row, the header is printed above it
+            header, row_part = (s.strip() for s in label.rsplit(" - ", 1))
+            above = " ".join(
+                " ".join(_row_label_texts(table, r)) for r in sorted({c.row for c in table.cells}) if r < ref.row
+            )
+            if best_label_score(row_part, cands) >= LABEL_MATCH_THRESHOLD and _words_in(header, above):
+                score = LABEL_MATCH_THRESHOLD
         if score < LABEL_MATCH_THRESHOLD:
             shown_row = (
                 " | ".join(_row_label_texts(table, ref.row, exclude_col=ref.col)) or "(no label)"
@@ -800,13 +808,18 @@ def _line_label_candidates(lines: list[_Line], i: int) -> list[str]:
 _HEADER_SPAN = 20
 
 
+def _words_in(header: str, text: str) -> bool:
+    """Every word of `header` is printed in `text` (exact, or near-exact for long words)."""
+    words = normalize_label(header).split()
+    printed = set(normalize_label(text).split())
+    return bool(words) and all(
+        w in printed or any(len(w) >= 5 and fuzz.ratio(w, a) >= 88 for a in printed) for w in words
+    )
+
+
 def _header_above(lines: list[_Line], row: int, header: str) -> bool:
     """Every word of `header` is printed in the _HEADER_SPAN lines above `row`."""
-    words = normalize_label(header).split()
-    above = set(normalize_label(" ".join(ln.text for ln in lines[max(0, row - _HEADER_SPAN) : row])).split())
-    return bool(words) and all(
-        w in above or any(len(w) >= 5 and fuzz.ratio(w, a) >= 88 for a in above) for w in words
-    )
+    return _words_in(header, " ".join(ln.text for ln in lines[max(0, row - _HEADER_SPAN) : row]))
 
 
 _SUBTOTAL_MAX_ROWS = 15

@@ -795,7 +795,7 @@ async def commit_verified_report(
                     INSERT INTO concept_review (
                         ticker, doc_id, local_label, suggested_canonical, similarity_score, status, resolved_by
                     ) VALUES (
-                        :ticker, :doc_id, :label, :canonical, 0.00, 'resolved', :reason
+                        :ticker, :doc_id, :label, :canonical, 0.00, :status, :reason
                     )
                     ON CONFLICT (ticker, doc_id, local_label) DO NOTHING;
                     """
@@ -805,7 +805,14 @@ async def commit_verified_report(
                     "doc_id": doc_id,
                     "label": f"OMITTED: {omitted.metric_id}",
                     "canonical": omitted.metric_id,
-                    "reason": f"[{omitted.reason}] {omitted.explanation} (Checked pages: {omitted.search_pages_checked})",
+                    # a rebutted omission (caption next to a number the agent says is not the
+                    # metric) stays open for Lead review
+                    "status": "open" if omitted.rebutted_pages else "resolved",
+                    "reason": (
+                        f"[{omitted.reason}] {omitted.explanation} (Checked pages: "
+                        f"{omitted.search_pages_checked})"
+                        + (f" (Rebutted pages: {omitted.rebutted_pages})" if omitted.rebutted_pages else "")
+                    ),
                 },
             )
             omissions_count += 1

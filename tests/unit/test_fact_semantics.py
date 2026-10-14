@@ -128,3 +128,15 @@ ASSETS = ConceptDefinition(
 def test_segment_note_rows_accepted_only_on_segmented_facts(label: str) -> None:
     assert check_concept_label(label, ASSETS, ["Produk kelapa sawit", "operating_segment"]).ok
     assert not check_concept_label(label, ASSETS).ok
+
+
+def test_mining_royalties_accepts_royalties_to_the_government() -> None:
+    royalties = ConceptDefinition(
+        metric_id="idx:MiningRoyalties",
+        name_id="Beban Royalti Tambang",
+        name_en="Mining Royalties Paid",
+        synonyms_id=["Royalti", "Beban Royalti"],
+        flow_stock_type="FLOW_PERIOD",
+    )
+    assert check_concept_label("Royalti ke Pemerintah", royalties).ok
+    assert check_concept_label("Royalties to the Government", royalties).ok

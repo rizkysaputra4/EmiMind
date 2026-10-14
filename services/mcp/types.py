@@ -166,6 +166,10 @@ class OmittedMetricItem(BaseModel):
     reason: str = "NOT_DISCLOSED_IN_REPORT"  # 'NOT_DISCLOSED_IN_REPORT', 'NOT_APPLICABLE_FOR_INTERIM', 'ONLY_IN_PRESENTATION_DECK', 'MERGED_WITH_OTHER_LINE'
     explanation: str
     search_pages_checked: list[int] = Field(default_factory=list)
+    # Pages where the metric's caption appears next to a number that is NOT this metric (a
+    # valuation input, a regulatory threshold, a component line); the explanation must say
+    # why. A rebutted omission is accepted with a warning and held for Lead review.
+    rebutted_pages: list[int] = Field(default_factory=list)
 
 
 class ProcessingUsage(BaseModel):
