@@ -94,6 +94,7 @@ _NEUTRAL = frozenset(
     tbk pt entitas anak subsidiaries this ini tersebut sebelumnya
     """.split()
 )
+_SEGMENT_ROW_WORDS = frozenset({"segmen", "segment", "segments", "dilaporkan", "reportable"})
 # "Aset tetap - setelah dikurangi akumulasi penyusutan" is the carrying amount the balance sheet
 # reports, not a different line, so the net-of-depreciation phrase is dropped before matching.
 _NET_OF_DEPRECIATION_RE = re.compile(
@@ -240,6 +241,10 @@ def check_concept_label(
         )
     vocab = {t for vt in variant_toks for t in vt}
     seg_toks = {t for w in (segment_words or []) for t in _tokens(w)}
+    if segment_words:
+        # a segmented fact's row in the segment note: 'Aset segmen dilaporkan' / 'Reportable
+        # segment assets' is the segment's own figure of the concept
+        seg_toks |= _SEGMENT_ROW_WORDS
     extras = [
         t
         for t in label_toks

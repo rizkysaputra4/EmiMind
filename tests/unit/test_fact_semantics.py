@@ -113,3 +113,18 @@ def test_long_term_borrowings_accepts_section_and_portion_captions(label: str) -
 )
 def test_long_term_borrowings_rejects_other_lines(label: str) -> None:
     assert not check_concept_label(label, LTB).ok, label
+
+
+ASSETS = ConceptDefinition(
+    metric_id="ifrs:Assets",
+    name_id="Jumlah Aset",
+    name_en="Total Assets",
+    synonyms_id=["Total Aset"],
+    flow_stock_type="STOCK_POINT_IN_TIME",
+)
+
+
+@pytest.mark.parametrize("label", ["Aset segmen dilaporkan", "Reportable segment assets"])
+def test_segment_note_rows_accepted_only_on_segmented_facts(label: str) -> None:
+    assert check_concept_label(label, ASSETS, ["Produk kelapa sawit", "operating_segment"]).ok
+    assert not check_concept_label(label, ASSETS).ok
