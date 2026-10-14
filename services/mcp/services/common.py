@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,11 @@ from sqlalchemy.pool import NullPool
 
 from services.shared.config import get_settings
 from services.shared.logging import get_logger
+
+# One id per server process. Each MCP client connection runs its own server process, so this
+# is the extraction run: ROUTED and COMMITTED log rows carry it, and the acceptance gate counts
+# the tokens of the run that made a document's latest commit.
+SERVER_RUN_ID = uuid.uuid4().hex
 
 log = get_logger("mcp.services.common")
 

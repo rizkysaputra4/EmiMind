@@ -36,13 +36,14 @@ from services.mcp.grounding import (
 from services.mcp.narrative_checks import narrative_md5
 from services.mcp.periods import period_end_for
 from services.mcp.services.common import (
+    SERVER_RUN_ID,
+    get_engine,
+)
+from services.mcp.services.common import (
     _archive_processed_file as default_archive_processed_file,
 )
 from services.mcp.services.common import (
     _log_processing_event as default_log_processing_event,
-)
-from services.mcp.services.common import (
-    get_engine,
 )
 from services.mcp.types import (
     CommitReport,
@@ -787,6 +788,18 @@ async def commit_verified_report(
             if g_res.scalar() is not None:
                 guidance_count += 1
 
+        # an omission from an earlier commit of this document is stale once the concept is
+        # committed as a fact (e.g. a rejected rebuttal replaced by the printed value)
+        committed_concepts = sorted({f.concept_id for f in payload.facts})
+        if committed_concepts:
+            await conn.execute(
+                text(
+                    "DELETE FROM concept_review WHERE doc_id = :doc_id "
+                    "AND local_label = ANY(:labels)"
+                ),
+                {"doc_id": doc_id, "labels": [f"OMITTED: {c}" for c in committed_concepts]},
+            )
+
         omissions_count = 0
         for omitted in payload.omitted_kpis:
             await conn.execute(
@@ -865,6 +878,7 @@ async def commit_verified_report(
             "profile_refreshed": profile_refreshed,
             "live_valuation_computed": live_val_ok,
         }
+        meta_committed["run_id"] = SERVER_RUN_ID
         if effective_usage:
             meta_committed.update(effective_usage)
 

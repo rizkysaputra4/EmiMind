@@ -8,7 +8,7 @@ server-side evidence; nothing the extraction agent typed in is trusted.
 | Check              | Source                                                  | Threshold                       |
 |--------------------|---------------------------------------------------------|---------------------------------|
 | Router recall      | `eval/reports/router_recall.json` (not in --aggregate)  | core >= .90, notes >= .80, precision >= .40 |
-| KPI coverage       | contract mandatory KPIs vs committed facts; omissions   | extracted >= 80%, no CRITICAL gap, |
+| KPI coverage       | mandatory KPIs less verified omissions vs committed     | >= 80% of disclosed, <= 40% omitted,|
 |                    | re-verified against every indexed page                  | 0 contradicted omissions        |
 | Concept depth      | raw contract concepts committed, less verified omissions| >= 90% (annual filings)         |
 | Segmented facts    | segment + source_page (annual filings)                  | >= 25                           |
@@ -60,6 +60,11 @@ TOKEN_BUDGET_RATIO = 0.15
 # fails a whole-book read (a 70-page filing served in full is ~100k tokens).
 TOKEN_BUDGET_FLOOR = 50_000
 KPI_EXTRACTED_MIN = 0.80
+# Coverage counts extracted KPIs against what the filing discloses: verified omissions (not
+# contradicted by the page search, or rebutted and approved by the Lead) leave the denominator
+# (user decision 2026-10-14). A filing may not omit its way to a pass: verified omissions above
+# this share of the mandatory KPIs fail the check.
+KPI_OMITTED_MAX = 0.40
 SEGMENTED_MIN = 25
 RECALL_CORE_MIN = 0.90
 RECALL_NOTES_MIN = 0.80
@@ -207,6 +212,26 @@ def contract_depth(
 def token_budget(whole_book_est: int) -> int:
     """Token budget for one document: 15% of the whole-book estimate, never below the floor."""
     return max(int(whole_book_est * TOKEN_BUDGET_RATIO), TOKEN_BUDGET_FLOOR)
+
+
+def committing_run_rows(
+    routed: Sequence[dict[str, Any]], committed: Sequence[dict[str, Any]]
+) -> tuple[list[dict[str, Any]] | None, str]:
+    """ROUTED rows of the run (MCP server process) that made the document's latest commit.
+
+    `committed` is in commit order. None (with the reason) when the latest commit carries no
+    run id (made before run ids were logged) or its run made no routed call, so the token
+    use of one extraction run cannot be measured (user decision 2026-10-14: per run, latest).
+    """
+    if not committed:
+        return None, "no COMMITTED log row"
+    run_id = committed[-1].get("run_id")
+    if not run_id:
+        return None, "latest commit predates run ids; one clean extraction run is needed"
+    rows = [r for r in routed if r.get("run_id") == run_id]
+    if not rows:
+        return None, f"run {run_id[:8]} committed without routed calls (pages read in an earlier run)"
+    return rows, f"run {run_id[:8]}"
 
 
 def tokens_from_routed_logs(rows: Sequence[dict[str, Any]]) -> tuple[int | None, str]:
@@ -470,13 +495,22 @@ def collect_metrics(  # noqa: PLR0912
 
         # -- tokens from ROUTED logs
         cur.execute(
-            "SELECT metadata FROM document_processing_log WHERE doc_id = %s AND action = 'ROUTED'",
+            "SELECT action, metadata FROM document_processing_log WHERE doc_id = %s "
+            "AND action IN ('ROUTED', 'COMMITTED') ORDER BY created_at",
             (doc_id,),
         )
-        routed = [r[0] if isinstance(r[0], dict) else {} for r in cur.fetchall()]
-        tokens, token_detail = tokens_from_routed_logs(routed)
+        log_rows = [(str(r[0]), r[1] if isinstance(r[1], dict) else {}) for r in cur.fetchall()]
+        routed = [md for a, md in log_rows if a == "ROUTED"]
+        committed = [md for a, md in log_rows if a == "COMMITTED"]
+        run_rows, run_detail = committing_run_rows(routed, committed)
+        all_tokens, all_detail = tokens_from_routed_logs(routed)
+        if run_rows is None:
+            tokens, token_detail = None, run_detail
+        else:
+            tokens, token_detail = tokens_from_routed_logs(run_rows)
+            token_detail = f"{run_detail}: {token_detail}"
         m["routed_tokens"] = tokens
-        m["token_detail"] = token_detail
+        m["token_detail"] = f"{token_detail}; info, all runs: {all_tokens} tokens ({all_detail})"
         m["whole_book_est"] = page_count * WHOLE_BOOK_TOKENS_PER_PAGE
 
         # -- narratives
@@ -523,7 +557,8 @@ def collect_metrics(  # noqa: PLR0912
         omission_rows = [(str(r[0]), str(r[1])) for r in cur.fetchall()]
         omitted = {c for c, _s in omission_rows}
         # rebutted omissions are stored open until the Lead reviews them
-        rebutted = {c for c, s in omission_rows if s == "open"}
+        # (an omission row left by an earlier commit of a concept extracted since is stale)
+        rebutted = {c for c, s in omission_rows if s == "open"} - concepts
 
         cur.execute("SELECT page_index, page_text FROM document_pages WHERE doc_id = %s", (doc_id,))
         pages = {int(r[0]): str(r[1] or "") for r in cur.fetchall()}
@@ -565,10 +600,13 @@ def collect_metrics(  # noqa: PLR0912
             depth_hit_count=hit,
             depth_ratio=(hit / extractable) if extractable else 0.0,
         )
+        verified_omitted = (not_extracted & omitted) - set(contradicted)
+        disclosed = len(mandatory) - len(verified_omitted)
         m.update(
             mandatory_kpis_count=len(mandatory),
             extracted_kpis_count=len(extracted),
-            kpi_extracted_ratio=(len(extracted) / len(mandatory)) if mandatory else 0.0,
+            verified_omitted_count=len(verified_omitted),
+            kpi_extracted_ratio=(len(extracted) / disclosed) if disclosed > 0 else 0.0,
             omitted_kpis=sorted(not_extracted & omitted),
             uncovered_kpis=sorted(not_extracted - omitted),
             uncovered_critical=sorted((not_extracted - omitted) & critical),
@@ -669,9 +707,18 @@ def evaluate_document(  # noqa: PLR0912
         ratio = float(m.get("kpi_extracted_ratio", 0.0))
         contradicted = m.get("contradicted_omissions") or {}
         uncovered_crit = m.get("uncovered_critical") or []
-        ok = n > 0 and ratio >= KPI_EXTRACTED_MIN and not contradicted and not uncovered_crit
+        n_omit = int(m.get("verified_omitted_count", 0))
+        omit_share = n_omit / n if n else 0.0
+        ok = (
+            n > 0
+            and ratio >= KPI_EXTRACTED_MIN
+            and omit_share <= KPI_OMITTED_MAX
+            and not contradicted
+            and not uncovered_crit
+        )
         details = (
-            f"extracted {m.get('extracted_kpis_count')}/{n}; omitted {len(m.get('omitted_kpis', []))};"
+            f"extracted {m.get('extracted_kpis_count')}/{n - n_omit} disclosed ({n} mandatory, "
+            f"{n_omit} verified omissions = {omit_share:.0%}, max {KPI_OMITTED_MAX:.0%});"
             f" uncovered {m.get('uncovered_kpis', [])}; CRITICAL uncovered {uncovered_crit};"
             f" contradicted omissions {contradicted}; rebuttals pending Lead review"
             f" {m.get('rebuttals_pending', [])}, approved {m.get('rebuttals_approved', [])}"
@@ -680,7 +727,8 @@ def evaluate_document(  # noqa: PLR0912
             details = "contract has no mandatory EXTRACTED_RAW KPIs"
         _check(
             results, m, "KPI coverage", ok, f"{ratio:.1%} extracted",
-            f">= {KPI_EXTRACTED_MIN:.0%} extracted, 0 CRITICAL gaps, 0 contradicted omissions",
+            f">= {KPI_EXTRACTED_MIN:.0%} of disclosed extracted, <= {KPI_OMITTED_MAX:.0%} omitted, "
+            f"0 CRITICAL gaps, 0 contradicted omissions",
             details,
         )  # fmt: skip
 

@@ -18,7 +18,7 @@ from services.mcp.contracts import (
     get_route_query,
     load_page_router_queries,
 )
-from services.mcp.services.common import _log_processing_event, get_engine
+from services.mcp.services.common import SERVER_RUN_ID, _log_processing_event, get_engine
 from services.mcp.types import (
     ExtractionContract,
     RoutedPage,
@@ -172,6 +172,7 @@ async def get_routed_pages(
                 doc_hash=doc.get("doc_hash"),
                 metadata={
                     "module": module.upper(),
+                    "run_id": SERVER_RUN_ID,
                     "pages": [],
                     "excluded_pages": [],
                     "span_count": len(routed_spans),
@@ -284,6 +285,7 @@ async def get_routed_pages(
             doc_hash=doc.get("doc_hash"),
             metadata={
                 "module": module.upper(),
+                    "run_id": SERVER_RUN_ID,
                 "pages": unique_pages,
                 "excluded_pages": sorted(p for p in unique_pages if p in excluded),
                 "span_count": len(routed_spans),

@@ -100,6 +100,7 @@ FAILURES: list[tuple[str, dict[str, Any], str]] = [
     ("recall report missing", {"mean_core_recall": None, "mean_precision": None}, "Router recall"),
     ("kpi extracted < 80%", {"kpi_extracted_ratio": 0.7, "extracted_kpis_count": 7}, "KPI coverage"),
     ("critical kpi uncovered", {"uncovered_critical": ["ifrs:Assets"]}, "KPI coverage"),
+    ("omitted > 40% of mandatory", {"verified_omitted_count": 5}, "KPI coverage"),
     ("omission contradicted", {"contradicted_omissions": {"idx:CASA": [40]}}, "KPI coverage"),
     ("no mandatory kpis", {"mandatory_kpis_count": 0, "kpi_extracted_ratio": 0.0}, "KPI coverage"),
     ("depth < 90% of extractable", {"depth_hit_count": 35, "depth_ratio": 0.875}, "Concept depth"),
@@ -333,3 +334,18 @@ def test_omission_rulings_only_count_approved(tmp_path: Path) -> None:
     )
     assert gate.load_omission_rulings(f) == {("d1", "idx:FfbProduction")}
     assert gate.load_omission_rulings(tmp_path / "missing.yaml") == set()
+
+
+def test_tokens_count_only_the_committing_run() -> None:
+    routed = [
+        {"run_id": "aaa", "chars": 400_000, "images": 0},  # an earlier, abandoned run
+        {"run_id": "bbb", "chars": 8_000, "images": 1},
+        {"run_id": "bbb", "chars": 4_000, "images": 0},
+    ]
+    rows, detail = gate.committing_run_rows(routed, [{"run_id": "aaa"}, {"run_id": "bbb"}])
+    assert rows is not None and len(rows) == 2 and "bbb" in detail
+    assert tokens_from_routed_logs(rows)[0] == 12_000 // 4 + 1600
+    # legacy commit without a run id, or a commit whose run read no pages: not measurable
+    assert gate.committing_run_rows(routed, [{}])[0] is None
+    assert gate.committing_run_rows(routed, [{"run_id": "ccc"}])[0] is None
+    assert gate.committing_run_rows(routed, [])[0] is None
