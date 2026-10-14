@@ -8,6 +8,14 @@ Tracks the work to fix the findings in [`docs/M9_REVIEW.md`](M9_REVIEW.md) (scor
 
 ## LIVE STATUS — read this first on resume (updated after every sub-step)
 
+- **START HERE TOMORROW (saved 2026-10-14 end of day; HEAD `8c40759`, tree clean, nothing pushed).**
+  1. Ask the user to reconnect the `emimind` MCP server (`/mcp`), so SERVER_RUN_ID stamps the run.
+  2. Launch 3 background Testers for wave 2 (NISP, BSDE, ISAT) from `docs/m9_workstreams/tester_prompt.md`. ORDERS already has the wave-2 rules and token budgets: NISP 59.1k, BSDE 66.9k, ISAT 50k.
+  3. When STATUS says `Wave 2: READY FOR GRADING`:
+     - Run `uv run python eval/deep_extraction_gate.py --tickers NISP,BSDE,ISAT --period 2025Q4 --router-recall eval/reports/router_recall_heldout_random_wsR.json --out eval/reports/m9_gate_wave2.json`.
+     - Read the pages of every rebutted omission and rule on it in `eval/omission_rulings.yaml`.
+     - Write the decisions in ORDERS.
+  4. Then blind gold labels for ISAT and UNVR (a 4th agent, after the Testers), wave 3 (UNVR), and the formal re-score of `M9_REVIEW.md`.
 - **RESUME HERE (saved 2026-10-14).** Router notes-recall rework (workstream R) is done and COMMITTED. Tracker: `docs/m9_workstreams/wsR_progress.md`.
   - Fresh dev split dev2 (seed 20261013): SIMP, BUMI, CTRA, INDF, TLKM, BRIS. Indexed and blind-labelled (`eval/router_gold/dev2/`). MinIO was restarted with user OK.
   - dev2 notes recall 0.467 → 0.776 (capped higher within page budgets).
