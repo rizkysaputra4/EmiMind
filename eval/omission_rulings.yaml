@@ -13,4 +13,45 @@
 #   reason: <why the printed number is not the metric>
 #   by: Lead
 #   date: YYYY-MM-DD
-rulings: []
+rulings:
+  - doc_id: 69967908-f0d2-4a10-9562-4b3a4ea60abc
+    ticker: PTBA
+    concept_id: 'idx:CoalProductionVolume'
+    decision: approved
+    pages: [134]
+    reason: "p134 quotes the ESDM 399/2023 rule (DMO 25% of production realization), not a tonnage; the FS prints no coal tonnage anywhere (p135-136 are US$70/ton price thresholds)"
+    by: Lead
+    date: 2026-10-14
+  - doc_id: 69967908-f0d2-4a10-9562-4b3a4ea60abc
+    ticker: PTBA
+    concept_id: 'idx:DomesticMarketObligationRatio'
+    decision: approved
+    pages: [134]
+    reason: "p134 states the regulatory 25% DMO percentage, not PTBA realized DMO ratio; none is printed"
+    by: Lead
+    date: 2026-10-14
+  - doc_id: 69967908-f0d2-4a10-9562-4b3a4ea60abc
+    ticker: PTBA
+    concept_id: 'idx:BankLoans'
+    decision: rejected
+    pages: [15, 21, 95, 130]
+    reason: "p161 financial instruments note prints the total: Pinjaman bank (3.227.525) / Bank borrowings; extract it"
+    by: Lead
+    date: 2026-10-14
+  - doc_id: 257139d8-ed15-45d4-aa79-ace3a36575e7
+    ticker: TAPG
+    concept_id: 'idx:FfbProduction'
+    decision: approved
+    pages: [69]
+    reason: "p69 Note 8: 149.158 t is the unharvested FFB quantity used to value the biological asset (D1); no annual production printed"
+    by: Lead
+    date: 2026-10-14
+  - doc_id: 257139d8-ed15-45d4-aa79-ace3a36575e7
+    ticker: TAPG
+    concept_id: 'idx:BankLoans'
+    decision: approved
+    pages: [15, 21, 118]
+    reason: "only short-term (280.000) and long-term (52.961 + 766.449; 819.410 on p127) components are printed; no total bank-loans line (1.099.410 on p127 is total financing liabilities)"
+    by: Lead
+    date: 2026-10-14
+
