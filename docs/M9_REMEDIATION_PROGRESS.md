@@ -29,6 +29,13 @@ Tracks the work to fix the findings in [`docs/M9_REVIEW.md`](M9_REVIEW.md) (scor
     - Not fixed:
       - 4 module targets missing from the ontology (warning only; adding them changes contracts).
       - AGENTS.md gaps: retry_attempt on micro-submits, MDA narrative on a statutory FS, no page-fetch tool, ~20 KB micro-submit responses.
+  - **Wave 1b round 1 (2026-10-14): both blocked, nothing committed.** Issues 002–004 (PTBA) and 010–013 (TAPG).
+    - Fixed:
+      - `0ad558b`: segment-note row labels.
+      - `8576721`: rebutted omissions held for Lead review (user decision), cell hierarchy labels, royalty synonym.
+    - Rebuttals are approved in `eval/omission_rulings.yaml`. Until then the gate counts them as contradicted.
+    - The Lead checked PTBA p134 (25% DMO regulation) and TAPG p69 (valuation input): both are valid rebuttals once committed.
+    - Decisions D9 and 002–013 are in ORDERS. Round 2 needs an MCP reconnect.
   - **Next:** Wave 1b (PTBA resume + TAPG gap fill) OPENED in `m9_comms/ORDERS.md` on 2026-10-14. It needs an `emimind` MCP restart first; a second restart after `857118e`. After that, grade wave 1b with the gate, then open wave 2 (NISP, BSDE, ISAT) and wave 3 (UNVR). The gold labeller still has to do UNVR and ISAT.
 - **Previous resume point (saved 2026-10-12 ~01:00).** Step 7 is paused; PTBA and wave 2 are ON HOLD in `EmiMind-Extraction/m9_comms/ORDERS.md`.
   - **Done this session:**
