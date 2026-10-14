@@ -101,6 +101,43 @@ _NET_OF_DEPRECIATION_RE = re.compile(
     r"|net of accumulated (depreciation|amortization|amortisation)( and [a-z ]*?impairment)?)",
     re.IGNORECASE,
 )
+# A hierarchy label '<header> - <row>' (the form the validator asks for on sub-rows) whose
+# header is a balance-sheet section says only which term the row sits in: 'Liabilitas jangka
+# panjang setelah bagian lancar - Pinjaman bank' is the long-term bank loan line. The header
+# keeps its term words; 'net of current portion' only restates that the section is non-current.
+_SECTION_HEADER_RES: list[tuple[re.Pattern[str], str]] = [
+    (
+        re.compile(
+            r"setelah (dikurangi )?bagian (yang (akan )?jatuh tempo dalam (waktu )?satu tahun"
+            r"|lancar|jangka pendek)|net of current (portion|maturities)",
+            re.IGNORECASE,
+        ),
+        " ",
+    ),
+    (
+        re.compile(r"\b(liabilitas|liabilities|aset|assets)\s+(jangka panjang|jangka pendek)\b", re.I),
+        r"\2",
+    ),
+    (re.compile(r"\b(long-term|non-current|short-term)\s+(liabilities|assets)\b", re.I), r"\1"),
+]
+# The long-term portion of a loan is the long-term borrowing itself ('Pinjaman bank - Bagian
+# jangka panjang'). Only this phrase: a current portion stays a different figure.
+_LONG_TERM_PORTION_RE = re.compile(
+    r"\bbagian jangka panjang\b|\b(non-current|long-term) portion\b", re.IGNORECASE
+)
+
+
+def _reduce_label(label: str) -> str:
+    """Drop phrases that never change what a line denotes (see the patterns above)."""
+    text = _NET_OF_DEPRECIATION_RE.sub(" ", label)
+    if " - " in text:
+        header, row = text.rsplit(" - ", 1)
+        for pattern, repl in _SECTION_HEADER_RES:
+            header = pattern.sub(repl, header)
+        text = f"{header} - {row}"
+    return _LONG_TERM_PORTION_RE.sub(lambda m: "long-term" if m.group(1) else "jangka panjang", text)
+
+
 _FLOW_NAME_RE = re.compile(
     r"(expense|expenses|cost|costs|component|revenue|revenues|income|production|sales|"
     r"beban|biaya|pendapatan|penjualan|produksi|penghasilan)",
@@ -188,7 +225,7 @@ def check_concept_label(
     """Does `label` plausibly denote the concept? All tokens of one name variant must be in the
     label, and every other label word must belong to the concept's vocabulary, the segment,
     or a small neutral list (year/period/net/consolidated...)."""
-    label_toks = _tokens(_NET_OF_DEPRECIATION_RE.sub(" ", label))
+    label_toks = _tokens(_reduce_label(label))
     if not label_toks:
         return ConceptLabelVerdict(False, "empty label")
     variants = name_variants(cdef)

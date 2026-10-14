@@ -76,3 +76,40 @@ def test_capex_accepts_fixed_assets_and_bearer_plants() -> None:
 
 def test_capex_still_rejects_intangible_assets() -> None:
     assert not check_concept_label("Perolehan aset takberwujud", CAPEX).ok
+
+
+LTB = ConceptDefinition(
+    metric_id="ifrs:LongTermBorrowings",
+    name_id="Utang Bank Jangka Panjang",
+    name_en="Long-Term Borrowings",
+    synonyms_id=["Utang Bank Jangka Panjang", "Pinjaman Jangka Panjang", "Obligasi"],
+    synonyms_en=["Long-term Borrowings", "Long-term Debt", "Non-current Borrowings"],
+    flow_stock_type="STOCK_POINT_IN_TIME",
+)
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        "Liabilitas jangka panjang setelah bagian lancar - Pinjaman bank",
+        "Liabilitas jangka panjang setelah dikurangi bagian yang jatuh tempo dalam satu tahun - Utang bank",
+        "Long-term liabilities net of current portion - Bank borrowings",
+        "Pinjaman bank - Bagian jangka panjang",
+        "Bank borrowings - Non-current portion",
+    ],
+)
+def test_long_term_borrowings_accepts_section_and_portion_captions(label: str) -> None:
+    assert check_concept_label(label, LTB).ok, label
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        "Pinjaman bank",  # no term: ambiguous
+        "Pinjaman jangka panjang - Bagian lancar",  # the current portion is a different figure
+        "Liabilitas jangka pendek - Pinjaman bank",
+        "Liabilitas jangka panjang - Liabilitas sewa",
+    ],
+)
+def test_long_term_borrowings_rejects_other_lines(label: str) -> None:
+    assert not check_concept_label(label, LTB).ok, label

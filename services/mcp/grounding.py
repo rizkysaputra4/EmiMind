@@ -568,12 +568,26 @@ def _row_has_amounts(table: PageTable, row: int) -> bool:
     return any(_is_amount_cell(c) for c in table.cells if c.row == row)
 
 
-def _combine(own: list[str], wrapped: list[str], header: list[str]) -> list[str]:
+def _combine(
+    own: list[str],
+    wrapped: list[str],
+    header: list[str],
+    wrapped_parts: list[list[str]] | None = None,
+) -> list[str]:
     cands = list(own)
     for k in range(len(wrapped)):
         joined = " ".join(wrapped[k:])
         cands += [f"{joined} {o}" for o in own]
     cands += [f"{h} {o}" for h in header for o in own]
+    # Column-wise wrap: in a bilingual or multi-column layout the line above also carries other
+    # columns ('BRI (Kredit Jangka | 2 Januari 2026 | BRI(Short-term'), so the first (Indonesian)
+    # and last (English) label pieces are joined column by column.
+    if own and wrapped_parts:
+        for k in range(len(wrapped_parts)):
+            parts = [p for p in wrapped_parts[k:] if p]
+            if parts:
+                cands.append(" ".join([*(p[0] for p in parts), own[0]]))
+                cands.append(" ".join([*(p[-1] for p in parts), own[-1]]))
     return cands
 
 
@@ -583,6 +597,7 @@ def row_label_candidates(table: PageTable, row: int, col: int) -> list[str]:
     rows = sorted({c.row for c in table.cells})
     above = [r for r in rows if r < row][::-1]
     wrapped: list[str] = []
+    wrapped_parts: list[list[str]] = []
     for r in above:
         if _row_has_amounts(table, r) or len(wrapped) >= 3:
             break
@@ -590,6 +605,7 @@ def row_label_candidates(table: PageTable, row: int, col: int) -> list[str]:
         if not labels:
             break
         wrapped.insert(0, " ".join(labels))
+        wrapped_parts.insert(0, labels)
     header: list[str] = []
     for r in above[:8]:
         if not _row_has_amounts(table, r):
@@ -597,7 +613,7 @@ def row_label_candidates(table: PageTable, row: int, col: int) -> list[str]:
             if labels:
                 header = [" ".join(labels)]
                 break
-    return _combine(own, wrapped, header)
+    return _combine(own, wrapped, header, wrapped_parts)
 
 
 # ---------------------------------------------------------------------------
@@ -764,19 +780,33 @@ def sorted_tokens(line: str) -> list[NumberToken]:
 def _line_label_candidates(lines: list[_Line], i: int) -> list[str]:
     own = lines[i].chunks
     wrapped: list[str] = []
+    wrapped_parts: list[list[str]] = []
     for j in range(i - 1, max(-1, i - 4), -1):
         if not lines[j].chunks or lines[j].amounts:
             break
         wrapped.insert(0, " ".join(lines[j].chunks))
+        wrapped_parts.insert(0, lines[j].chunks)
     header: list[str] = []
     for j in range(i - 1, max(-1, i - 8), -1):
         if lines[j].chunks and not lines[j].amounts:
             header = [" ".join(lines[j].chunks)]
             break
-    cands = _combine(own, wrapped, header)
+    cands = _combine(own, wrapped, header, wrapped_parts)
     if own and not lines[i].amounts and i + 1 < len(lines):
         cands += [f"{' '.join(own)} {n}" for n in lines[i + 1].chunks]
     return cands
+
+
+_HEADER_SPAN = 20
+
+
+def _header_above(lines: list[_Line], row: int, header: str) -> bool:
+    """Every word of `header` is printed in the _HEADER_SPAN lines above `row`."""
+    words = normalize_label(header).split()
+    above = set(normalize_label(" ".join(ln.text for ln in lines[max(0, row - _HEADER_SPAN) : row])).split())
+    return bool(words) and all(
+        w in above or any(len(w) >= 5 and fuzz.ratio(w, a) >= 88 for a in above) for w in words
+    )
 
 
 _SUBTOTAL_MAX_ROWS = 15
@@ -857,6 +887,27 @@ def ground_text(
             hit = next(((vi, o) for vi, o in value_hits if vi == sub), None)
             if hit is not None:
                 accepted = hit
+                break
+    if accepted is None and " - " in label:
+        # Hierarchy label '<header> - <row>': the row label sits by the value as usual; the
+        # header is a section caption printed somewhere above it, often several lines up and
+        # interleaved with its English translation, so it is matched word by word.
+        header, row = (s.strip() for s in label.rsplit(" - ", 1))
+        for li in range(len(lines)):
+            if not lines[li].chunks or not _header_above(lines, li, header):
+                continue
+            if best_label_score(row, _line_label_candidates(lines, li)) < LABEL_MATCH_THRESHOLD:
+                continue
+            accepted = next(
+                (
+                    (vi, o)
+                    for vi, o in value_hits
+                    if vi == li
+                    or (abs(vi - li) <= window and not lines[vi].chunks and not lines[li].amounts)
+                ),
+                None,
+            )
+            if accepted:
                 break
     if accepted is None:
         where = sorted({vi + 1 for vi, _o in value_hits})[:6]

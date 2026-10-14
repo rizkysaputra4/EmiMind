@@ -5,6 +5,9 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
+import pytest
+
+from services.mcp import grounding
 from services.mcp.grounding import (
     check_cell_grounding,
     check_text_grounding,
@@ -254,3 +257,54 @@ def test_cell_confidence_is_min_of_table_and_cell_and_synthetic_bbox_dropped() -
     assert out.ok and out.kind == "cell"
     assert out.confidence == 0.85
     assert out.bbox is None  # legacy synthesized [0, 15r, 500, 15(r+1)] box
+
+
+# PTBA 2025 p15: bilingual balance sheet, section caption two lines above the row
+_PTBA_BS = (
+    "(Disajikan dalam jutaan Rupiah)\n"
+    "Liabilitas jangka panjang Long-term liabilities\n"
+    "setelah bagian lancar: net of current portion:\n"
+    "Liabilitas sewa 255.268 21 368.260 Lease liabilities\n"
+    "Pinjaman bank 1.277.425 20 - Bank borrowings\n"
+)
+
+
+@pytest.mark.parametrize(
+    "label",
+    [
+        "Liabilitas jangka panjang setelah bagian lancar - Pinjaman bank",
+        "Long-term liabilities net of current portion - Bank borrowings",
+    ],
+)
+def test_hierarchy_label_grounds_with_header_above(label: str) -> None:
+    out = ground_fact(_fact("1277425000000", label), _text_page(_PTBA_BS), period_end=None)
+    assert out.ok, out.issues
+
+
+def test_hierarchy_label_needs_its_header_on_the_page() -> None:
+    label = "Liabilitas jangka pendek - Pinjaman bank"
+    out = ground_fact(_fact("1277425000000", label), _text_page(_PTBA_BS), period_end=None)
+    assert not out.ok
+    assert out.issues[0][1] == "GROUNDING_TEXT_LABEL_DISTANCE"
+
+
+# PTBA 2025 p119: lender name wrapped over two lines of a multi-column bilingual table
+_PTBA_LENDERS = (
+    "(Disajikan dalam jutaan Rupiah)\n"
+    "BRI (Kredit Jangka 2 Januari 2026/ Tetap/ BRI(Short-term\n"
+    "Pendek) 1.950.000 January 2, 2026 7,15% Fixed 1.950.000 - Loan)\n"
+    "BNI (Kredit Modal 7 Januari 2026/ Tetap/ BNI(Working\n"
+    "Kerja) 1.950.000 January 7, 2026 7,00% Fixed - 1.250.000 Capital Loan)\n"
+)
+
+
+@pytest.mark.parametrize("label", ["BRI (Kredit Jangka Pendek)", "BRI (Short-term Loan)"])
+def test_wrapped_label_joins_column_by_column(label: str) -> None:
+    out = ground_fact(_fact("1950000000000", label), _text_page(_PTBA_LENDERS), period_end=None)
+    assert out.ok, out.issues
+
+
+def test_column_wrap_does_not_borrow_a_neighbouring_label() -> None:
+    lines = grounding._parse_lines(_PTBA_LENDERS)
+    cands = grounding._line_label_candidates(lines, 2)  # the BRI value line
+    assert grounding.best_label_score("BNI (Kredit Modal Kerja)", cands) < grounding.LABEL_MATCH_THRESHOLD
