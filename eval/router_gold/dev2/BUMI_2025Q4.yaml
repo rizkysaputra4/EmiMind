@@ -1,0 +1,16 @@
+# Dev2 router gold (fresh dev split, seed 20261013). Labelled blind from the PDF's own statement titles, notes numbering and note headings (not router output).
+file: "BUMI_2025_AUDIT_RDF_LKT BUMI 31 Desember 2025.pdf"
+sha256: "546b656018528f24447d39d5ba4ba035a2bcd387db4b8493064edc56ea0261a5"
+ticker: "BUMI"
+fiscal_period: "2025Q4"
+modules:
+  BALANCE_SHEET: [11, 12]                     # Laporan posisi keuangan konsolidasian
+  INCOME_STATEMENT: [13]                      # Laporan laba rugi dan penghasilan komprehensif lain konsolidasian
+  CASH_FLOW: [15]                             # Laporan arus kas konsolidasian
+  MDA: [16, 17, 18, 19, 20, 21, 22, 126, 127, 128, 129, 130, 172, 173]  # Note 1 Umum (p16-22) + Note 40 Manajemen risiko keuangan (p126-130) + Note 46 Peristiwa-peristiwa setelah periode pelaporan (p172-173)
+  COGS_COMPONENTS: [112]                      # Note 32 Beban pokok pendapatan
+  CUSTOMER_CONCENTRATION: [111]               # Note 31 Pendapatan: customers >10% of total revenues (incl. PT PLN (Persero))
+  DEBT_BY_LENDER: [83, 84, 85, 86, 87, 88, 89, 90, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107]  # Note 18 Pinjaman jangka pendek (p83-90) + Note 25 Pinjaman jangka panjang (p98-104) + Note 26 Utang obligasi (p104-107)
+  REVENUE_BREAKDOWN: [111, 123, 124, 125]     # Note 31 Pendapatan (coal/gold/silver, export/local) + Note 38 Segmen operasi (p123-125)
+  MINING_PRODUCTION_AND_SALES: [22]           # Note 1.e Area eksploitasi/produksi: total production current year and accumulated (million tonnes) per concession
+  MINING_RESERVES_AND_RESOURCES: [22]         # Note 1.e: proven reserves (P1) and remaining proven reserve balance (million tonnes) per concession

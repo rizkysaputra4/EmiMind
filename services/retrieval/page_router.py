@@ -18,7 +18,7 @@ answer is one page is not padded with weak matches.
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -39,7 +39,8 @@ STATEMENT_TIMEOUT = "5000ms"
 _HEADER_LINES = 15
 _HEADING_SCAN_LINES = 40
 
-_CONT_MARKER = re.compile(r"\((?:lanjutan|continued)\)", re.I)
+# '(lanjutan)' / '(continued)', or '-Lanjutan' / '-Continued' appended to the header line
+_CONT_MARKER = re.compile(r"\((?:lanjutan|continued)\)|\)\s*-\s*(?:lanjutan|continued)\b", re.I)
 _NOTE_HEADING = re.compile(r"^\s*(?:catatan\s+|note\s+)?(\d{1,3}[a-z]?)\.\s+([A-Za-z].{2,})$", re.I)
 # labelled sub-heading inside a note: "k. Kredit yang diberikan", "(iii) Informasi kualitas
 # kredit", "A. Risiko kredit", "4. Ikhtisar kredit bermasalah"
@@ -127,10 +128,17 @@ def note_headings(page_text: str, limit: int | None = None) -> list[tuple[str, s
     """(note number, heading text, continued?) for lines like '5. KAS DAN SETARA KAS'.
 
     Bilingual headings often wrap, so the continuation marker '(lanjutan)/(continued)' is
-    looked for on the heading line and the line after it.
+    looked for on the heading line and the line after it. The next line is part of the
+    heading text only when it is upper case like a wrapped heading ('RISIKO KEUANGAN AND
+    POLICIES'), not the note's first line of body text ('Utang bank jangka pendek').
     """
+    return [(num, heading, cont) for num, heading, cont, _lead in _heading_lines(page_text, limit)]
+
+
+def _heading_lines(page_text: str, limit: int | None = None) -> list[tuple[str, str, bool, str]]:
+    """note_headings plus the line after a heading when it is body text, not a wrap ('')."""
     lines = _lines(page_text, limit)
-    heads: list[tuple[str, str, bool]] = []
+    heads: list[tuple[str, str, bool, str]] = []
     for i, ln in enumerate(lines):
         m = _NOTE_HEADING.match(ln)
         if not m:
@@ -141,8 +149,16 @@ def note_headings(page_text: str, limit: int | None = None) -> list[tuple[str, s
         cont = bool(_CONT_MARKER.search(ln)) or (
             bool(_CONT_MARKER.search(nxt)) and not _NOTE_HEADING.match(nxt)
         )
-        heads.append((m.group(1).lower(), f"{ln} {nxt}" if nxt else ln, cont))
+        wrapped = bool(nxt) and _is_upper_heading(_CONT_MARKER.sub("", nxt))
+        heads.append(
+            (m.group(1).lower(), f"{ln} {nxt}" if wrapped else ln, cont, "" if wrapped else nxt)
+        )
     return heads
+
+
+def _is_upper_heading(line: str) -> bool:
+    letters = [c for c in line if c.isalpha()]
+    return len(letters) >= 4 and sum(c.isupper() for c in letters) / len(letters) >= 0.8
 
 
 def statement_title(page_text: str) -> str | None:
@@ -198,10 +214,15 @@ def excluded_pages(page_texts: dict[int, str], core_query: bool) -> set[int]:
 
     Statement queries also drop notes pages (a notes header plus a numbered note heading):
     policy notes that describe each statement otherwise outrank the statement itself.
-    Note queries drop core statements and policy notes.
+    Note queries drop core statements and policy notes, including the policy note's later
+    pages that carry no note heading at all (the policy note running from the page before):
+    a 'Pengakuan pendapatan / Revenue recognition' policy page otherwise outranks the revenue
+    note itself.
     """
     out: set[int] = set()
-    for p_idx, p_text in page_texts.items():
+    in_policy = False  # the note running at the end of the previous page is a policy note
+    for p_idx in sorted(page_texts):
+        p_text = page_texts[p_idx]
         top = "\n".join(_lines(p_text, _HEADER_LINES))
         if _TOC_OR_AUDIT.search(top):
             out.add(p_idx)
@@ -213,9 +234,15 @@ def excluded_pages(page_texts: dict[int, str], core_query: bool) -> set[int]:
             continue
         if _CORE_TITLE.search(top) and not _NOTES_HEADER.search(top):
             out.add(p_idx)
+            in_policy = False
             continue
-        if len(heads) == 1 and _POLICY_HEADING.search(heads[0][1]):
+        all_heads = note_headings(p_text)
+        if (len(heads) == 1 and _POLICY_HEADING.search(heads[0][1])) or (
+            not all_heads and in_policy
+        ):
             out.add(p_idx)
+        if all_heads:
+            in_policy = bool(_POLICY_HEADING.search(all_heads[-1][1]))
     return out
 
 
@@ -243,6 +270,15 @@ def sub_heading_starts(page_text: str, compiled: Sequence[re.Pattern[str]]) -> b
     return False
 
 
+def compile_anchor(pattern: str) -> re.Pattern[str]:
+    """Case-insensitive anchor regex whose literal spaces also match no space at all.
+
+    The text layer of some filings drops the spaces in headings ('UTANGBANK',
+    'SUKUKMUDHARABAHDITERBITKAN'), so 'UTANG BANK' must match both spellings.
+    """
+    return re.compile(pattern.replace(" ", r"\s*"), re.I)
+
+
 def anchor_ranking(
     page_texts: dict[int, str], anchor_patterns: Sequence[str], exclude: set[int]
 ) -> tuple[list[int], set[int]]:
@@ -256,7 +292,7 @@ def anchor_ranking(
     """
     if not anchor_patterns:
         return [], set()
-    compiled = [re.compile(p, re.I) for p in anchor_patterns]
+    compiled = [compile_anchor(p) for p in anchor_patterns]
     starts: list[int] = []
     subs: list[int] = []
     conts: list[int] = []
@@ -264,12 +300,18 @@ def anchor_ranking(
         if p_idx in exclude:
             continue
         p_text = page_texts[p_idx]
-        heads = note_headings(p_text)
-        hit_start = hit_cont = False
-        for _num, heading, cont in heads:
+        heads = _heading_lines(p_text)
+        hit_start = hit_cont = hit_lead = False
+        for _num, heading, cont, lead in heads:
             if any(c.search(heading) for c in compiled):
                 hit_cont = hit_cont or cont
                 hit_start = hit_start or not cont
+            elif lead and any(c.search(lead) for c in compiled):
+                # the first body line of a note ('13. ASET TETAP' / 'Tanaman produktif'):
+                # weaker than the heading itself, ranked with the sub-headings; under a
+                # '(lanjutan)' heading it marks a continuation page
+                hit_cont = hit_cont or cont
+                hit_lead = hit_lead or not cont
         header = " ".join(_lines(p_text, _HEADER_LINES))
         if not heads and not _NOTES_HEADER.search(header):
             if any(c.search(header) for c in compiled):
@@ -279,11 +321,66 @@ def anchor_ranking(
                     hit_start = True
         if hit_start:
             starts.append(p_idx)
-        elif sub_heading_starts(p_text, compiled):
+        elif hit_lead or sub_heading_starts(p_text, compiled):
             subs.append(p_idx)
         elif hit_cont:
             conts.append(p_idx)
     return starts + subs + conts, set(starts) | set(subs)
+
+
+def pattern_starts(
+    page_texts: dict[int, str], anchor_patterns: Sequence[str], exclude: set[int]
+) -> list[dict[int, bool]]:
+    """Per anchor pattern: {page: strong?} for the notes it starts on that page.
+
+    A module whose content spans several notes (Note 1 + risk management + subsequent
+    events; revenue + segments; short- + long-term loans) names each note with its own
+    anchor, so each mapping is one place the module must reach. Strong: the note heading
+    itself matches. Weak: only the note's first body line does ('13. ASET TETAP' /
+    'Tanaman produktif'), which select_pages accepts only with FTS or ANN support.
+    """
+    compiled = [compile_anchor(p) for p in anchor_patterns]
+    out: list[dict[int, bool]] = [{} for _ in compiled]
+    for p_idx, p_text in page_texts.items():
+        if p_idx in exclude:
+            continue
+        for _num, heading, cont, lead in _heading_lines(p_text):
+            if cont:
+                continue
+            for i, c in enumerate(compiled):
+                if c.search(heading):
+                    out[i][p_idx] = True
+                elif lead and c.search(lead):
+                    out[i].setdefault(p_idx, False)
+    return out
+
+
+def _last_note(page_text: str) -> str | None:
+    heads = note_headings(page_text)
+    return heads[-1][0] if heads else None
+
+
+def forward_walk(seed: int, page_texts: dict[int, str], skip: set[int]) -> Iterator[int]:
+    """Pages after the seed that continue the seed's note, in order.
+
+    The seed's note is the one running at the end of the seed page. The walk stops after a
+    page where a different note starts, even though the next page continues that new note:
+    a page holding the tail of note 33 and the start of note 34 must not lead into note 34.
+    """
+    seed_note = _last_note(page_texts.get(seed, ""))
+    nxt = seed + 1
+    while (
+        nxt in page_texts
+        and nxt not in skip
+        and is_continuation(page_texts.get(nxt - 1, ""), page_texts[nxt])
+    ):
+        yield nxt
+        running = _last_note(page_texts[nxt])
+        if seed_note is None:
+            seed_note = running
+        elif running is not None and running != seed_note:
+            return
+        nxt += 1
 
 
 def _reach(
@@ -300,15 +397,10 @@ def _reach(
     ):
         cur -= 1
         out.add(cur)
-    nxt = seed + 1
-    while (
-        nxt - seed < budget
-        and nxt in page_texts
-        and nxt not in skip
-        and is_continuation(page_texts.get(nxt - 1, ""), page_texts[nxt])
-    ):
+    for nxt in forward_walk(seed, page_texts, skip):
+        if nxt - seed >= budget:
+            break
         out.add(nxt)
-        nxt += 1
     return out
 
 
@@ -321,12 +413,17 @@ def select_pages(
     heading_starts: set[int] | None = None,
     statement_mode: bool = False,
     exclude: set[int] | None = None,
+    concept_starts: Sequence[dict[int, bool]] = (),
+    support: set[int] | None = None,
 ) -> list[tuple[int, list[int], float]]:
     """Seeds in fused order, then the budget shared among them → (seed, pages, score).
 
     1. Seeds: fused order, at most top_k; seeds after the first need score >= seed_ratio *
        best. A candidate the continuation walk of an earlier seed would reach is skipped (it
-       is the same note, not a second location).
+       is the same note, not a second location). Then, per anchor pattern whose note no
+       seed reaches yet (`concept_starts`), its best-fused start page that the FTS or ANN
+       leg also found (`support`) becomes one more seed, so a module spread over several
+       notes reaches each of them.
     2. Pages: every seed holds its own page; then, in seed order, each seed grows over its
        continuation pages into the budget that is left, so a long first note cannot starve a
        second location of its seed page. Backward: to the statement's first page in
@@ -342,6 +439,7 @@ def select_pages(
     skip = exclude or set()
 
     seeds: list[tuple[int, float]] = []
+    leads: dict[int, int] = {}
     covered: set[int] = set()
     for seed, score in fused:
         if len(seeds) >= min(top_k, budget):
@@ -350,6 +448,18 @@ def select_pages(
             break
         if seed in covered:
             continue
+        # a seed on the page right after a matching heading start, inside that note, holds the
+        # start page too: covered counts it, but the budget may run out before the backward
+        # step reaches it. The seed stays the seed, so its forward walk follows the same note.
+        if (
+            not statement_mode
+            and seed not in starts
+            and seed - 1 in starts
+            and seed - 1 not in skip
+            and seed - 1 not in covered
+            and is_continuation(page_texts.get(seed - 1, ""), page_texts.get(seed, ""))
+        ):
+            leads[seed] = seed - 1
         seeds.append((seed, score))
         covered |= _reach(seed, page_texts, budget, max_back, skip)
     # a note's first page carries its summary table: when every seed sits inside a note
@@ -360,14 +470,36 @@ def select_pages(
         if start_seed:
             seeds.append(start_seed)
             covered |= _reach(start_seed[0], page_texts, budget, max_back, skip)
+    if not statement_mode:
+        backed = support if support is not None else {p for p, _ in fused}
+        for pages_of_concept in concept_starts:
+            if len(seeds) >= budget:
+                break
+            if not pages_of_concept or covered & pages_of_concept.keys():
+                continue
+            # an anchor heading that starts exactly one note in the document is specific enough
+            # on its own; otherwise the FTS or ANN leg must also have found the page
+            unique = len(pages_of_concept) == 1 and all(pages_of_concept.values())
+            extra = next(
+                ((p, sc) for p, sc in fused if p in pages_of_concept and (unique or p in backed)),
+                None,
+            )
+            if extra:
+                seeds.append(extra)
+                covered |= _reach(extra[0], page_texts, budget, max_back, skip)
 
     chosen = {seed for seed, _ in seeds}
+    for seed, _ in seeds:
+        if seed in leads and len(chosen) < budget and leads[seed] not in chosen:
+            chosen.add(leads[seed])
+        else:
+            leads.pop(seed, None)
     units: list[tuple[int, list[int], float]] = []
     for seed, score in seeds:
         # later seeds already hold their own page; this seed may grow into what is left
         room = budget - len(chosen)
-        pages = [seed]
-        cur = seed
+        pages = [leads[seed], seed] if seed in leads else [seed]
+        cur = pages[0]
         while (
             room > 0
             and seed - cur < max_back
@@ -381,18 +513,12 @@ def select_pages(
             pages.insert(0, cur)
             chosen.add(cur)
             room -= 1
-        nxt = seed + 1
-        while (
-            room > 0
-            and nxt in page_texts
-            and nxt not in chosen
-            and nxt not in skip
-            and is_continuation(page_texts.get(nxt - 1, ""), page_texts[nxt])
-        ):
+        for nxt in forward_walk(seed, page_texts, skip):
+            if room <= 0 or nxt in chosen:
+                break
             pages.append(nxt)
             chosen.add(nxt)
             room -= 1
-            nxt += 1
         units.append((seed, pages, score))
     return units
 
@@ -427,12 +553,16 @@ def fts_query_sql(n_terms: int) -> str:
     return " || ".join(f"plainto_tsquery('simple', :t{i})" for i in range(n_terms))
 
 
-async def _fts_ranking(conn: AsyncConnection, doc_id: str, terms: list[str]) -> list[int]:
+async def _fts_ranking(
+    conn: AsyncConnection, doc_id: str, terms: list[str], exclude: set[int]
+) -> list[int]:
+    """Top LEG_DEPTH pages by ts_rank_cd; excluded pages are dropped before the cut, so the
+    leg keeps its depth when policy notes outrank the real note."""
     clean = [t.strip() for t in terms if t.strip()]
     if not clean:
         return []
     params: dict[str, object] = {f"t{i}": t for i, t in enumerate(clean)}
-    params.update({"doc_id": doc_id, "lim": LEG_DEPTH})
+    params.update({"doc_id": doc_id, "lim": LEG_DEPTH, "ex": sorted(exclude)})
     res = await conn.execute(
         text(
             f"""
@@ -440,6 +570,7 @@ async def _fts_ranking(conn: AsyncConnection, doc_id: str, terms: list[str]) -> 
             SELECT page_index, ts_rank_cd(tsv, q.tsq) AS rank
             FROM document_pages, q
             WHERE doc_id = :doc_id AND tsv @@ q.tsq
+              AND page_index <> ALL(CAST(:ex AS integer[]))
             ORDER BY rank DESC, page_index ASC
             LIMIT :lim
             """
@@ -455,9 +586,17 @@ async def _has_pgvector(conn: AsyncConnection) -> bool:
 
 
 async def _ann_ranking(
-    conn: AsyncConnection, doc_id: str, route_query: RouteQuery, embedder: Embedder
+    conn: AsyncConnection,
+    doc_id: str,
+    route_query: RouteQuery,
+    embedder: Embedder,
+    exclude: set[int],
 ) -> list[int]:
-    """Cosine ranking of the document's pages embedded with embedder.model_id."""
+    """Cosine ranking of the document's pages embedded with embedder.model_id.
+
+    Excluded pages are dropped before the LEG_DEPTH cut: in long filings the accounting
+    policy pages fill the top 40 for most queries and would otherwise empty the leg.
+    """
     model_id = embedder.model_id
     cnt = await conn.execute(
         text(
@@ -482,6 +621,7 @@ async def _ann_ranking(
                 SELECT page_index
                 FROM document_pages
                 WHERE doc_id = :doc_id AND embedding IS NOT NULL AND embedding_model = :model
+                  AND page_index <> ALL(CAST(:ex AS integer[]))
                 ORDER BY embedding <=> CAST(:q_vec AS halfvec(1024)) ASC
                 LIMIT :lim
                 """
@@ -491,6 +631,7 @@ async def _ann_ranking(
                 "model": model_id,
                 "q_vec": "[" + ",".join(repr(float(v)) for v in q_vec) + "]",
                 "lim": LEG_DEPTH,
+                "ex": sorted(exclude),
             },
         )
         return [int(r["page_index"]) for r in res.mappings().all()]
@@ -511,7 +652,11 @@ async def _ann_ranking(
         ),
         {"doc_id": doc_id, "model": model_id},
     )
-    vectors = {int(r["page_index"]): r["embedding"] for r in res.mappings().all()}
+    vectors = {
+        int(r["page_index"]): r["embedding"]
+        for r in res.mappings().all()
+        if int(r["page_index"]) not in exclude
+    }
     return cosine_top(q_vec, vectors)
 
 
@@ -540,11 +685,10 @@ async def route_pages(
         return []
 
     exclude = excluded_pages(page_texts, is_core_statement_query(route_query))
-    fts = [p for p in await _fts_ranking(conn, doc_id, terms) if p not in exclude]
+    fts = await _fts_ranking(conn, doc_id, terms, exclude)
     ann: list[int] = []
     if use_ann:
-        ann_all = await _ann_ranking(conn, doc_id, route_query, embedder or Embedder())
-        ann = [p for p in ann_all if p not in exclude]
+        ann = await _ann_ranking(conn, doc_id, route_query, embedder or Embedder(), exclude)
     anchors, heading_starts = anchor_ranking(page_texts, route_query.anchor_patterns, exclude)
 
     fused = rrf_fuse([lst for lst in (fts, ann, anchors) if lst])
@@ -558,6 +702,12 @@ async def route_pages(
         heading_starts=heading_starts,
         statement_mode=core,
         exclude=exclude,
+        concept_starts=(
+            pattern_starts(page_texts, route_query.anchor_patterns, exclude)
+            if route_query.multi_note
+            else ()
+        ),
+        support=set(fts) | set(ann),
     )
     if not units:
         return []

@@ -7,6 +7,9 @@
 #              (services/mcp/types.py RouteQuery). Override only with a stated reason.
 #   anchor_patterns: note-heading / statement-title regexes. They form the third ranked
 #              list of the RRF (pages whose heading matches), never the sole mechanism.
+#   multi_note: true when the module spans several notes and each anchor pattern names one
+#              of them (MDA: general + risk + events). The router then seeds every pattern's
+#              note. Leave it off when the patterns are synonyms for one note.
 
 BALANCE_SHEET:
   ALL:
@@ -89,17 +92,31 @@ CASH_FLOW:
 
 MDA:
   ALL:
+    multi_note: true
+    # A statutory FS has no MD&A chapter: its management narrative is Note 1 General (business,
+    # group structure), the financial risk management note and the subsequent events note.
+    # The annual-report MD&A anchors stay for annual reports.
     terms_id:
-      - "analisis dan pembahasan manajemen"
-      - "tinjauan operasional"
-      - "kinerja keuangan"
+      - "pendirian perusahaan dan informasi umum"
+      - "kegiatan usaha"
+      - "manajemen risiko keuangan"
+      - "risiko kredit risiko likuiditas"
+      - "peristiwa setelah periode pelaporan"
     terms_en:
-      - "management discussion and analysis"
-      - "operational review"
-      - "financial performance"
-    # MD&A is narrative prose over many pages; a note-sized budget truncates it
+      - "establishment and general information"
+      - "business activities"
+      - "financial risk management"
+      - "credit risk liquidity risk"
+      - "events after the reporting period"
+    # narrative prose over many pages; a note-sized budget truncates it
     max_pages: 10
     anchor_patterns:
+      - "^\\s*1\\.\\s+(UMUM|GENERAL)\\b"
+      - "MANAJEMEN RISIKO"
+      - "RISKS? MANAGEMENT"
+      - "PERISTIWA(-PERISTIWA)? (PENTING )?SETELAH"
+      - "SUBSEQUENT EVENTS?"
+      - "EVENTS? AFTER THE REPORTING"
       - "ANALISIS DAN PEMBAHASAN MANAJEMEN"
       - "MANAGEMENT DISCUSSION AND ANALYSIS"
 
@@ -291,6 +308,11 @@ BANK_LOANS_NPL:
       - "KUALITAS KREDIT"
       - "CREDIT QUALITY"
       - "LOANS AND ADVANCES"
+      # sharia banks: financing notes and non-performing financing (NPF)
+      - "PINJAMAN QARDH"
+      - "PEMBIAYAAN (MUDHARABAH|MUSYARAKAH)"
+      - "PIUTANG (MURABAHAH|ISTISHNA)"
+      - "PEMBIAYAAN BERMASALAH"
 
 PLANTATION_AREA:
   ALL:
@@ -328,6 +350,7 @@ PLANTATION_AREA:
 # Granular Module Synonyms / Aliases
 REVENUE_BREAKDOWN:
   ALL:
+    multi_note: true
     terms_id:
       - "pendapatan usaha"
       - "pendapatan dari kontrak dengan pelanggan"
@@ -338,25 +361,47 @@ REVENUE_BREAKDOWN:
       - "revenue from contracts with customers"
       - "revenue breakdown"
       - "sales by product"
+      - "segment information"
     max_pages: 6
+    # the revenue note plus the operating-segment note; the bare PENDAPATAN / REVENUE anchors
+    # skip deferred / unearned / finance / other revenue headings
     anchor_patterns:
-      - "PENDAPATAN"
-      - "REVENUE"
+      - "PENDAPATAN(?!\\s*(DITERIMA|KEUANGAN|LAIN|BUNGA|KOMPREHENSIF|TANGGUHAN))"
+      - "(?<!UNEARNED\\s)(?<!FINANCE\\s)(?<!OTHER\\s)(?<!DEFERRED\\s)REVENUES?"
+      - "PENJUALAN (DAN PENDAPATAN|BERSIH|NETO)"
+      - "NET SALES"
+      - "INFORMASI SEGMEN"
+      - "SEGMEN OPERASI"
+      - "SEGMENT INFORMATION"
+      - "OPERATI(NG|ONS) SEGMENTS?"
   BANK:
+    multi_note: true
     terms_id:
       - "pendapatan bunga"
       - "pendapatan syariah"
       - "pendapatan provisi dan komisi"
       - "pendapatan operasional lainnya"
+      - "pendapatan dari jual beli bagi hasil ijarah"
+      - "segmen operasi"
     terms_en:
       - "interest income"
       - "sharia income"
       - "fees and commissions"
       - "other operating income"
+      - "income from sales and purchases profit sharing ijarah"
+      - "operating segments"
     max_pages: 6
+    # conventional banks: interest income; sharia banks: income from sales and purchases
+    # (murabahah), profit sharing and ijarah. Plus the operating-segment note.
     anchor_patterns:
       - "PENDAPATAN BUNGA"
       - "INTEREST INCOME"
+      - "PENDAPATAN DARI (JUAL BELI|BAGI HASIL|IJARAH)"
+      - "INCOME FROM (SALES AND PURCHASES|PROFIT SHARING|IJARAH)"
+      - "INFORMASI SEGMEN"
+      - "SEGMEN OPERASI"
+      - "SEGMENT INFORMATION"
+      - "OPERATI(NG|ONS) SEGMENTS?"
 
 CUSTOMER_CONCENTRATION:
   ALL:
@@ -417,22 +462,48 @@ COGS_COMPONENTS:
       - "manufacturing overhead"
     max_pages: 6
     anchor_patterns:
-      - "BEBAN POKOK PENJUALAN"
-      - "COST OF GOODS SOLD"
+      - "BEBAN POKOK (PENJUALAN|PENDAPATAN)"
+      - "COSTS? OF (GOODS SOLD|REVENUES?|SALES)"
   BANK:
     terms_id:
       - "beban bunga"
       - "beban syariah"
       - "beban bagi hasil"
+      - "hak pihak ketiga atas bagi hasil"
       - "beban provisi dan komisi"
     terms_en:
       - "interest expense"
       - "sharia expense"
+      - "third parties share on return"
       - "fees and commissions expense"
     max_pages: 6
+    # sharia banks: the depositors' share of returns ("hak pihak ketiga atas bagi hasil")
     anchor_patterns:
       - "BEBAN BUNGA"
       - "INTEREST EXPENSE"
+      - "HAK PIHAK KETIGA ATAS BAGI HASIL"
+      - "THIRD PARTIES.{0,3} SHARE ON RETURN"
+  TELCO:
+    # telcos present expenses by nature: no cost-of-revenue note; the operation & maintenance,
+    # interconnection and personnel expense notes carry the cost breakdown
+    terms_id:
+      - "beban operasi pemeliharaan dan jasa telekomunikasi"
+      - "beban interkoneksi"
+      - "beban karyawan"
+      - "beban pokok pendapatan"
+    terms_en:
+      - "operation maintenance and telecommunication service expenses"
+      - "interconnection expenses"
+      - "personnel expenses"
+      - "cost of revenue"
+    max_pages: 6
+    anchor_patterns:
+      - "BEBAN OPERASI, PEMELIHARAAN"
+      - "OPERATIONS?, MAINTENANCE"
+      - "BEBAN INTERKONEKSI"
+      - "INTERCONNECTION EXPENSES?"
+      - "BEBAN POKOK (PENJUALAN|PENDAPATAN)"
+      - "COSTS? OF (GOODS SOLD|REVENUES?|SALES)"
   MINING:
     # Miners title the note "beban pokok pendapatan" (cost of revenue), not "beban pokok
     # penjualan", and break it into mining, hauling, contractor and royalty costs.
@@ -459,6 +530,7 @@ COGS_COMPONENTS:
 
 DEBT_BY_LENDER:
   ALL:
+    multi_note: true
     terms_id:
       - "utang bank"
       - "pinjaman bank"
@@ -471,13 +543,27 @@ DEBT_BY_LENDER:
       - "creditor"
       - "lenders"
       - "interest rate"
-    max_pages: 6
+      - "bonds payable notes payable"
+    # a lender list spans several notes (short-term, long-term, bonds / sukuk); 6 pages
+    # cut off later lenders (user decision 2026-10-13)
+    max_pages: 10
+    # short- and long-term bank loans, bonds / notes / sukuk / MTN: often separate notes
     anchor_patterns:
       - "UTANG BANK"
       - "PINJAMAN BANK"
-      - "PINJAMAN JANGKA PANJANG"
+      - "PINJAMAN JANGKA (PENDEK|PANJANG)"
+      - "UTANG JANGKA PANJANG"
       - "BANK LOANS?"
+      - "(SHORT|LONG)-TERM (BANK )?(LOANS?|DEBTS?|BORROWINGS?)"
+      - "UTANG OBLIGASI"
+      - "OBLIGASI (YANG DITERBITKAN|KONVERSI)"
+      - "BONDS PAYABLE"
+      - "WESEL BAYAR"
+      - "NOTES PAYABLE"
+      - "MEDIUM TERM NOTES?"
+      - "SUKUK"
   BANK:
+    multi_note: true
     terms_id:
       - "pinjaman yang diterima"
       - "efek-efek yang diterbitkan"
@@ -493,7 +579,9 @@ DEBT_BY_LENDER:
       - "bilateral loans"
       - "interest rate"
       - "maturity"
-    max_pages: 6
+    # a lender list spans several notes (short-term, long-term, bonds / sukuk); 6 pages
+    # cut off later lenders (user decision 2026-10-13)
+    max_pages: 10
     # banks title these notes "Pinjaman yang diterima" (fund borrowings) and
     # "Efek-efek / efek utang / surat berharga yang diterbitkan" (securities issued)
     anchor_patterns:
@@ -502,6 +590,11 @@ DEBT_BY_LENDER:
       - "SURAT BERHARGA YANG DITERBITKAN"
       - "BORROWINGS"
       - "SECURITIES ISSUED"
+      # sharia banks: issued / subordinated sukuk and mudharabah term financing
+      - "SUKUK .{0,25}(DITERBITKAN|SUBORDINASI)"
+      - "(ISSUED|SUBORDINATED) .{0,15}SUKUK"
+      - "PEMBIAYAAN BERJANGKA"
+      - "TERM FINANCING"
 
 BANK_LOAN_QUALITY_NPL:
   ALL:
@@ -548,11 +641,16 @@ BANK_LOANS_BY_SEGMENT:
       - "retail"
     max_pages: 6
     # loans per business segment: the loans note, or the segment-information note
+    # sharia banks: one note per financing type (murabahah receivables, qardh, mudharabah,
+    # musyarakah), each with its own economic-sector table
     anchor_patterns:
       - "KREDIT YANG DIBERIKAN"
       - "PINJAMAN YANG DIBERIKAN"
       - "INFORMASI SEGMEN"
       - "SEGMENT INFORMATION"
+      - "PINJAMAN QARDH"
+      - "PEMBIAYAAN (MUDHARABAH|MUSYARAKAH)"
+      - "PIUTANG (MURABAHAH|ISTISHNA)"
 
 BIOLOGICAL_ASSETS_DETAIL:
   ALL:
@@ -569,9 +667,14 @@ BIOLOGICAL_ASSETS_DETAIL:
       - "immature area"
       - "planted hectares"
     max_pages: 6
+    # the biological-assets note plus the bearer plants (mature / immature, hectares): their
+    # own note, or a section of the fixed-assets note
+    multi_note: true
     anchor_patterns:
       - "ASET BIOLOGIS"
       - "BIOLOGICAL ASSETS"
+      - "TANAMAN PRODUKTIF"
+      - "BEARER PLANTS"
 
 BANK_PROFITABILITY_KPIS:
   ALL:
@@ -615,6 +718,8 @@ CPO_UPSTREAM_KPIS:
       - "rendemen minyak"
       - "harga jual rata-rata"
       - "ton"
+      # PSAK 69 makes the biological-assets note state physical quantities of produce harvested
+      - "kuantitas fisik hasil panen"
     terms_en:
       - "fresh fruit bunches production"
       - "FFB production"
@@ -622,12 +727,15 @@ CPO_UPSTREAM_KPIS:
       - "palm kernel"
       - "oil extraction rate"
       - "average selling price"
+      - "physical quantities of agricultural produce harvested"
     max_pages: 3
     anchor_patterns:
       - "INFORMASI SEGMEN"
       - "SEGMENT INFORMATION"
       - "UMUM"
       - "GENERAL"
+      - "ASET BIOLOGIS"
+      - "BIOLOGICAL ASSETS"
 
 MINING_PRODUCTION_AND_SALES:
   ALL:
@@ -641,6 +749,8 @@ MINING_PRODUCTION_AND_SALES:
       - "penjualan ekspor"
       - "penjualan domestik"
       - "ton"
+      # coal miners list production per concession in Note 1 'Area eksploitasi/produksi'
+      - "area eksploitasi produksi"
     terms_en:
       - "sales volume"
       - "production volume"
@@ -648,6 +758,7 @@ MINING_PRODUCTION_AND_SALES:
       - "export sales"
       - "domestic sales"
       - "tonnes"
+      - "exploitation area production"
     max_pages: 3
     anchor_patterns:
       - "PENDAPATAN"
@@ -667,6 +778,7 @@ MINING_RESERVES_AND_RESOURCES:
       - "properti pertambangan"
       - "aset eksplorasi dan evaluasi"
       - "izin usaha pertambangan"
+      - "area eksploitasi"
     terms_en:
       - "coal reserves"
       - "proved and probable reserves"
@@ -674,6 +786,7 @@ MINING_RESERVES_AND_RESOURCES:
       - "mining properties"
       - "exploration and evaluation assets"
       - "mining business permit"
+      - "exploitation area proven reserves"
     max_pages: 3
     anchor_patterns:
       - "PROPERTI PERTAMBANGAN"

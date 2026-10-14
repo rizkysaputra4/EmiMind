@@ -75,6 +75,9 @@ class RouteQuery(BaseModel):
     terms_en: list[str] = Field(default_factory=list)
     max_pages: int = 6
     anchor_patterns: list[str] = Field(default_factory=list)
+    # the module spans several notes, each named by its own anchor pattern: the router seeds
+    # every pattern's note (page_router.select_pages concept_starts)
+    multi_note: bool = False
 
 
 class GranularNoteModule(BaseModel):

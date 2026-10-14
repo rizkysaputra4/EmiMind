@@ -1,0 +1,17 @@
+# Held-out router gold set (random test tickers) — labelled by the reviewer from statement titles, the notes numbering and note headings in the PDF (not router output).
+file: "NISP_2025_AUDIT_RDF_FS PT Bank OCBC NISP Tbk 31 Dec 2025 (audited).pdf"
+sha256: "05b0e69e4d0e108567001bd2a50345e850699bf76114ac73b9e0f3e1f14e0bf0"
+ticker: "NISP"
+fiscal_period: "2025Q4"
+modules:
+  BALANCE_SHEET: [12, 13, 14]              # Laporan posisi keuangan konsolidasian (parent-only statements on 188-190 excluded)
+  INCOME_STATEMENT: [15, 16]               # Laporan laba rugi dan penghasilan komprehensif lain konsolidasian
+  CASH_FLOW: [19, 20, 21]                  # Laporan arus kas konsolidasian
+  MDA: [22, 23, 24, 25, 26, 27, 28, 29, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101]  # Note 1 General information + Note 3 Financial risk management; no subsequent-events note in this filing
+  COGS_COMPONENTS: [155]                   # bank: Note 31 Interest and sharia expense (cost-of-funds breakdown)
+  CUSTOMER_CONCENTRATION: []               # not disclosed: banks give no >10%-of-revenue customer note
+  DEBT_BY_LENDER: [149, 150, 151]          # Note 24 Marketable securities issued (bonds), Note 25 Borrowing (IFC), Note 26 Subordinated debt (OCBC Bank Singapore)
+  REVENUE_BREAKDOWN: [154, 155, 156, 174, 175]  # Note 30 Interest and sharia income, Note 32 Fees and commissions, Note 46 Operating segment (by segment + geography)
+  BANK_LOAN_QUALITY_NPL: [123, 125, 179, 182, 183]  # Note 12c impaired loans by sector, 12g loans by stage; Note 52a NPL ratio, 52i loan collectibility (Kol 1-5)
+  BANK_LOANS_BY_SEGMENT: [122, 123, 174]   # Note 12a loans by currency and type, 12b by economic sector; Note 46 segment assets
+  BANK_PROFITABILITY_KPIS: [179, 180, 181] # Note 52 regulatory ratios: NPL, GWM/RIM/PLM, NOP, CAR (no NIM/BOPO/ROA/LDR disclosed)

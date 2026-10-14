@@ -1,0 +1,14 @@
+# Dev2 router gold (fresh dev split, seed 20261013). Labelled blind from the PDF's own statement titles, notes numbering and note headings (not router output).
+file: "INDF_2025_AUDIT_RDF_ISM_billingual_31_december_2025_released.pdf"
+sha256: "505aa5780a337545c547708eca6bd7110b4eefc1c471a80792a0ac980ebd0b6d"
+ticker: "INDF"
+fiscal_period: "2025Q4"
+modules:
+  BALANCE_SHEET: [13, 14, 15]                 # Laporan posisi keuangan konsolidasian (+ lanjutan)
+  INCOME_STATEMENT: [16, 17]                  # Laporan laba rugi dan penghasilan komprehensif lain konsolidasian (+ lanjutan)
+  CASH_FLOW: [19, 20]                         # Laporan arus kas konsolidasian (+ lanjutan)
+  MDA: [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 145, 146, 147, 148, 149, 150, 151]  # Note 1 Umum (p21-33) + Note 34 Tujuan dan kebijakan manajemen risiko keuangan (p145-151); no subsequent-events note
+  COGS_COMPONENTS: [133]                      # Note 27 Beban pokok penjualan
+  CUSTOMER_CONCENTRATION: [132]               # Note 26 Penjualan neto: negative statement - no single customer exceeds 10% of consolidated net sales
+  DEBT_BY_LENDER: [100, 101, 102, 114, 115, 116, 117, 118, 119, 120, 137, 140]  # Note 15 Utang bank jangka pendek, cerukan dan utang trust receipts (p100-102) + Note 19 Utang jangka panjang (bank loans + bonds, p114-120) + Note 31 interest-bearing payables to PWL (p137 balance, p140 terms)
+  REVENUE_BREAKDOWN: [132, 133, 154, 155, 156, 157]  # Note 26 Penjualan neto (third/related parties) + Note 36 Informasi segmen (product groups, geography)

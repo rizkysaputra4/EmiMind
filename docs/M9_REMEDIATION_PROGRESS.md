@@ -8,7 +8,15 @@ Tracks the work to fix the findings in [`docs/M9_REVIEW.md`](M9_REVIEW.md) (scor
 
 ## LIVE STATUS — read this first on resume (updated after every sub-step)
 
-- **RESUME HERE (saved 2026-10-12 ~01:00).** Step 7 is paused; PTBA and wave 2 are ON HOLD in `EmiMind-Extraction/m9_comms/ORDERS.md`.
+- **RESUME HERE (saved 2026-10-14).** Router notes-recall rework (workstream R) is done and COMMITTED. Tracker: `docs/m9_workstreams/wsR_progress.md`.
+  - Fresh dev split dev2 (seed 20261013): SIMP, BUMI, CTRA, INDF, TLKM, BRIS. Indexed and blind-labelled (`eval/router_gold/dev2/`). MinIO was restarted with user OK.
+  - dev2 notes recall 0.467 → 0.776 (capped higher within page budgets).
+  - Held-out random: 0.599 → 0.739; on the wave-1 subset (TAPG+PTBA) 0.686 → 0.838.
+  - Older held-out set: 0.807 → 0.835.
+  - LSIP 2025Q4 REVENUE_BREAKDOWN regression (1.0 → 0) fixed 2026-10-14. Cause: seed p101 sat on the page after the note start p100; its coverage counted p100, but the budget ran out before the backward step. Fix: such a seed holds its start page up front (`select_pages` leads). Diagnosed on LSIP, which was already a tuning ticker, so the random held-out set is untouched (re-run unchanged).
+  - User decisions 2026-10-13: DEBT_BY_LENDER budget 6 → 10; MDA stays at 10; the eval reports capped recall next to raw recall.
+  - **Next:** concept-depth threshold check (62), then TAPG + PTBA re-run via the Tester and waves 2/3 (still ON HOLD in `m9_comms/ORDERS.md`).
+- **Previous resume point (saved 2026-10-12 ~01:00).** Step 7 is paused; PTBA and wave 2 are ON HOLD in `EmiMind-Extraction/m9_comms/ORDERS.md`.
   - **Done this session:**
     - Created the comms channel `m9_comms/`: Lead writes ORDERS, Tester writes STATUS and issues.
     - Graded wave 1.

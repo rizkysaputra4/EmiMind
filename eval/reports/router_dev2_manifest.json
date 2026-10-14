@@ -1,0 +1,143 @@
+{
+  "seed": 20261013,
+  "entries": {
+    "SIMP": {
+      "ticker": "SIMP",
+      "source": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\incoming_reports\\SIMP\\processed\\SIMP_2025_AUDIT_RDF_SIMP_Financial Statement_31 dec 2025.pdf",
+      "staged": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\m9_stage_dev2\\SIMP\\SIMP_2025_AUDIT_RDF_SIMP_Financial Statement_31 dec 2025.pdf",
+      "page_count": 136,
+      "doc_type": "FS_ANNUAL",
+      "inspect_status": "AUTHORIZED",
+      "doc_id": "6ddb93aa-b2af-4652-a31e-26996ab33703",
+      "message": "Document authorized for extraction (FS_ANNUAL, 2025Q4, 136 pages, period from downloader_prefix). Next: call get_extraction_contract(doc_id), then get_routed_pages(doc_id, module) per module. If the routed pages show this is not a financial filing, call mark_document_skipped(doc_id, reason='NOT_FINANCIAL_CONTENT', notes='...').",
+      "fiscal_period": "2025Q4",
+      "pages": {
+        "page_count": 136,
+        "fiscal_period": "2025Q4",
+        "doc_type": "FS_ANNUAL",
+        "ticker": "SIMP",
+        "indexed": 136,
+        "embedded": 136,
+        "ocr_failed": 0,
+        "facts": 0,
+        "committed": false
+      },
+      "status": "ready"
+    },
+    "BUMI": {
+      "ticker": "BUMI",
+      "source": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\incoming_reports\\BUMI\\processed\\BUMI_2025_AUDIT_RDF_LKT BUMI 31 Desember 2025.pdf",
+      "staged": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\m9_stage_dev2\\BUMI\\BUMI_2025_AUDIT_RDF_LKT BUMI 31 Desember 2025.pdf",
+      "page_count": 173,
+      "doc_type": "FS_ANNUAL",
+      "inspect_status": "AUTHORIZED",
+      "doc_id": "ec90ce9e-6c6a-4335-853e-889909e1e7c9",
+      "message": "Document authorized for extraction (FS_ANNUAL, 2025Q4, 173 pages, period from downloader_prefix). Next: call get_extraction_contract(doc_id), then get_routed_pages(doc_id, module) per module. If the routed pages show this is not a financial filing, call mark_document_skipped(doc_id, reason='NOT_FINANCIAL_CONTENT', notes='...').",
+      "fiscal_period": "2025Q4",
+      "pages": {
+        "page_count": 173,
+        "fiscal_period": "2025Q4",
+        "doc_type": "FS_ANNUAL",
+        "ticker": "BUMI",
+        "indexed": 173,
+        "embedded": 173,
+        "ocr_failed": 0,
+        "facts": 0,
+        "committed": false
+      },
+      "status": "ready"
+    },
+    "CTRA": {
+      "ticker": "CTRA",
+      "source": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\incoming_reports\\CTRA\\processed\\CTRA_2025_AUDIT_RDF_PT Ciputra Development Tbk 31 Desember 2025.pdf",
+      "staged": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\m9_stage_dev2\\CTRA\\CTRA_2025_AUDIT_RDF_PT Ciputra Development Tbk 31 Desember 2025.pdf",
+      "page_count": 165,
+      "doc_type": "FS_ANNUAL",
+      "inspect_status": "AUTHORIZED",
+      "doc_id": "7f3423bc-c5c7-491b-b990-6cfffaf7015b",
+      "message": "Document authorized for extraction (FS_ANNUAL, 2025Q4, 165 pages, period from downloader_prefix). Next: call get_extraction_contract(doc_id), then get_routed_pages(doc_id, module) per module. If the routed pages show this is not a financial filing, call mark_document_skipped(doc_id, reason='NOT_FINANCIAL_CONTENT', notes='...').",
+      "fiscal_period": "2025Q4",
+      "pages": {
+        "page_count": 165,
+        "fiscal_period": "2025Q4",
+        "doc_type": "FS_ANNUAL",
+        "ticker": "CTRA",
+        "indexed": 165,
+        "embedded": 165,
+        "ocr_failed": 0,
+        "facts": 0,
+        "committed": false
+      },
+      "status": "ready"
+    },
+    "INDF": {
+      "ticker": "INDF",
+      "source": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\incoming_reports\\INDF\\processed\\INDF_2025_AUDIT_RDF_ISM_billingual_31_december_2025_released.pdf",
+      "staged": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\m9_stage_dev2\\INDF\\INDF_2025_AUDIT_RDF_ISM_billingual_31_december_2025_released.pdf",
+      "page_count": 161,
+      "doc_type": "FS_ANNUAL",
+      "inspect_status": "AUTHORIZED",
+      "doc_id": "147f35f2-e599-4ea6-93e2-6fbdfab3088e",
+      "message": "Document authorized for extraction (FS_ANNUAL, 2025Q4, 161 pages, period from downloader_prefix). Next: call get_extraction_contract(doc_id), then get_routed_pages(doc_id, module) per module. If the routed pages show this is not a financial filing, call mark_document_skipped(doc_id, reason='NOT_FINANCIAL_CONTENT', notes='...').",
+      "fiscal_period": "2025Q4",
+      "pages": {
+        "page_count": 161,
+        "fiscal_period": "2025Q4",
+        "doc_type": "FS_ANNUAL",
+        "ticker": "INDF",
+        "indexed": 161,
+        "embedded": 161,
+        "ocr_failed": 0,
+        "facts": 0,
+        "committed": false
+      },
+      "status": "ready"
+    },
+    "TLKM": {
+      "ticker": "TLKM",
+      "source": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\incoming_reports\\TLKM\\processed\\TLKM_2025_AUDIT_RDF_LK Konsolidasian Telkom Tahun 2025 Audited_Eng.pdf",
+      "staged": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\m9_stage_dev2\\TLKM\\TLKM_2025_AUDIT_RDF_LK Konsolidasian Telkom Tahun 2025 Audited_Eng.pdf",
+      "page_count": 129,
+      "doc_type": "FS_ANNUAL",
+      "inspect_status": "AUTHORIZED",
+      "doc_id": "7ebf92c5-dafa-4b38-95c0-6140e96b9fce",
+      "message": "Document authorized for extraction (FS_ANNUAL, 2025Q4, 129 pages, period from downloader_prefix). Next: call get_extraction_contract(doc_id), then get_routed_pages(doc_id, module) per module. If the routed pages show this is not a financial filing, call mark_document_skipped(doc_id, reason='NOT_FINANCIAL_CONTENT', notes='...').",
+      "fiscal_period": "2025Q4",
+      "pages": {
+        "page_count": 129,
+        "fiscal_period": "2025Q4",
+        "doc_type": "FS_ANNUAL",
+        "ticker": "TLKM",
+        "indexed": 129,
+        "embedded": 129,
+        "ocr_failed": 0,
+        "facts": 0,
+        "committed": false
+      },
+      "status": "ready"
+    },
+    "BRIS": {
+      "ticker": "BRIS",
+      "source": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\incoming_reports\\BRIS\\processed\\BRIS_2025_AUDIT_RDF_PT Bank Syariah Indonesia Tbk_31 Des 2025.pdf",
+      "staged": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\m9_stage_dev2\\BRIS\\BRIS_2025_AUDIT_RDF_PT Bank Syariah Indonesia Tbk_31 Des 2025.pdf",
+      "page_count": 183,
+      "doc_type": "FS_ANNUAL",
+      "inspect_status": "AUTHORIZED",
+      "doc_id": "0b336c7e-0fe3-40cc-8f65-7dffd43b24c4",
+      "message": "Document authorized for extraction (FS_ANNUAL, 2025Q4, 183 pages, period from downloader_prefix). Next: call get_extraction_contract(doc_id), then get_routed_pages(doc_id, module) per module. If the routed pages show this is not a financial filing, call mark_document_skipped(doc_id, reason='NOT_FINANCIAL_CONTENT', notes='...').",
+      "fiscal_period": "2025Q4",
+      "pages": {
+        "page_count": 183,
+        "fiscal_period": "2025Q4",
+        "doc_type": "FS_ANNUAL",
+        "ticker": "BRIS",
+        "indexed": 183,
+        "embedded": 183,
+        "ocr_failed": 0,
+        "facts": 0,
+        "committed": false
+      },
+      "status": "ready"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+# Dev2 router gold (fresh dev split, seed 20261013). Labelled blind from the PDF's own statement titles, notes numbering and note headings (not router output).
+file: "TLKM_2025_AUDIT_RDF_LK Konsolidasian Telkom Tahun 2025 Audited_Eng.pdf"
+sha256: "7f3c44b6bb15ca45c8c60ceee5ffc46c04d23e2dba854e00f2b518d37d1336ba"
+ticker: "TLKM"
+fiscal_period: "2025Q4"
+modules:
+  BALANCE_SHEET: [9]                          # Consolidated statements of financial position
+  INCOME_STATEMENT: [10]                      # Consolidated statements of profit or loss and other comprehensive income
+  CASH_FLOW: [13]                             # Consolidated statements of cash flows
+  MDA: [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 121, 122, 123, 124, 126]  # Note 1 General (p14-24) + Note 37b Financial risk management objectives and policies (sub-section of Note 37 Financial instruments, p121-124) + Note 40 Subsequent events (p126)
+  COGS_COMPONENTS: [83]                       # No cost-of-revenue note (expenses by nature): Note 25 Operation, maintenance and telecommunication service expenses (+ Note 24 Personnel expenses on same page)
+  CUSTOMER_CONCENTRATION: [108]               # Note 33 Operating segments: negative statement - no major customer exceeds 10% of total revenues
+  DEBT_BY_LENDER: [74, 75, 76, 77, 78, 79]    # Note 18 Short-term bank loans (p74-75) + Note 19 Long-term loans (bonds, bank loans, p75-79)
+  REVENUE_BREAKDOWN: [82, 83, 107, 108]       # Note 23 Revenues (product lines x segment) + Note 33 Operating segments (p107-108)
+  TELCO_MOBILE_KPIS: []                       # audited FS prints no subscribers / ARPU / data traffic KPIs

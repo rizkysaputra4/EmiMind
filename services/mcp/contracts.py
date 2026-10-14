@@ -83,6 +83,7 @@ def get_route_query(module_name: str, sector: str = "ALL") -> RouteQuery | None:
         terms_en=list(entry.get("terms_en", [])),
         max_pages=int(entry.get("max_pages", 6)),
         anchor_patterns=list(entry.get("anchor_patterns", [])),
+        multi_note=bool(entry.get("multi_note", False)),
     )
 
 

@@ -13,11 +13,14 @@ from services.narrative.embedder import Embedder, EmbeddingUnavailableError
 from services.retrieval import page_router as pr
 from services.retrieval.page_router import (
     anchor_ranking,
+    compile_anchor,
     cosine_top,
     excluded_pages,
+    forward_walk,
     is_continuation,
     merge_spans,
     note_headings,
+    pattern_starts,
     rrf_fuse,
     select_pages,
     statement_title,
@@ -144,6 +147,18 @@ def test_select_pages_long_first_note_does_not_starve_a_second_location() -> Non
     assert [s for s, _ps, _sc in units] == [3, 9]
 
 
+def test_select_pages_seed_after_a_note_start_holds_the_start_page() -> None:
+    doc = _long_note_doc()
+    doc[10] = NOTES_HDR + "10. EFEK-EFEK YANG DITERBITKAN (lanjutan)\nObligasi seri B"
+    # seed 10 continues note 10, which starts on p9; seed 3 would take the rest of the
+    # budget before seed 10's backward step, so p9 is held up front
+    units = select_pages([(3, 0.05), (10, 0.045)], doc, budget=4, heading_starts={1, 9})
+    assert [ps for _s, ps, _sc in units] == [[2, 3], [9, 10]]
+    # no room for the start page: the seed keeps only its own page
+    units = select_pages([(3, 0.05), (10, 0.045)], doc, budget=2, heading_starts={1, 9})
+    assert [ps for _s, ps, _sc in units] == [[3], [10]]
+
+
 def test_select_pages_adds_the_note_start_when_every_seed_is_mid_note() -> None:
     doc = _long_note_doc()
     # seed 6 is deep inside note 9 (reach 5..8); the note starts on p1, which only the
@@ -197,6 +212,98 @@ def test_select_pages_statement_mode_walks_back_to_statement_start() -> None:
         [(3, 0.05), (4, 0.049)], doc, budget=6, top_k=1, statement_mode=True, exclude={1}
     )
     assert [ps for _s, ps, _sc in units] == [[2, 3]]
+
+
+def test_compile_anchor_matches_headings_with_squashed_spaces() -> None:
+    assert compile_anchor("UTANG BANK").search("15. UTANGBANK 15. BANK LOANS")
+    assert compile_anchor("UTANG BANK").search("15. Utang  Bank")
+    assert compile_anchor("SUKUK .{0,25}DITERBITKAN").search("28. SUKUKMUDHARABAHDITERBITKAN")
+    assert not compile_anchor("UTANG BANK").search("15. UTANG USAHA")
+
+
+def test_note_headings_join_only_upper_case_wraps() -> None:
+    wrap = NOTES_HDR + "33. TUJUAN DAN KEBIJAKAN MANAJEMEN\nRISIKO KEUANGAN\nRisiko pasar"
+    assert note_headings(wrap)[0][1].endswith("RISIKO KEUANGAN")
+    # the first body line under a heading is not part of the heading text
+    body = NOTES_HDR + "42. PERISTIWA SETELAH TANGGAL NERACA\nUtang bank jangka pendek"
+    assert "Utang" not in note_headings(body)[0][1]
+    # '-Lanjutan' / '-Continued' after the scale line marks a continued page
+    cont = HDR + "CATATAN ATAS LAPORAN KEUANGAN\nkecuali dinyatakan lain)-Lanjutan\nTeks"
+    assert is_continuation(NOTES_HDR + "1. UMUM\nTeks", cont)
+
+
+def test_body_line_anchor_ranks_with_sub_headings_not_note_starts() -> None:
+    doc = {
+        1: NOTES_HDR + "8. ASET BIOLOGIS\nAset biologis terdiri atas",
+        2: NOTES_HDR + "13. ASET TETAP\nTanaman Produktif/ Alat Berat",
+        3: NOTES_HDR + "42. PERISTIWA SETELAH TANGGAL NERACA\nUtang bank jangka pendek",
+    }
+    ranked, starts = anchor_ranking(doc, ["ASET BIOLOGIS", "TANAMAN PRODUKTIF"], set())
+    assert ranked == [1, 2] and starts == {1, 2}
+    ranked, starts = anchor_ranking(doc, ["UTANG BANK"], set())
+    assert ranked == [3] and starts == {3}
+    # strong (the heading matches) vs weak (only the first body line does)
+    assert pattern_starts(doc, ["ASET BIOLOGIS", "TANAMAN PRODUKTIF"], set()) == [
+        {1: True},
+        {2: False},
+    ]
+
+
+def test_forward_walk_stops_where_another_note_starts() -> None:
+    doc = {
+        1: NOTES_HDR + "33. MANAJEMEN RISIKO KEUANGAN\nRisiko kredit",
+        2: NOTES_HDR + "33. MANAJEMEN RISIKO KEUANGAN (lanjutan)\nRisiko likuiditas\n"
+        "34. PENGUKURAN NILAI WAJAR\nInstrumen keuangan",
+        3: NOTES_HDR + "34. PENGUKURAN NILAI WAJAR (lanjutan)\nHierarki",
+        4: NOTES_HDR + "34. PENGUKURAN NILAI WAJAR (lanjutan)\nLevel 3",
+    }
+    # p2 holds the tail of note 33, so it belongs; p3 continues note 34, so it doesn't
+    assert list(forward_walk(1, doc, set())) == [2]
+    # a seed inside note 34 walks on through note 34
+    assert list(forward_walk(2, doc, set())) == [3, 4]
+
+
+def test_policy_note_pages_without_a_heading_are_excluded() -> None:
+    doc = {
+        1: NOTES_HDR + "2. IKHTISAR KEBIJAKAN AKUNTANSI MATERIAL\na. Dasar penyusunan",
+        2: NOTES_HDR + "t. Pengakuan Pendapatan\nPendapatan dari kontrak dengan pelanggan",
+        3: NOTES_HDR + "u. Beban\nBeban diakui",
+        4: NOTES_HDR + "4. KAS DAN SETARA KAS\nKas 100",
+        5: NOTES_HDR + "Bank 900",
+    }
+    # pp2-3 continue the policy note; p5 continues note 4
+    assert excluded_pages(doc, core_query=False) == {1, 2, 3}
+
+
+def _multi_note_doc() -> dict[int, str]:
+    """Note 1 General p1-2, note 30 risk management p5-7, note 40 subsequent events p9."""
+    doc = {i: NOTES_HDR + "Teks" for i in range(1, 11)}
+    doc[1] = NOTES_HDR + "1. UMUM\nPendirian perusahaan"
+    doc[2] = NOTES_HDR + "1. UMUM (lanjutan)\nEntitas anak\n2. KEBIJAKAN AKUNTANSI\nDasar"
+    doc[3] = NOTES_HDR + "2. KEBIJAKAN AKUNTANSI (lanjutan)\nDasar"
+    doc[5] = NOTES_HDR + "30. MANAJEMEN RISIKO KEUANGAN\nRisiko kredit"
+    doc[6] = NOTES_HDR + "30. MANAJEMEN RISIKO KEUANGAN (lanjutan)\nRisiko likuiditas"
+    doc[7] = NOTES_HDR + "30. MANAJEMEN RISIKO KEUANGAN (lanjutan)\nRisiko pasar"
+    doc[8] = NOTES_HDR + "31. PENGELOLAAN MODAL\nRasio utang"
+    doc[9] = NOTES_HDR + "40. PERISTIWA SETELAH PERIODE PELAPORAN\nPinjaman baru"
+    return doc
+
+
+def test_select_pages_seeds_every_note_of_a_multi_note_module() -> None:
+    doc = _multi_note_doc()
+    patterns = [r"^\s*1\.\s+UMUM", "MANAJEMEN RISIKO", "PERISTIWA SETELAH"]
+    concepts = pattern_starts(doc, patterns, set())
+    # the risk note dominates the fused ranking; notes 1 and 40 sit far below the seed ratio
+    fused = [(6, 0.05), (5, 0.049), (7, 0.048), (1, 0.016), (9, 0.015)]
+    units = select_pages(fused, doc, budget=6, concept_starts=concepts, support={9})
+    assert [s for s, _ps, _sc in units] == [6, 1, 9]
+    assert sorted(p for _s, ps, _sc in units for p in ps) == [1, 2, 5, 6, 7, 9]
+    # without concept starts only the risk note is routed
+    units = select_pages(fused, doc, budget=6)
+    assert [s for s, _ps, _sc in units] == [6]
+    # a note matched only by its first body line needs FTS/ANN support
+    units = select_pages(fused, doc, budget=6, concept_starts=[{9: False}], support=set())
+    assert [s for s, _ps, _sc in units] == [6]
 
 
 def test_cosine_top() -> None:

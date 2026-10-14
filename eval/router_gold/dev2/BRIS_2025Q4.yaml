@@ -1,0 +1,18 @@
+# Dev2 router gold (fresh dev split, seed 20261013). Labelled blind from the PDF's own statement titles, notes numbering and note headings (not router output).
+file: "BRIS_2025_AUDIT_RDF_PT Bank Syariah Indonesia Tbk_31 Des 2025.pdf"
+sha256: "421a782e8829ba2759d45f751700188543690cf2e9ff2fa3cc5cfd003589c2f8"
+ticker: "BRIS"
+fiscal_period: "2025Q4"
+modules:
+  BALANCE_SHEET: [15, 16, 17, 18]             # Laporan posisi keuangan (+ lanjutan)
+  INCOME_STATEMENT: [19]                      # Laporan laba rugi dan penghasilan komprehensif lain
+  CASH_FLOW: [21, 22]                         # Laporan arus kas (+ lanjutan)
+  MDA: [26, 27, 28, 29, 30, 31, 32, 33, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 182, 183]  # Note 1 Umum (p26-33) + Note 46 Manajemen risiko (credit/market/liquidity, p145-157) + Note 56 Peristiwa setelah tanggal periode pelaporan (p182-183)
+  COGS_COMPONENTS: [122]                      # Note 36 Hak pihak ketiga atas bagi hasil (third parties' share on return = profit-sharing distribution)
+  CUSTOMER_CONCENTRATION: []                  # no >10% customer disclosure and no negative statement
+  DEBT_BY_LENDER: [109, 110, 111, 112, 113, 114, 115, 116, 117]  # Note 28 Sukuk mudharabah diterbitkan (p109-115) + Note 29 Sukuk mudharabah subordinasi (p115-116) + Note 30 Pembiayaan berjangka mudharabah (Maybank facility, p117)
+  REVENUE_BREAKDOWN: [121, 122, 160, 161, 162, 163]  # Notes 32-34 Pendapatan dari jual beli / bagi hasil / ijarah (p121) + Note 35 Pendapatan usaha utama lainnya (p122) + Note 48 Segmen operasi (p160-163)
+  BANK_LOAN_QUALITY_NPL: [169, 170, 171]      # Note 54e-h Kolektibilitas piutang / qardh / mudharabah / musyarakah (lancar..macet) + 54j Rasio NPF (p171)
+  BANK_LOANS_BY_SEGMENT: [78, 81, 83, 86, 151, 152, 162, 163, 175]  # Notes 9/10/11/12 "berdasarkan sektor ekonomi" tables (murabahah p78, qardh p81, mudharabah p83, musyarakah p86) + Note 46a(ii)(b) concentration by industrial sector (p151-152) + Note 48 financing by segment wholesale/SME/micro/consumer (p162-163) + Note 54o small-business financing ratio (p175)
+  BANK_LOANS_NPL: [80, 82, 85, 88, 147, 149, 169, 170, 171]  # allowance-for-impairment movements in Notes 9/10/11/12 (p80, p82, p85, p88) + Note 46a(i) financial asset quality incl. impaired (p147) and past-due aging (p149) + Note 54e-h collectibility, 54i restructured, 54j NPF (p169-171); no ECL stage tables (sharia PSAK impairment)
+  BANK_PROFITABILITY_KPIS: []                 # FS prints no NIM / BOPO / ROA / FDR ratio values (only CAR in Note 54n p174, GWM in 54m)

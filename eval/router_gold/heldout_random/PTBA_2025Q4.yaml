@@ -1,0 +1,16 @@
+# Held-out router gold set (random test tickers) — labelled by the reviewer from statement titles, the notes numbering and note headings in the PDF (not router output).
+file: "PTBA_2025_AUDIT_RDF_FS PTBA FY 2025.pdf"
+sha256: "188f3067c3821aa8e83f90a867672e877340b7c9c5fab9d9d4125f088deab18a"
+ticker: "PTBA"
+fiscal_period: "2025Q4"
+modules:
+  BALANCE_SHEET: [14, 15, 16]              # Laporan posisi keuangan konsolidasian
+  INCOME_STATEMENT: [17, 18]               # Laporan laba rugi dan penghasilan komprehensif lain konsolidasian
+  CASH_FLOW: [20, 21]                      # Laporan arus kas konsolidasian
+  MDA: [22, 23, 24, 25, 26, 151, 152, 153, 154, 155, 156, 157, 164, 165]  # Note 1 Umum/General + Note 31 Risk management + Note 37 Significant events after reporting period
+  COGS_COMPONENTS: [128]                   # Note 27a Beban pokok pendapatan (cost of revenue by nature)
+  CUSTOMER_CONCENTRATION: [127]            # Note 26 customers >10% of total revenue (PLN Group)
+  DEBT_BY_LENDER: [119, 120, 121]          # Note 20 Pinjaman bank (short-term BRI/BNI; syndicated Mandiri/BRI/BNI; BSN)
+  REVENUE_BREAKDOWN: [127, 159, 160]       # Note 26 Revenue (coal vs other, third vs related parties) + Note 33 Segment information (by segment, by geography)
+  MINING_PRODUCTION_AND_SALES: [127, 160]  # Note 26 coal sales + Note 33 sales by geographic location (domestic vs export); no tonnage volumes disclosed in the FS
+  MINING_RESERVES_AND_RESOURCES: [87, 88, 104]  # Note 10 Mining properties per mine (areas with proven reserves) + Note 18 IUP-OP concessions by location; no reserve/resource tonnages disclosed

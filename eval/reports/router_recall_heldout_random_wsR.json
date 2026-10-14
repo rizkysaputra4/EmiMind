@@ -1,0 +1,1299 @@
+{
+  "summary": {
+    "core_mean_recall": 1.0,
+    "notes_mean_recall": 0.739,
+    "notes_mean_capped_recall": 0.79,
+    "mean_precision": 0.7865,
+    "mean_pages_per_module": 3.5676,
+    "total_evaluated_modules": 37,
+    "core_module_count": 12,
+    "notes_module_count": 25,
+    "failures": 2,
+    "thresholds": {
+      "core_recall": 0.9,
+      "notes_recall": 0.8,
+      "precision": 0.4
+    },
+    "thresholds_met": false,
+    "fail_reasons": [
+      "2 gold document/module(s) could not be evaluated",
+      "notes recall 0.739 < 0.8"
+    ],
+    "per_ticker": {
+      "BSDE": {
+        "core_mean_recall": 1.0,
+        "notes_mean_recall": 0.5154761904761905,
+        "mean_precision": 0.6875,
+        "mean_pages_per_module": 2.0,
+        "modules": 8
+      },
+      "NISP": {
+        "core_mean_recall": 1.0,
+        "notes_mean_recall": 0.7148005148005148,
+        "mean_precision": 0.6533333333333333,
+        "mean_pages_per_module": 5.3,
+        "modules": 10
+      },
+      "PTBA": {
+        "core_mean_recall": 1.0,
+        "notes_mean_recall": 0.9013605442176871,
+        "mean_precision": 0.865,
+        "mean_pages_per_module": 3.3,
+        "modules": 10
+      },
+      "TAPG": {
+        "core_mean_recall": 1.0,
+        "notes_mean_recall": 0.7638888888888888,
+        "mean_precision": 0.9351851851851851,
+        "mean_pages_per_module": 3.3333333333333335,
+        "modules": 9
+      }
+    }
+  },
+  "modules": [
+    {
+      "gold_file": "BSDE_2025Q4.yaml",
+      "ticker": "BSDE",
+      "doc_id": "e963c620-478d-499e-a1a3-bd30408d8af6",
+      "module": "BALANCE_SHEET",
+      "type": "core",
+      "gold_pages": [
+        11,
+        12
+      ],
+      "returned_pages": [
+        11,
+        12
+      ],
+      "hits": [
+        11,
+        12
+      ],
+      "missed": [],
+      "pages_returned": 2,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "BSDE_2025Q4.yaml",
+      "ticker": "BSDE",
+      "doc_id": "e963c620-478d-499e-a1a3-bd30408d8af6",
+      "module": "INCOME_STATEMENT",
+      "type": "core",
+      "gold_pages": [
+        13
+      ],
+      "returned_pages": [
+        13
+      ],
+      "hits": [
+        13
+      ],
+      "missed": [],
+      "pages_returned": 1,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "BSDE_2025Q4.yaml",
+      "ticker": "BSDE",
+      "doc_id": "e963c620-478d-499e-a1a3-bd30408d8af6",
+      "module": "CASH_FLOW",
+      "type": "core",
+      "gold_pages": [
+        16
+      ],
+      "returned_pages": [
+        16
+      ],
+      "hits": [
+        16
+      ],
+      "missed": [],
+      "pages_returned": 1,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "BSDE_2025Q4.yaml",
+      "ticker": "BSDE",
+      "doc_id": "e963c620-478d-499e-a1a3-bd30408d8af6",
+      "module": "MDA",
+      "type": "notes",
+      "gold_pages": [
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        196,
+        197,
+        198,
+        199,
+        200,
+        219,
+        220
+      ],
+      "returned_pages": [
+        196
+      ],
+      "hits": [
+        196
+      ],
+      "missed": [
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        197,
+        198,
+        199,
+        200,
+        219,
+        220
+      ],
+      "pages_returned": 1,
+      "recall": 0.03571428571428571,
+      "capped_recall": 0.1,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "BSDE_2025Q4.yaml",
+      "ticker": "BSDE",
+      "doc_id": "e963c620-478d-499e-a1a3-bd30408d8af6",
+      "module": "COGS_COMPONENTS",
+      "type": "notes",
+      "gold_pages": [
+        179
+      ],
+      "returned_pages": [
+        69,
+        179
+      ],
+      "hits": [
+        179
+      ],
+      "missed": [],
+      "pages_returned": 2,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 0.5
+    },
+    {
+      "gold_file": "BSDE_2025Q4.yaml",
+      "ticker": "BSDE",
+      "doc_id": "e963c620-478d-499e-a1a3-bd30408d8af6",
+      "module": "CUSTOMER_CONCENTRATION",
+      "type": "notes",
+      "gold_pages": [
+        178
+      ],
+      "returned_pages": [
+        4,
+        67,
+        178
+      ],
+      "hits": [
+        178
+      ],
+      "missed": [],
+      "pages_returned": 3,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 0.3333333333333333
+    },
+    {
+      "gold_file": "BSDE_2025Q4.yaml",
+      "ticker": "BSDE",
+      "doc_id": "e963c620-478d-499e-a1a3-bd30408d8af6",
+      "module": "DEBT_BY_LENDER",
+      "type": "notes",
+      "gold_pages": [
+        136,
+        137,
+        141,
+        142,
+        143,
+        144,
+        145,
+        146,
+        147,
+        148,
+        149,
+        150,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157,
+        158,
+        159,
+        160,
+        161,
+        162
+      ],
+      "returned_pages": [
+        141,
+        196,
+        197
+      ],
+      "hits": [
+        141
+      ],
+      "missed": [
+        136,
+        137,
+        142,
+        143,
+        144,
+        145,
+        146,
+        147,
+        148,
+        149,
+        150,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157,
+        158,
+        159,
+        160,
+        161,
+        162
+      ],
+      "pages_returned": 3,
+      "recall": 0.041666666666666664,
+      "capped_recall": 0.1,
+      "precision": 0.3333333333333333
+    },
+    {
+      "gold_file": "BSDE_2025Q4.yaml",
+      "ticker": "BSDE",
+      "doc_id": "e963c620-478d-499e-a1a3-bd30408d8af6",
+      "module": "REVENUE_BREAKDOWN",
+      "type": "notes",
+      "gold_pages": [
+        178,
+        218
+      ],
+      "returned_pages": [
+        4,
+        66,
+        178
+      ],
+      "hits": [
+        178
+      ],
+      "missed": [
+        218
+      ],
+      "pages_returned": 3,
+      "recall": 0.5,
+      "capped_recall": 0.5,
+      "precision": 0.3333333333333333
+    },
+    {
+      "gold_file": "NISP_2025Q4.yaml",
+      "ticker": "NISP",
+      "doc_id": "f67d9be5-9f1d-465e-bb99-0f37697ffd1b",
+      "module": "BALANCE_SHEET",
+      "type": "core",
+      "gold_pages": [
+        12,
+        13,
+        14
+      ],
+      "returned_pages": [
+        12,
+        13,
+        14
+      ],
+      "hits": [
+        12,
+        13,
+        14
+      ],
+      "missed": [],
+      "pages_returned": 3,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "NISP_2025Q4.yaml",
+      "ticker": "NISP",
+      "doc_id": "f67d9be5-9f1d-465e-bb99-0f37697ffd1b",
+      "module": "INCOME_STATEMENT",
+      "type": "core",
+      "gold_pages": [
+        15,
+        16
+      ],
+      "returned_pages": [
+        15,
+        16
+      ],
+      "hits": [
+        15,
+        16
+      ],
+      "missed": [],
+      "pages_returned": 2,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "NISP_2025Q4.yaml",
+      "ticker": "NISP",
+      "doc_id": "f67d9be5-9f1d-465e-bb99-0f37697ffd1b",
+      "module": "CASH_FLOW",
+      "type": "core",
+      "gold_pages": [
+        19,
+        20,
+        21
+      ],
+      "returned_pages": [
+        19,
+        20,
+        21
+      ],
+      "hits": [
+        19,
+        20,
+        21
+      ],
+      "missed": [],
+      "pages_returned": 3,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "NISP_2025Q4.yaml",
+      "ticker": "NISP",
+      "doc_id": "f67d9be5-9f1d-465e-bb99-0f37697ffd1b",
+      "module": "MDA",
+      "type": "notes",
+      "gold_pages": [
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101
+      ],
+      "returned_pages": [
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        92,
+        101
+      ],
+      "hits": [
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        92,
+        101
+      ],
+      "missed": [
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100
+      ],
+      "pages_returned": 10,
+      "recall": 0.2702702702702703,
+      "capped_recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "NISP_2025Q4.yaml",
+      "ticker": "NISP",
+      "doc_id": "f67d9be5-9f1d-465e-bb99-0f37697ffd1b",
+      "module": "COGS_COMPONENTS",
+      "type": "notes",
+      "gold_pages": [
+        155
+      ],
+      "returned_pages": [
+        155,
+        170,
+        171,
+        172,
+        173
+      ],
+      "hits": [
+        155
+      ],
+      "missed": [],
+      "pages_returned": 5,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 0.2
+    },
+    {
+      "gold_file": "NISP_2025Q4.yaml",
+      "ticker": "NISP",
+      "doc_id": "f67d9be5-9f1d-465e-bb99-0f37697ffd1b",
+      "module": "DEBT_BY_LENDER",
+      "type": "notes",
+      "gold_pages": [
+        149,
+        150,
+        151
+      ],
+      "returned_pages": [
+        98,
+        99,
+        100,
+        101,
+        149,
+        150
+      ],
+      "hits": [
+        149,
+        150
+      ],
+      "missed": [
+        151
+      ],
+      "pages_returned": 6,
+      "recall": 0.6666666666666666,
+      "capped_recall": 0.6666666666666666,
+      "precision": 0.3333333333333333
+    },
+    {
+      "gold_file": "NISP_2025Q4.yaml",
+      "ticker": "NISP",
+      "doc_id": "f67d9be5-9f1d-465e-bb99-0f37697ffd1b",
+      "module": "REVENUE_BREAKDOWN",
+      "type": "notes",
+      "gold_pages": [
+        154,
+        155,
+        156,
+        174,
+        175
+      ],
+      "returned_pages": [
+        154,
+        155,
+        170,
+        173,
+        174,
+        175
+      ],
+      "hits": [
+        154,
+        155,
+        174,
+        175
+      ],
+      "missed": [
+        156
+      ],
+      "pages_returned": 6,
+      "recall": 0.8,
+      "capped_recall": 0.8,
+      "precision": 0.6666666666666666
+    },
+    {
+      "gold_file": "NISP_2025Q4.yaml",
+      "ticker": "NISP",
+      "doc_id": "f67d9be5-9f1d-465e-bb99-0f37697ffd1b",
+      "module": "BANK_LOAN_QUALITY_NPL",
+      "type": "notes",
+      "gold_pages": [
+        123,
+        125,
+        179,
+        182,
+        183
+      ],
+      "returned_pages": [
+        6,
+        123,
+        182,
+        183,
+        184,
+        185
+      ],
+      "hits": [
+        123,
+        182,
+        183
+      ],
+      "missed": [
+        125,
+        179
+      ],
+      "pages_returned": 6,
+      "recall": 0.6,
+      "capped_recall": 0.6,
+      "precision": 0.5
+    },
+    {
+      "gold_file": "NISP_2025Q4.yaml",
+      "ticker": "NISP",
+      "doc_id": "f67d9be5-9f1d-465e-bb99-0f37697ffd1b",
+      "module": "BANK_LOANS_BY_SEGMENT",
+      "type": "notes",
+      "gold_pages": [
+        122,
+        123,
+        174
+      ],
+      "returned_pages": [
+        122,
+        123,
+        124,
+        125,
+        126,
+        174
+      ],
+      "hits": [
+        122,
+        123,
+        174
+      ],
+      "missed": [],
+      "pages_returned": 6,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 0.5
+    },
+    {
+      "gold_file": "NISP_2025Q4.yaml",
+      "ticker": "NISP",
+      "doc_id": "f67d9be5-9f1d-465e-bb99-0f37697ffd1b",
+      "module": "BANK_PROFITABILITY_KPIS",
+      "type": "notes",
+      "gold_pages": [
+        179,
+        180,
+        181
+      ],
+      "returned_pages": [
+        179,
+        181,
+        182,
+        183,
+        184,
+        185
+      ],
+      "hits": [
+        179,
+        181
+      ],
+      "missed": [
+        180
+      ],
+      "pages_returned": 6,
+      "recall": 0.6666666666666666,
+      "capped_recall": 0.6666666666666666,
+      "precision": 0.3333333333333333
+    },
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "ticker": "PTBA",
+      "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
+      "module": "BALANCE_SHEET",
+      "type": "core",
+      "gold_pages": [
+        14,
+        15,
+        16
+      ],
+      "returned_pages": [
+        14,
+        15,
+        16
+      ],
+      "hits": [
+        14,
+        15,
+        16
+      ],
+      "missed": [],
+      "pages_returned": 3,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "ticker": "PTBA",
+      "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
+      "module": "INCOME_STATEMENT",
+      "type": "core",
+      "gold_pages": [
+        17,
+        18
+      ],
+      "returned_pages": [
+        17,
+        18
+      ],
+      "hits": [
+        17,
+        18
+      ],
+      "missed": [],
+      "pages_returned": 2,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "ticker": "PTBA",
+      "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
+      "module": "CASH_FLOW",
+      "type": "core",
+      "gold_pages": [
+        20,
+        21
+      ],
+      "returned_pages": [
+        20,
+        21
+      ],
+      "hits": [
+        20,
+        21
+      ],
+      "missed": [],
+      "pages_returned": 2,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "ticker": "PTBA",
+      "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
+      "module": "MDA",
+      "type": "notes",
+      "gold_pages": [
+        22,
+        23,
+        24,
+        25,
+        26,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157,
+        164,
+        165
+      ],
+      "returned_pages": [
+        22,
+        118,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        164,
+        165
+      ],
+      "hits": [
+        22,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        164,
+        165
+      ],
+      "missed": [
+        23,
+        24,
+        25,
+        26,
+        157
+      ],
+      "pages_returned": 10,
+      "recall": 0.6428571428571429,
+      "capped_recall": 0.9,
+      "precision": 0.9
+    },
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "ticker": "PTBA",
+      "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
+      "module": "COGS_COMPONENTS",
+      "type": "notes",
+      "gold_pages": [
+        128
+      ],
+      "returned_pages": [
+        128,
+        129,
+        130
+      ],
+      "hits": [
+        128
+      ],
+      "missed": [],
+      "pages_returned": 3,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 0.3333333333333333
+    },
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "ticker": "PTBA",
+      "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
+      "module": "CUSTOMER_CONCENTRATION",
+      "type": "notes",
+      "gold_pages": [
+        127
+      ],
+      "returned_pages": [
+        127
+      ],
+      "hits": [
+        127
+      ],
+      "missed": [],
+      "pages_returned": 1,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "ticker": "PTBA",
+      "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
+      "module": "DEBT_BY_LENDER",
+      "type": "notes",
+      "gold_pages": [
+        119,
+        120,
+        121
+      ],
+      "returned_pages": [
+        119,
+        120,
+        121
+      ],
+      "hits": [
+        119,
+        120,
+        121
+      ],
+      "missed": [],
+      "pages_returned": 3,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "ticker": "PTBA",
+      "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
+      "module": "REVENUE_BREAKDOWN",
+      "type": "notes",
+      "gold_pages": [
+        127,
+        159,
+        160
+      ],
+      "returned_pages": [
+        127,
+        158,
+        159,
+        160
+      ],
+      "hits": [
+        127,
+        159,
+        160
+      ],
+      "missed": [],
+      "pages_returned": 4,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 0.75
+    },
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "ticker": "PTBA",
+      "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
+      "module": "MINING_PRODUCTION_AND_SALES",
+      "type": "notes",
+      "gold_pages": [
+        127,
+        160
+      ],
+      "returned_pages": [
+        127,
+        159,
+        160
+      ],
+      "hits": [
+        127,
+        160
+      ],
+      "missed": [],
+      "pages_returned": 3,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 0.6666666666666666
+    },
+    {
+      "gold_file": "PTBA_2025Q4.yaml",
+      "ticker": "PTBA",
+      "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
+      "module": "MINING_RESERVES_AND_RESOURCES",
+      "type": "notes",
+      "gold_pages": [
+        87,
+        88,
+        104
+      ],
+      "returned_pages": [
+        87,
+        88
+      ],
+      "hits": [
+        87,
+        88
+      ],
+      "missed": [
+        104
+      ],
+      "pages_returned": 2,
+      "recall": 0.6666666666666666,
+      "capped_recall": 0.6666666666666666,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "TAPG_2025Q4.yaml",
+      "ticker": "TAPG",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "module": "BALANCE_SHEET",
+      "type": "core",
+      "gold_pages": [
+        14,
+        15,
+        16
+      ],
+      "returned_pages": [
+        14,
+        15,
+        16
+      ],
+      "hits": [
+        14,
+        15,
+        16
+      ],
+      "missed": [],
+      "pages_returned": 3,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "TAPG_2025Q4.yaml",
+      "ticker": "TAPG",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "module": "INCOME_STATEMENT",
+      "type": "core",
+      "gold_pages": [
+        17,
+        18
+      ],
+      "returned_pages": [
+        17,
+        18
+      ],
+      "hits": [
+        17,
+        18
+      ],
+      "missed": [],
+      "pages_returned": 2,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "TAPG_2025Q4.yaml",
+      "ticker": "TAPG",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "module": "CASH_FLOW",
+      "type": "core",
+      "gold_pages": [
+        20,
+        21
+      ],
+      "returned_pages": [
+        20,
+        21
+      ],
+      "hits": [
+        20,
+        21
+      ],
+      "missed": [],
+      "pages_returned": 2,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "TAPG_2025Q4.yaml",
+      "ticker": "TAPG",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "module": "MDA",
+      "type": "notes",
+      "gold_pages": [
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127
+      ],
+      "returned_pages": [
+        22,
+        23,
+        24,
+        25,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127
+      ],
+      "hits": [
+        22,
+        23,
+        24,
+        25,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127
+      ],
+      "missed": [
+        26,
+        27
+      ],
+      "pages_returned": 10,
+      "recall": 0.8333333333333334,
+      "capped_recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "TAPG_2025Q4.yaml",
+      "ticker": "TAPG",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "module": "COGS_COMPONENTS",
+      "type": "notes",
+      "gold_pages": [
+        110
+      ],
+      "returned_pages": [
+        110
+      ],
+      "hits": [
+        110
+      ],
+      "missed": [],
+      "pages_returned": 1,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "TAPG_2025Q4.yaml",
+      "ticker": "TAPG",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "module": "CUSTOMER_CONCENTRATION",
+      "type": "notes",
+      "gold_pages": [
+        109
+      ],
+      "returned_pages": [
+        109
+      ],
+      "hits": [
+        109
+      ],
+      "missed": [],
+      "pages_returned": 1,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "gold_file": "TAPG_2025Q4.yaml",
+      "ticker": "TAPG",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "module": "DEBT_BY_LENDER",
+      "type": "notes",
+      "gold_pages": [
+        81,
+        82,
+        83,
+        84,
+        98,
+        99,
+        100,
+        101
+      ],
+      "returned_pages": [
+        98,
+        99,
+        100,
+        101,
+        120,
+        121
+      ],
+      "hits": [
+        98,
+        99,
+        100,
+        101
+      ],
+      "missed": [
+        81,
+        82,
+        83,
+        84
+      ],
+      "pages_returned": 6,
+      "recall": 0.5,
+      "capped_recall": 0.5,
+      "precision": 0.6666666666666666
+    },
+    {
+      "gold_file": "TAPG_2025Q4.yaml",
+      "ticker": "TAPG",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "module": "REVENUE_BREAKDOWN",
+      "type": "notes",
+      "gold_pages": [
+        109,
+        115,
+        116
+      ],
+      "returned_pages": [
+        86,
+        109,
+        115,
+        116
+      ],
+      "hits": [
+        109,
+        115,
+        116
+      ],
+      "missed": [],
+      "pages_returned": 4,
+      "recall": 1.0,
+      "capped_recall": 1.0,
+      "precision": 0.75
+    },
+    {
+      "gold_file": "TAPG_2025Q4.yaml",
+      "ticker": "TAPG",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "module": "BIOLOGICAL_ASSETS_DETAIL",
+      "type": "notes",
+      "gold_pages": [
+        69,
+        72,
+        73,
+        75
+      ],
+      "returned_pages": [
+        69
+      ],
+      "hits": [
+        69
+      ],
+      "missed": [
+        72,
+        73,
+        75
+      ],
+      "pages_returned": 1,
+      "recall": 0.25,
+      "capped_recall": 0.25,
+      "precision": 1.0
+    }
+  ],
+  "failures": [
+    {
+      "gold_file": "BSDE_2025Q4.yaml",
+      "module": "PROPERTY_PRESALES_MARKETING",
+      "reason": "no route query for module PROPERTY_PRESALES_MARKETING (sector PROPERTY)"
+    },
+    {
+      "gold_file": "BSDE_2025Q4.yaml",
+      "module": "PROPERTY_RECURRING_INCOME",
+      "reason": "no route query for module PROPERTY_RECURRING_INCOME (sector PROPERTY)"
+    }
+  ],
+  "notes": [
+    "FAIL BSDE_2025Q4.yaml: no route query for module PROPERTY_PRESALES_MARKETING (sector PROPERTY)",
+    "FAIL BSDE_2025Q4.yaml: no route query for module PROPERTY_RECURRING_INCOME (sector PROPERTY)",
+    "BSDE MDA: missed gold pages [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 197, 198, 199, 200, 219, 220] (returned [196])",
+    "BSDE MDA: recall 0.04, precision 1.00 (1 pages for 28 gold)",
+    "BSDE CUSTOMER_CONCENTRATION: recall 1.00, precision 0.33 (3 pages for 1 gold)",
+    "BSDE DEBT_BY_LENDER: missed gold pages [136, 137, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162] (returned [141, 196, 197])",
+    "BSDE DEBT_BY_LENDER: recall 0.04, precision 0.33 (3 pages for 24 gold)",
+    "BSDE REVENUE_BREAKDOWN: missed gold pages [218] (returned [4, 66, 178])",
+    "BSDE REVENUE_BREAKDOWN: recall 0.50, precision 0.33 (3 pages for 2 gold)",
+    "NISP MDA: missed gold pages [22, 23, 24, 25, 26, 27, 28, 29, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 93, 94, 95, 96, 97, 98, 99, 100] (returned [73, 74, 75, 76, 77, 78, 79, 80, 92, 101])",
+    "NISP MDA: recall 0.27, precision 1.00 (10 pages for 37 gold)",
+    "NISP COGS_COMPONENTS: recall 1.00, precision 0.20 (5 pages for 1 gold)",
+    "NISP DEBT_BY_LENDER: missed gold pages [151] (returned [98, 99, 100, 101, 149, 150])",
+    "NISP DEBT_BY_LENDER: recall 0.67, precision 0.33 (6 pages for 3 gold)",
+    "NISP REVENUE_BREAKDOWN: missed gold pages [156] (returned [154, 155, 170, 173, 174, 175])",
+    "NISP BANK_LOAN_QUALITY_NPL: missed gold pages [125, 179] (returned [6, 123, 182, 183, 184, 185])",
+    "NISP BANK_LOAN_QUALITY_NPL: recall 0.60, precision 0.50 (6 pages for 5 gold)",
+    "NISP BANK_PROFITABILITY_KPIS: missed gold pages [180] (returned [179, 181, 182, 183, 184, 185])",
+    "NISP BANK_PROFITABILITY_KPIS: recall 0.67, precision 0.33 (6 pages for 3 gold)",
+    "PTBA MDA: missed gold pages [23, 24, 25, 26, 157] (returned [22, 118, 151, 152, 153, 154, 155, 156, 164, 165])",
+    "PTBA MDA: recall 0.64, precision 0.90 (10 pages for 14 gold)",
+    "PTBA COGS_COMPONENTS: recall 1.00, precision 0.33 (3 pages for 1 gold)",
+    "PTBA MINING_RESERVES_AND_RESOURCES: missed gold pages [104] (returned [87, 88])",
+    "PTBA MINING_RESERVES_AND_RESOURCES: recall 0.67, precision 1.00 (2 pages for 3 gold)",
+    "TAPG MDA: missed gold pages [26, 27] (returned [22, 23, 24, 25, 122, 123, 124, 125, 126, 127])",
+    "TAPG DEBT_BY_LENDER: missed gold pages [81, 82, 83, 84] (returned [98, 99, 100, 101, 120, 121])",
+    "TAPG DEBT_BY_LENDER: recall 0.50, precision 0.67 (6 pages for 8 gold)",
+    "TAPG BIOLOGICAL_ASSETS_DETAIL: missed gold pages [72, 73, 75] (returned [69])",
+    "TAPG BIOLOGICAL_ASSETS_DETAIL: recall 0.25, precision 1.00 (1 pages for 4 gold)"
+  ]
+}

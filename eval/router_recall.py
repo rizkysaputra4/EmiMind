@@ -10,7 +10,9 @@ Gold YAML format (one file per document):
       BALANCE_SHEET: [22, 23]      # physical 1-based page indexes
 
 Per module: recall = |gold & returned| / |gold|, precision = |gold & returned| / |returned|,
-plus the number of pages returned. Thresholds: mean recall >= 0.90 (core statements) and
+plus the number of pages returned. Capped recall = |gold & returned| / min(|gold|, budget),
+where budget is the module's max_pages: what the router could reach within its page budget
+when the gold note is longer. It is reported next to recall, never used for the thresholds. Thresholds: mean recall >= 0.90 (core statements) and
 >= 0.80 (notes), mean precision >= 0.40. A gold document that is not indexed, or a module with
 no route query, is a FAIL; `notes` in the report lists every real miss.
 
@@ -78,9 +80,10 @@ def gold_pages(raw: Any) -> list[int]:
     return sorted({int(v) for v in values if v is not None})
 
 
-def score_module(gold: list[int], returned: list[int]) -> dict[str, Any]:
+def score_module(gold: list[int], returned: list[int], budget: int | None = None) -> dict[str, Any]:
     g, r = set(gold), set(returned)
     hits = sorted(g & r)
+    reachable = min(len(g), budget) if budget else len(g)
     return {
         "gold_pages": sorted(g),
         "returned_pages": sorted(r),
@@ -88,6 +91,7 @@ def score_module(gold: list[int], returned: list[int]) -> dict[str, Any]:
         "missed": sorted(g - r),
         "pages_returned": len(r),
         "recall": len(hits) / len(g) if g else 0.0,
+        "capped_recall": len(hits) / reachable if reachable else 0.0,
         "precision": len(hits) / len(r) if r else 0.0,
     }
 
@@ -102,6 +106,7 @@ def summarize(results: list[dict[str, Any]], failures: list[dict[str, Any]]) -> 
     notes = [r for r in results if r["type"] == "notes"]
     core_recall = _mean([r["recall"] for r in core])
     notes_recall = _mean([r["recall"] for r in notes])
+    notes_capped = _mean([r.get("capped_recall", r["recall"]) for r in notes])
     precision = _mean([r["precision"] for r in results])
     pages_per_module = _mean([float(r["pages_returned"]) for r in results])
     reasons: list[str] = []
@@ -133,6 +138,7 @@ def summarize(results: list[dict[str, Any]], failures: list[dict[str, Any]]) -> 
     return {
         "core_mean_recall": rnd(core_recall),
         "notes_mean_recall": rnd(notes_recall),
+        "notes_mean_capped_recall": rnd(notes_capped),
         "mean_precision": rnd(precision),
         "mean_pages_per_module": rnd(pages_per_module),
         "total_evaluated_modules": len(results),
@@ -202,7 +208,9 @@ async def evaluate_router(gold_dir: Path, top_k: int = 3) -> dict[str, Any]:
             for file_name, gold in gold_sets:
                 doc = await resolve_document(conn, gold)
                 if not doc or int(doc.get("indexed_pages") or 0) == 0:
-                    why = "not in documents" if not doc else f"doc {doc['id']} has no document_pages"
+                    why = (
+                        "not in documents" if not doc else f"doc {doc['id']} has no document_pages"
+                    )
                     failures.append(
                         {"gold_file": file_name, "file": gold.get("file"),
                          "sha256": gold.get("sha256"), "reason": f"gold document {why}"}
@@ -215,10 +223,15 @@ async def evaluate_router(gold_dir: Path, top_k: int = 3) -> dict[str, Any]:
                     continue
                 doc_id, ticker = str(doc["id"]), str(doc["ticker"])
                 prof = (
-                    await conn.execute(
-                        text("SELECT sector FROM issuer_profile WHERE ticker = :t"), {"t": ticker}
+                    (
+                        await conn.execute(
+                            text("SELECT sector FROM issuer_profile WHERE ticker = :t"),
+                            {"t": ticker},
+                        )
                     )
-                ).mappings().first()
+                    .mappings()
+                    .first()
+                )
                 sector = str(prof["sector"]) if prof and prof.get("sector") else "GENERIC"
 
                 for mod_name, raw_pages in (gold.get("modules") or {}).items():
@@ -238,7 +251,7 @@ async def evaluate_router(gold_dir: Path, top_k: int = 3) -> dict[str, Any]:
                     results.append(
                         {"gold_file": file_name, "ticker": ticker, "doc_id": doc_id,
                          "module": module, "type": "core" if module in CORE_MODULES else "notes",
-                         **score_module(pages, returned)}
+                         **score_module(pages, returned, route_q.max_pages)}
                     )  # fmt: skip
     finally:
         await engine.dispose()
@@ -278,6 +291,8 @@ def print_table(
 
     print(f"Core mean recall:   {pct(summary['core_mean_recall'])} (>= {RECALL_CORE_MIN:.0%})")
     print(f"Notes mean recall:  {pct(summary['notes_mean_recall'])} (>= {RECALL_NOTES_MIN:.0%})")
+    capped = pct(summary.get("notes_mean_capped_recall"))
+    print(f"Notes capped recall: {capped} (within each module's page budget; informational)")
     print(f"Mean precision:     {pct(summary['mean_precision'])} (>= {PRECISION_MIN:.0%})")
     print(f"Mean pages/module:  {summary['mean_pages_per_module']}")
     print(f"Thresholds met:     {summary['thresholds_met']} {summary['fail_reasons'] or ''}")

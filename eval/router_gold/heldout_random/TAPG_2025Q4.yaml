@@ -1,0 +1,16 @@
+# Held-out router gold set (random test tickers) — labelled by the reviewer from statement titles, the notes numbering and note headings in the PDF (not router output).
+file: "TAPG_2025_AUDIT_RDF_TAPG LK Q4 2025.pdf"
+sha256: "e2bc926bab8c2ac204bb892182e43e6a729b7e29208a3981fdfbf74ff4a52764"
+ticker: "TAPG"
+fiscal_period: "2025Q4"
+modules:
+  BALANCE_SHEET: [14, 15, 16]              # Laporan posisi keuangan konsolidasian
+  INCOME_STATEMENT: [17, 18]               # Laporan laba rugi dan penghasilan komprehensif lain konsolidasian
+  CASH_FLOW: [20, 21]                      # Laporan arus kas konsolidasian
+  MDA: [22, 23, 24, 25, 26, 27, 122, 123, 124, 125, 126, 127]  # Note 1 Umum/General + Note 40 Financial risk management; no subsequent-events note in this filing
+  COGS_COMPONENTS: [110]                   # Note 28 Beban pokok penjualan
+  CUSTOMER_CONCENTRATION: [109]            # Note 27 customers exceeding 10% of consolidated sales
+  DEBT_BY_LENDER: [81, 82, 83, 84, 98, 99, 100, 101]  # Note 16 Short-term bank loans + Note 22 Long-term bank loans
+  REVENUE_BREAKDOWN: [109, 115, 116]       # Note 27 Revenue from contracts with customers (by product) + Note 37 Operating segment
+  BIOLOGICAL_ASSETS_DETAIL: [69, 72, 73, 75]  # Note 8 Aset biologis + Note 12 Fixed assets: mature/immature bearer plants table and planted hectares
+  CPO_UPSTREAM_KPIS: []                    # not disclosed: no FFB/CPO production, OER or ASP in the audited FS (Note 8 only gives estimated unharvested FFB tons for valuation)
