@@ -1,0 +1,31 @@
+import asyncio
+from sqlalchemy import text
+from services.mcp.services.common import get_engine
+import json
+
+DOC_ID = "a7ccfea3-30b5-4e2d-b357-fb5648386eb2"
+
+async def main():
+    async with get_engine().connect() as conn:
+        for p in [22, 23, 24, 25, 27, 29, 30, 31]:
+            res = await conn.execute(
+                text("SELECT table_index, cells FROM document_page_tables WHERE doc_id = :doc_id AND page_index = :page ORDER BY table_index"),
+                {"doc_id": DOC_ID, "page": p}
+            )
+            for t_idx, raw in res.fetchall():
+                cells = json.loads(raw) if isinstance(raw, str) else raw
+                rows = {}
+                for c in cells:
+                    rows.setdefault(c.get("row"), {})[c.get("col")] = c.get("text")
+                for r in sorted(rows.keys()):
+                    cols = [f"c{col}:{rows[r].get(col)}" for col in sorted(rows[r].keys())]
+                    line = " | ".join(cols)
+                    # filter relevant lines
+                    keywords = [
+                        "total aset", "kas", "penempatan", "giro", "kredit", "liabilitas", "ekuitas",
+                        "pendapatan bunga", "beban bunga", "laba", "beban operasional", "pajak"
+                    ]
+                    if any(k in line.lower() for k in keywords):
+                        print(f"p{p}_t{t_idx}_r{r}: {line}")
+
+asyncio.run(main())

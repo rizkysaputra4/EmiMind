@@ -1,0 +1,17 @@
+import asyncio
+from sqlalchemy import text
+from services.mcp.services.common import get_engine
+
+async def main():
+    engine = get_engine()
+    async with engine.connect() as conn:
+        res = await conn.execute(text("""
+            SELECT page_text
+            FROM document_pages
+            WHERE doc_id = 'a7ccfea3-30b5-4e2d-b357-fb5648386eb2' AND page_index IN (503, 504);
+        """))
+        for r in res.scalars().all():
+            print(r[:2000])
+
+if __name__ == '__main__':
+    asyncio.run(main())
