@@ -57,6 +57,9 @@ def passing_metric(ticker: str = "BMRI") -> dict[str, Any]:
         "distinct_concepts_count": 95,
         "depth_threshold": 90,
         "depth_basis": "max(2 x baseline 45, BANK min 60)",
+        "depth_extractable_count": 40,
+        "depth_hit_count": 38,
+        "depth_ratio": 0.95,
         "segmented_facts_count": 30,
         "bad_provenance_count": 0,
         "facts_on_text_pages": 120,
@@ -98,9 +101,10 @@ FAILURES: list[tuple[str, dict[str, Any], str]] = [
     ("kpi extracted < 80%", {"kpi_extracted_ratio": 0.7, "extracted_kpis_count": 7}, "KPI coverage"),
     ("critical kpi uncovered", {"uncovered_critical": ["ifrs:Assets"]}, "KPI coverage"),
     ("omission contradicted", {"contradicted_omissions": {"idx:CASA": [40]}}, "KPI coverage"),
-    ("contract failure", {"contract_error": "ValueError: boom"}, "KPI coverage"),
     ("no mandatory kpis", {"mandatory_kpis_count": 0, "kpi_extracted_ratio": 0.0}, "KPI coverage"),
-    ("depth", {"distinct_concepts_count": 89}, "Concept depth"),
+    ("depth < 90% of extractable", {"depth_hit_count": 35, "depth_ratio": 0.875}, "Concept depth"),
+    ("depth nothing extractable", {"depth_extractable_count": 0, "depth_ratio": 0.0},
+     "Concept depth"),
     ("segments", {"segmented_facts_count": 24}, "Segmented facts"),
     ("grounding < 100%", {"grounded_on_text_pages": 119}, "Grounding"),
     ("grounding column missing", {"grounding_error": "column missing (026)"}, "Grounding"),
@@ -174,7 +178,24 @@ def test_quarterly_filing_depth_is_not_applicable_but_q4_always_annual() -> None
     assert is_annual("ANNUAL_REPORT", "2025Q4") is True
 
 
-def test_depth_threshold_uses_full_ticker_baseline() -> None:
+def test_contract_failure_fails_coverage_and_depth() -> None:
+    m = passing_metric()
+    m["contract_error"] = "ValueError: boom"
+    ok, results, _ = evaluate_gate([m], False, "2025Q4")
+    assert ok is False
+    assert _failed(results) == {"KPI coverage", "Concept depth"}
+
+
+def test_contract_depth_drops_only_verified_omissions() -> None:
+    contract = {"a", "b", "c", "d", "e"}
+    # d omitted and not found on any page: not extractable; e omitted but contradicted: a miss
+    hit, extractable = gate.contract_depth(contract, {"a", "b", "x"}, {"d", "e"}, {"e"})
+    assert (hit, extractable) == (2, 4)
+    # an omission of a concept that was committed anyway does not shrink the denominator
+    assert gate.contract_depth(contract, {"a", "d"}, {"d"}, set()) == (2, 5)
+
+
+def test_legacy_depth_threshold_uses_full_ticker_baseline() -> None:
     depths = gate.load_sector_depth_minimums()
     assert depths["BANK"] == 60
     assert depths["CPO"] == 50 and depths["PLANTATION"] == 50

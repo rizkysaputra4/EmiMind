@@ -10,7 +10,7 @@ server-side evidence; nothing the extraction agent typed in is trusted.
 | Router recall      | `eval/reports/router_recall.json` (not in --aggregate)  | core >= .90, notes >= .80, precision >= .40 |
 | KPI coverage       | contract mandatory KPIs vs committed facts; omissions   | extracted >= 80%, no CRITICAL gap, |
 |                    | re-verified against every indexed page                  | 0 contradicted omissions        |
-| Concept depth      | distinct concept_id (annual filings)                    | >= max(2 x baseline, sector min)|
+| Concept depth      | raw contract concepts committed, less verified omissions| >= 90% (annual filings)         |
 | Segmented facts    | segment + source_page (annual filings)                  | >= 25                           |
 | Grounding          | `financial_facts.grounding` (migration 026)             | 100% cell/text on pdf_text pages|
 | Narratives         | verbatim on cited page, cross-ticker md5, boilerplate   | 100%, 0, 0, 0 in-doc duplicates |
@@ -66,6 +66,10 @@ RECALL_NOTES_MIN = 0.80
 PRECISION_MIN = 0.40
 GROUNDED_VALUES = ("cell", "text")
 DEFAULT_SECTOR_MIN = 40
+# Concept depth is contract-relative (user decision 2026-10-14): the pre-remediation baseline is
+# the old 31-concept template counted across ~25 stub docs, and FS_ANNUAL contracts ask for only
+# 37-48 facts, so max(2 x baseline, sector min) is unreachable. That figure stays as info.
+DEPTH_RATIO_MIN = 0.90
 
 # (table, column, migration that adds it)
 REQUIRED_COLUMNS: tuple[tuple[str, str, str], ...] = (
@@ -162,6 +166,23 @@ def depth_threshold(
         else f"no baseline for {ticker}; {sector_key} min {sector_min}"
     )
     return threshold, basis
+
+
+def contract_depth(
+    contract_concepts: set[str],
+    committed: set[str],
+    omitted: set[str],
+    contradicted: set[str],
+) -> tuple[int, int]:
+    """(committed extractable concepts, extractable concepts) for one filing.
+
+    Extractable: the filing's raw contract concepts, less those recorded as omitted at commit
+    whose omission the page search did not contradict (verified not disclosed). A contradicted
+    omission stays extractable and counts as a miss.
+    """
+    not_disclosed = (omitted - contradicted - committed) & contract_concepts
+    extractable = contract_concepts - not_disclosed
+    return len(extractable & committed), len(extractable)
 
 
 def token_budget(whole_book_est: int) -> int:
@@ -492,24 +513,32 @@ def collect_metrics(  # noqa: PLR0912
         m["contract_error"] = f"{type(exc).__name__}: {exc}"
         contract = None
     if contract is not None:
+        raw_rules = [r for r in contract.required_facts if r.extraction_mode == "EXTRACTED_RAW"]
         rules = [
-            r
-            for r in contract.required_facts
-            if r.required
-            and r.extraction_mode == "EXTRACTED_RAW"
-            and r.importance.upper() in ("CRITICAL", "HIGH")
+            r for r in raw_rules if r.required and r.importance.upper() in ("CRITICAL", "HIGH")
         ]
         mandatory = {r.concept_id for r in rules}
         critical = {r.concept_id for r in rules if r.importance.upper() == "CRITICAL"}
         extracted = mandatory & concepts
         not_extracted = mandatory - extracted
-        contradicted: dict[str, list[int]] = {}
-        for r in rules:
-            if r.concept_id in not_extracted and r.concept_id in omitted:
+        # omissions are re-verified for every raw contract concept: KPI coverage reads the
+        # mandatory ones, concept depth all of them
+        contradicted_any: dict[str, list[int]] = {}
+        for r in raw_rules:
+            if r.concept_id not in concepts and r.concept_id in omitted:
                 terms = omission_search_terms([r.label, *r.synonyms_id, *r.synonyms_en])
                 hit_pages = omission_contradictions(terms, pages)
                 if hit_pages:
-                    contradicted[r.concept_id] = hit_pages[:10]
+                    contradicted_any[r.concept_id] = hit_pages[:10]
+        contradicted = {k: v for k, v in contradicted_any.items() if k in not_extracted}
+        hit, extractable = contract_depth(
+            {r.concept_id for r in raw_rules}, concepts, omitted, set(contradicted_any)
+        )
+        m.update(
+            depth_extractable_count=extractable,
+            depth_hit_count=hit,
+            depth_ratio=(hit / extractable) if extractable else 0.0,
+        )
         m.update(
             mandatory_kpis_count=len(mandatory),
             extracted_kpis_count=len(extracted),
@@ -630,12 +659,23 @@ def evaluate_document(  # noqa: PLR0912
 
     # 3. Concept depth and 4. segmented facts: per annual filing
     annual = bool(m.get("annual"))
-    depth = int(m.get("distinct_concepts_count", 0))
-    thr = int(m.get("depth_threshold", DEFAULT_SECTOR_MIN))
-    _check(
-        results, m, "Concept depth", (depth >= thr) if annual else None, str(depth), f">= {thr}",
-        f"{m.get('depth_basis')}" if annual else "not an annual filing",
-    )  # fmt: skip
+    if not annual:
+        _check(results, m, "Concept depth", None, str(m.get("distinct_concepts_count", 0)),
+               f">= {DEPTH_RATIO_MIN:.0%} of extractable", "not an annual filing")  # fmt: skip
+    elif m.get("contract_error") or "depth_extractable_count" not in m:
+        err = m.get("contract_error") or "contract not evaluated"
+        _check(results, m, "Concept depth", False, "contract error", "contract loads", err)
+    else:
+        hit, extractable = int(m["depth_hit_count"]), int(m["depth_extractable_count"])
+        ratio = float(m.get("depth_ratio", 0.0))
+        _check(
+            results, m, "Concept depth", extractable > 0 and ratio >= DEPTH_RATIO_MIN,
+            f"{hit}/{extractable} ({ratio:.1%})",
+            f">= {DEPTH_RATIO_MIN:.0%} of extractable contract concepts",
+            f"extractable = raw contract concepts less verified omissions; "
+            f"{m.get('distinct_concepts_count', 0)} distinct concepts committed; "
+            f"info only: {m.get('depth_basis')} = {m.get('depth_threshold')}",
+        )  # fmt: skip
     seg = int(m.get("segmented_facts_count", 0))
     _check(
         results, m, "Segmented facts", (seg >= SEGMENTED_MIN) if annual else None, str(seg),

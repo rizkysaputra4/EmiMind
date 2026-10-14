@@ -15,7 +15,14 @@ Tracks the work to fix the findings in [`docs/M9_REVIEW.md`](M9_REVIEW.md) (scor
   - Older held-out set: 0.807 → 0.835.
   - LSIP 2025Q4 REVENUE_BREAKDOWN regression (1.0 → 0) fixed 2026-10-14. Cause: seed p101 sat on the page after the note start p100; its coverage counted p100, but the budget ran out before the backward step. Fix: such a seed holds its start page up front (`select_pages` leads). Diagnosed on LSIP, which was already a tuning ticker, so the random held-out set is untouched (re-run unchanged).
   - User decisions 2026-10-13: DEBT_BY_LENDER budget 6 → 10; MDA stays at 10; the eval reports capped recall next to raw recall.
-  - **Next:** concept-depth threshold check (62), then TAPG + PTBA re-run via the Tester and waves 2/3 (still ON HOLD in `m9_comms/ORDERS.md`).
+  - **Depth threshold check (2026-10-14): 62 is unreachable on a statutory FS.**
+    - The baseline of 31 is the old pipeline's fixed template. Every non-bank ticker has exactly 31. It is a union across about 25 one-page stub docs per ticker, not a per-filing count. No per-filing data was kept, and the DB has been reset.
+    - FS_ANNUAL contracts ask for 37–48 required facts: NISP 48, TAPG 39, PTBA 40, BSDE 37, UNVR 41, ISAT 37. A perfect extraction is below 62, and also below the CPO 50 / BANK 60 sector minimums.
+    - The ontology has 273 definitions. Only 49 are statement line items (BS 23, IS 19, CF 7) and 32 apply to ALL sectors; 180 are operational KPIs, mostly sourced from investor presentations and annual reports.
+    - TAPG committed 28 distinct concepts.
+    - **User decision 2026-10-14: contract-relative depth.** Pass when at least 90% of the filing's extractable contract concepts are committed. Extractable = EXTRACTED_RAW contract concepts, less omissions recorded at commit that the page search does not contradict. The old max(2 × baseline, sector min) stays in the report as info only (`eval/deep_extraction_gate.py` `contract_depth`).
+    - TAPG under the new check: 24/29 (82.8%), FAIL. Misses: BankLoans, FfbProduction, D&A. Router notes for TAPG are now 0.76 (were 0.57).
+  - **Next:** TAPG + PTBA re-run via the Tester and waves 2/3 (still ON HOLD in `m9_comms/ORDERS.md`).
 - **Previous resume point (saved 2026-10-12 ~01:00).** Step 7 is paused; PTBA and wave 2 are ON HOLD in `EmiMind-Extraction/m9_comms/ORDERS.md`.
   - **Done this session:**
     - Created the comms channel `m9_comms/`: Lead writes ORDERS, Tester writes STATUS and issues.
