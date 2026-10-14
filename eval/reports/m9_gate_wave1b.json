@@ -1,6 +1,6 @@
 {
   "summary": {
-    "timestamp": "2026-10-14T15:50:06.529768+00:00",
+    "timestamp": "2026-10-14T15:55:59.868842+00:00",
     "all_passed": false,
     "is_aggregate": false,
     "documents": 2,
@@ -13,8 +13,6 @@
         "passed": false,
         "failed_checks": [
           "Router recall",
-          "KPI coverage",
-          "Segmented facts",
           "Token efficiency"
         ]
       },
@@ -24,14 +22,13 @@
         "fiscal_period": "2025Q4",
         "passed": false,
         "failed_checks": [
-          "KPI coverage",
           "Token efficiency"
         ]
       }
     ],
     "total_checks": 20,
-    "passed_checks": 14,
-    "failed_checks": 6,
+    "passed_checks": 17,
+    "failed_checks": 3,
     "na_checks": 0,
     "missing_columns": [],
     "since": null,
@@ -56,10 +53,10 @@
     {
       "dimension": "KPI coverage",
       "ticker": "TAPG",
-      "value": "75.8% extracted",
-      "threshold": ">= 80% extracted, 0 CRITICAL gaps, 0 contradicted omissions",
-      "status": "FAIL",
-      "details": "extracted 25/33; omitted 8; uncovered []; CRITICAL uncovered []; contradicted omissions {}; rebuttals pending Lead review [], approved ['idx:BankLoans', 'idx:FfbProduction']",
+      "value": "100.0% extracted",
+      "threshold": ">= 80% of disclosed extracted, <= 40% omitted, 0 CRITICAL gaps, 0 contradicted omissions",
+      "status": "PASS",
+      "details": "extracted 25/25 disclosed (33 mandatory, 8 verified omissions = 24%, max 40%); uncovered []; CRITICAL uncovered []; contradicted omissions {}; rebuttals pending Lead review [], approved ['idx:BankLoans', 'idx:FfbProduction']",
       "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
       "fiscal_period": "2025Q4"
     },
@@ -76,9 +73,9 @@
     {
       "dimension": "Segmented facts",
       "ticker": "TAPG",
-      "value": "20",
+      "value": "33",
       "threshold": ">= 25",
-      "status": "FAIL",
+      "status": "PASS",
       "details": "segment + source_page",
       "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
       "fiscal_period": "2025Q4"
@@ -86,10 +83,10 @@
     {
       "dimension": "Grounding",
       "ticker": "TAPG",
-      "value": "45/45",
+      "value": "58/58",
       "threshold": "100% cell/text on pdf_text pages",
       "status": "PASS",
-      "details": "breakdown [['pdf_text', 'cell', 38], ['pdf_text', 'text', 7]]",
+      "details": "breakdown [['pdf_text', 'cell', 51], ['pdf_text', 'text', 7]]",
       "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
       "fiscal_period": "2025Q4"
     },
@@ -116,10 +113,10 @@
     {
       "dimension": "Token efficiency",
       "ticker": "TAPG",
-      "value": "72,565 tokens (27.7%)",
-      "threshold": "<= 50,000 (max(15% of 262,000, 50,000))",
+      "value": "missing",
+      "threshold": "<= max(15%, 50,000 tokens)",
       "status": "FAIL",
-      "details": "19 ROUTED calls, 290261 chars, 0 page images",
+      "details": "latest commit predates run ids; one clean extraction run is needed; info, all runs: 72565 tokens (19 ROUTED calls, 290261 chars, 0 page images)",
       "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
       "fiscal_period": "2025Q4"
     },
@@ -156,20 +153,20 @@
     {
       "dimension": "KPI coverage",
       "ticker": "PTBA",
-      "value": "77.1% extracted",
-      "threshold": ">= 80% extracted, 0 CRITICAL gaps, 0 contradicted omissions",
-      "status": "FAIL",
-      "details": "extracted 27/35; omitted 8; uncovered []; CRITICAL uncovered []; contradicted omissions {'idx:BankLoans': [15, 21, 95, 130, 155, 161, 163]}; rebuttals pending Lead review ['idx:BankLoans'], approved ['idx:CoalProductionVolume', 'idx:DomesticMarketObligationRatio']",
+      "value": "100.0% extracted",
+      "threshold": ">= 80% of disclosed extracted, <= 40% omitted, 0 CRITICAL gaps, 0 contradicted omissions",
+      "status": "PASS",
+      "details": "extracted 28/28 disclosed (35 mandatory, 7 verified omissions = 20%, max 40%); uncovered []; CRITICAL uncovered []; contradicted omissions {}; rebuttals pending Lead review [], approved ['idx:CoalProductionVolume', 'idx:DomesticMarketObligationRatio']",
       "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
       "fiscal_period": "2025Q4"
     },
     {
       "dimension": "Concept depth",
       "ticker": "PTBA",
-      "value": "27/29 (93.1%)",
+      "value": "28/29 (96.6%)",
       "threshold": ">= 90% of extractable contract concepts",
       "status": "PASS",
-      "details": "extractable = raw contract concepts less verified omissions; 30 distinct concepts committed; info only: max(2 x baseline 31, MINING min 40) = 62",
+      "details": "extractable = raw contract concepts less verified omissions; 31 distinct concepts committed; info only: max(2 x baseline 31, MINING min 40) = 62",
       "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
       "fiscal_period": "2025Q4"
     },
@@ -186,10 +183,10 @@
     {
       "dimension": "Grounding",
       "ticker": "PTBA",
-      "value": "62/62",
+      "value": "63/63",
       "threshold": "100% cell/text on pdf_text pages",
       "status": "PASS",
-      "details": "breakdown [['pdf_text', 'cell', 53], ['pdf_text', 'text', 9]]",
+      "details": "breakdown [['pdf_text', 'cell', 53], ['pdf_text', 'text', 10]]",
       "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
       "fiscal_period": "2025Q4"
     },
@@ -216,10 +213,10 @@
     {
       "dimension": "Token efficiency",
       "ticker": "PTBA",
-      "value": "76,808 tokens (22.9%)",
-      "threshold": "<= 50,400 (max(15% of 336,000, 50,000))",
+      "value": "missing",
+      "threshold": "<= max(15%, 50,000 tokens)",
       "status": "FAIL",
-      "details": "23 ROUTED calls, 307232 chars, 0 page images",
+      "details": "latest commit predates run ids; one clean extraction run is needed; info, all runs: 76808 tokens (23 ROUTED calls, 307232 chars, 0 page images)",
       "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
       "fiscal_period": "2025Q4"
     },
@@ -255,17 +252,17 @@
       "page_count": 131,
       "missing_columns": [],
       "annual": true,
-      "fact_count": 45,
+      "fact_count": 58,
       "distinct_concepts_count": 29,
       "depth_threshold": 62,
       "depth_basis": "max(2 x baseline 31, CPO min 50)",
-      "segmented_facts_count": 20,
+      "segmented_facts_count": 33,
       "bad_provenance_count": 0,
       "grounding_breakdown": [
         [
           "pdf_text",
           "cell",
-          38
+          51
         ],
         [
           "pdf_text",
@@ -273,13 +270,13 @@
           7
         ]
       ],
-      "facts_on_text_pages": 45,
-      "grounded_on_text_pages": 45,
-      "grounded_total": 45,
+      "facts_on_text_pages": 58,
+      "grounded_on_text_pages": 58,
+      "grounded_total": 58,
       "indexed_pages": 131,
       "pages_with_expected_embedding": 131,
-      "routed_tokens": 72565,
-      "token_detail": "19 ROUTED calls, 290261 chars, 0 page images",
+      "routed_tokens": null,
+      "token_detail": "latest commit predates run ids; one clean extraction run is needed; info, all runs: 72565 tokens (19 ROUTED calls, 290261 chars, 0 page images)",
       "whole_book_est": 262000,
       "narrative_count": 8,
       "narratives_not_verbatim": 0,
@@ -297,7 +294,8 @@
       "depth_ratio": 0.9259259259259259,
       "mandatory_kpis_count": 33,
       "extracted_kpis_count": 25,
-      "kpi_extracted_ratio": 0.7575757575757576,
+      "verified_omitted_count": 8,
+      "kpi_extracted_ratio": 1.0,
       "omitted_kpis": [
         "idx:BankLoans",
         "idx:CPOAveragePriceASP",
@@ -330,8 +328,8 @@
       "page_count": 168,
       "missing_columns": [],
       "annual": true,
-      "fact_count": 62,
-      "distinct_concepts_count": 30,
+      "fact_count": 63,
+      "distinct_concepts_count": 31,
       "depth_threshold": 62,
       "depth_basis": "max(2 x baseline 31, MINING min 40)",
       "segmented_facts_count": 35,
@@ -345,16 +343,16 @@
         [
           "pdf_text",
           "text",
-          9
+          10
         ]
       ],
-      "facts_on_text_pages": 62,
-      "grounded_on_text_pages": 62,
-      "grounded_total": 62,
+      "facts_on_text_pages": 63,
+      "grounded_on_text_pages": 63,
+      "grounded_total": 63,
       "indexed_pages": 168,
       "pages_with_expected_embedding": 168,
-      "routed_tokens": 76808,
-      "token_detail": "23 ROUTED calls, 307232 chars, 0 page images",
+      "routed_tokens": null,
+      "token_detail": "latest commit predates run ids; one clean extraction run is needed; info, all runs: 76808 tokens (23 ROUTED calls, 307232 chars, 0 page images)",
       "whole_book_est": 336000,
       "narrative_count": 8,
       "narratives_not_verbatim": 0,
@@ -362,21 +360,19 @@
       "boilerplate_hits": 0,
       "in_doc_duplicates": 0,
       "cross_ticker_duplicates": 0,
-      "rebuttals_pending": [
-        "idx:BankLoans"
-      ],
+      "rebuttals_pending": [],
       "rebuttals_approved": [
         "idx:CoalProductionVolume",
         "idx:DomesticMarketObligationRatio"
       ],
       "depth_extractable_count": 29,
-      "depth_hit_count": 27,
-      "depth_ratio": 0.9310344827586207,
+      "depth_hit_count": 28,
+      "depth_ratio": 0.9655172413793104,
       "mandatory_kpis_count": 35,
-      "extracted_kpis_count": 27,
-      "kpi_extracted_ratio": 0.7714285714285715,
+      "extracted_kpis_count": 28,
+      "verified_omitted_count": 7,
+      "kpi_extracted_ratio": 1.0,
       "omitted_kpis": [
-        "idx:BankLoans",
         "idx:CoalAveragePriceASP",
         "idx:CoalCashCostPerTon",
         "idx:CoalProductionVolume",
@@ -387,17 +383,7 @@
       ],
       "uncovered_kpis": [],
       "uncovered_critical": [],
-      "contradicted_omissions": {
-        "idx:BankLoans": [
-          15,
-          21,
-          95,
-          130,
-          155,
-          161,
-          163
-        ]
-      },
+      "contradicted_omissions": {},
       "required_narratives_count": 5,
       "pdf_path": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\m9_stage\\PTBA\\PTBA_2025_AUDIT_RDF_FS PTBA FY 2025.pdf",
       "actual_page_count": 168,

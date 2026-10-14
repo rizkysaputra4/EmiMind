@@ -1,0 +1,144 @@
+{
+  "entries": {
+    "NISP:2025Q4": {
+      "ticker": "NISP",
+      "source": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\incoming_reports\\NISP\\processed\\NISP_2025_AUDIT_RDF_FS PT Bank OCBC NISP Tbk 31 Dec 2025 (audited).pdf",
+      "staged": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\m9_stage\\NISP\\NISP_2025_AUDIT_RDF_FS PT Bank OCBC NISP Tbk 31 Dec 2025 (audited).pdf",
+      "page_count": 197,
+      "doc_type": "FS_ANNUAL",
+      "inspect_status": "AUTHORIZED",
+      "doc_id": "f67d9be5-9f1d-465e-bb99-0f37697ffd1b",
+      "message": "Document authorized for extraction (FS_ANNUAL, 2025Q4, 197 pages, period from downloader_prefix). Next: call get_extraction_contract(doc_id), then get_routed_pages(doc_id, module) per module. If the routed pages show this is not a financial filing, call mark_document_skipped(doc_id, reason='NOT_FINANCIAL_CONTENT', notes='...').",
+      "fiscal_period": "2025Q4",
+      "pages": {
+        "page_count": 197,
+        "fiscal_period": "2025Q4",
+        "doc_type": "FS_ANNUAL",
+        "ticker": "NISP",
+        "indexed": 197,
+        "embedded": 197,
+        "ocr_failed": 0,
+        "facts": 0,
+        "committed": false
+      },
+      "status": "ready"
+    },
+    "TAPG:2025Q4": {
+      "ticker": "TAPG",
+      "source": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\incoming_reports\\TAPG\\processed\\TAPG_2025_AUDIT_RDF_TAPG LK Q4 2025.pdf",
+      "staged": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\m9_stage\\TAPG\\TAPG_2025_AUDIT_RDF_TAPG LK Q4 2025.pdf",
+      "page_count": 131,
+      "doc_type": "FS_ANNUAL",
+      "inspect_status": "AUTHORIZED",
+      "doc_id": "257139d8-ed15-45d4-aa79-ace3a36575e7",
+      "message": "Document authorized for extraction (FS_ANNUAL, 2025Q4, 131 pages, period from downloader_prefix). Next: call get_extraction_contract(doc_id), then get_routed_pages(doc_id, module) per module. If the routed pages show this is not a financial filing, call mark_document_skipped(doc_id, reason='NOT_FINANCIAL_CONTENT', notes='...').",
+      "fiscal_period": "2025Q4",
+      "pages": {
+        "page_count": 131,
+        "fiscal_period": "2025Q4",
+        "doc_type": "FS_ANNUAL",
+        "ticker": "TAPG",
+        "indexed": 131,
+        "embedded": 131,
+        "ocr_failed": 0,
+        "facts": 0,
+        "committed": false
+      },
+      "status": "ready"
+    },
+    "PTBA:2025Q4": {
+      "ticker": "PTBA",
+      "source": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\incoming_reports\\PTBA\\processed\\PTBA_2025_AUDIT_RDF_FS PTBA FY 2025.pdf",
+      "staged": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\m9_stage\\PTBA\\PTBA_2025_AUDIT_RDF_FS PTBA FY 2025.pdf",
+      "page_count": 168,
+      "doc_type": "FS_ANNUAL",
+      "inspect_status": "AUTHORIZED",
+      "doc_id": "69967908-f0d2-4a10-9562-4b3a4ea60abc",
+      "message": "Document authorized for extraction (FS_ANNUAL, 2025Q4, 168 pages, period from downloader_prefix). Next: call get_extraction_contract(doc_id), then get_routed_pages(doc_id, module) per module. If the routed pages show this is not a financial filing, call mark_document_skipped(doc_id, reason='NOT_FINANCIAL_CONTENT', notes='...').",
+      "fiscal_period": "2025Q4",
+      "pages": {
+        "page_count": 168,
+        "fiscal_period": "2025Q4",
+        "doc_type": "FS_ANNUAL",
+        "ticker": "PTBA",
+        "indexed": 168,
+        "embedded": 168,
+        "ocr_failed": 0,
+        "facts": 0,
+        "committed": false
+      },
+      "status": "ready"
+    },
+    "BSDE:2025Q4": {
+      "ticker": "BSDE",
+      "source": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\incoming_reports\\BSDE\\processed\\BSDE_2025_AUDIT_RDF_BSDE Laporan Keuangan Tahunan 31 Des 2025.pdf",
+      "staged": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\m9_stage\\BSDE\\BSDE_2025_AUDIT_RDF_BSDE Laporan Keuangan Tahunan 31 Des 2025.pdf",
+      "page_count": 223,
+      "doc_type": "FS_ANNUAL",
+      "inspect_status": "AUTHORIZED",
+      "doc_id": "e963c620-478d-499e-a1a3-bd30408d8af6",
+      "message": "Document authorized for extraction (FS_ANNUAL, 2025Q4, 223 pages, period from downloader_prefix). Next: call get_extraction_contract(doc_id), then get_routed_pages(doc_id, module) per module. If the routed pages show this is not a financial filing, call mark_document_skipped(doc_id, reason='NOT_FINANCIAL_CONTENT', notes='...').",
+      "fiscal_period": "2025Q4",
+      "pages": {
+        "page_count": 223,
+        "fiscal_period": "2025Q4",
+        "doc_type": "FS_ANNUAL",
+        "ticker": "BSDE",
+        "indexed": 223,
+        "embedded": 223,
+        "ocr_failed": 0,
+        "facts": 0,
+        "committed": false
+      },
+      "status": "ready"
+    },
+    "UNVR:2025Q4": {
+      "ticker": "UNVR",
+      "source": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\incoming_reports\\UNVR\\processed\\UNVR_2025_AUDIT_RDF_UNVR Q4 2025_FINAL (1).pdf",
+      "staged": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\m9_stage\\UNVR\\UNVR_2025_AUDIT_RDF_UNVR Q4 2025_FINAL (1).pdf",
+      "page_count": 97,
+      "doc_type": "FS_ANNUAL",
+      "inspect_status": "AUTHORIZED",
+      "doc_id": "070f0223-afb2-4ea5-8e7d-c136ef8a4ace",
+      "message": "Document authorized for extraction (FS_ANNUAL, 2025Q4, 97 pages, period from downloader_prefix). Next: call get_extraction_contract(doc_id), then get_routed_pages(doc_id, module) per module. If the routed pages show this is not a financial filing, call mark_document_skipped(doc_id, reason='NOT_FINANCIAL_CONTENT', notes='...').",
+      "fiscal_period": "2025Q4",
+      "pages": {
+        "page_count": 97,
+        "fiscal_period": "2025Q4",
+        "doc_type": "FS_ANNUAL",
+        "ticker": "UNVR",
+        "indexed": 97,
+        "embedded": 97,
+        "ocr_failed": 0,
+        "facts": 0,
+        "committed": false
+      },
+      "status": "ready"
+    },
+    "ISAT:2025Q4": {
+      "ticker": "ISAT",
+      "source": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\incoming_reports\\ISAT\\processed\\ISAT_2025_AUDIT_RDF_Signed - FS Indosat Tbk 1225.pdf",
+      "staged": "C:\\Users\\rizky\\Documents\\Code\\EmiMind-Extraction\\m9_stage\\ISAT\\ISAT_2025_AUDIT_RDF_Signed - FS Indosat Tbk 1225.pdf",
+      "page_count": 152,
+      "doc_type": "FS_ANNUAL",
+      "inspect_status": "AUTHORIZED",
+      "doc_id": "d7433034-90a3-4cdb-b6b4-9f5fdf97b865",
+      "message": "Document authorized for extraction (FS_ANNUAL, 2025Q4, 152 pages, period from downloader_prefix). Next: call get_extraction_contract(doc_id), then get_routed_pages(doc_id, module) per module. If the routed pages show this is not a financial filing, call mark_document_skipped(doc_id, reason='NOT_FINANCIAL_CONTENT', notes='...').",
+      "fiscal_period": "2025Q4",
+      "pages": {
+        "page_count": 152,
+        "fiscal_period": "2025Q4",
+        "doc_type": "FS_ANNUAL",
+        "ticker": "ISAT",
+        "indexed": 152,
+        "embedded": 152,
+        "ocr_failed": 0,
+        "facts": 0,
+        "committed": false
+      },
+      "status": "ready"
+    }
+  },
+  "batch_start": "2026-09-29T14:18:17.161472+00:00",
+  "period": "2025Q4"
+}
